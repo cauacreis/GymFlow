@@ -1,97 +1,116 @@
-# 🥗 GymFlow — Mobile Nutrition & Performance Platform
+# 🏋️ GymFlow — Mobile-First Smart Gym & Performance Platform
 
-![GymFlow Banner](https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80)
+![GymFlow Preview](https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80)
 
-> **GymFlow** é uma aplicação web mobile-first de alta performance focada em gastronomia saudável, nutrição esportiva e personalização precisa de refeições fit. Projetada com estética ultra-premium (Awwwards-tier), microinterações fluidas e arquitetura pronta para publicação direta na Google Play Store (PWA / Capacitor).
-
----
-
-## 📱 Mobile-First por Design
-
-O GymFlow foi construído prioritariamente para a experiência na ponta dos dedos:
-- Layout responsivo com comportamento nativo de aplicativo móvel (`viewport-fit=cover`, gestos táteis, touch targets generosos de 44px+).
-- Navegação otimizada com menu flutuante em pílula e indicador físico deslizante.
-- Preparado para empacotamento com **Capacitor** ou **TWA (Trusted Web Activity)** para publicação rápida na Google Play Store sem reescrita de código.
+> **GymFlow** é uma plataforma mobile-first completa voltada para academias inteligentes, alunos e centros de treinamento físico. Desenvolvida em Next.js 14, TypeScript e Tailwind CSS, possui estética ultra-moderna (inspirada na Aceternity UI), feedback háptico tátil e arquitetura 100% pronta para publicação nativa na **Google Play Store** via Capacitor ou PWA.
 
 ---
 
-## ✨ Principais Diferenciais e Funcionalidades
+## 📱 Experiência 100% Mobile-First (Play Store Ready)
 
-### 1. Vitrine Dinâmica & Microinterações
-- **Banner Rotativo Interativo**: Transição suave entre pratos-chave com pausa no hover/touch e avanço rápido por clique tátil.
-- **Ticker de Destaques (Marquee Ativo)**: Barra de novidades contínua que pausa ao toque e atua como atalho para etapas do montador.
-- **Menu Pílula Magnético**: Indicador físico que desliza acompanhando a rolagem e o contexto do usuário.
-
-### 2. Montador Inteligente & Dashboard de Macronutrientes em Tempo Real
-- **Arquitetura em Etapas**: Escolha sequencial e limpa (Base, Proteína, Acompanhamentos, Saladas, Molhos e Extras) com fotografia e ativos transparentes.
-- **Cálculo Nutricional Instantâneo**: Atualização em tempo real de Calorias (kcal), Proteínas (g), Carboidratos (g) e Gorduras (g), com recálculo automático para porção Individual ou Família.
-- **Controles de Porção Padronizados**: Botões táteis consistentes para padrão, extra ou remoção de ingredientes.
-
-### 3. Visual Limpo & Ativos 3D Volumétricos
-- Eliminação total de ruídos flutuantes e selos repetitivos sobre as fotos.
-- Ativos 3D renderizados com canal alfa (fundo 100% transparente) para estado de sacola vazia e destaques.
-- Favicon e logos com recorte nítido e fundo transparente.
-
-### 4. Segurança, Autenticação e Checkout
-- **Tela de Login / Cadastro**: Inspirada no design system da Aceternity UI com animação suave e validação Zod.
-- **Pagamento Integrado com Mercado Pago**: Fluxo de checkout seguro em Sandbox, com tokenização cliente, idempotência e verificação HMAC em webhooks.
-- **Assistente Nutricional com IA Gratuita**: Sugestões inteligentes de pratos baseadas nas metas de treino do usuário, com fallback local sem custo de API.
-- **Mapa Noturno com Geolocalização**: Pinos pulsantes para retirada presencial ou cálculo de raio de entrega.
+O GymFlow foi arquitetado especificamente para uso em smartphones no ambiente da academia:
+- **Viewport Nativo**: Bloqueio de rotação horizontal e de zoom indesejado (`viewport-fit=cover`, `maximum-scale=1.0`).
+- **Navegação Háptica**: Barra de navegação inferior com pílula animada e vibração tátil em cada seleção de aba.
+- **Ponte Capacitor Android**: Configurado para exportação com `npx cap add android` e geração de APK / AAB para a Google Play Store.
 
 ---
 
-## 🔒 Segurança em Primeiro Lugar (Repositório Público)
+## ✨ Os 5 Pilares do GymFlow
 
-Este repositório adota uma política estrita de segurança pública:
-- Nenhuma chave secreta ou token em código.
-- Template `.env.example` versionado com credenciais dummy.
-- Headers de segurança rigorosos (CSP, HSTS, X-Frame-Options: DENY).
-- Service Worker com exclusão de rotas sensíveis (`/checkout`, `/profile`).
+### 1. 📋 Ficha de Treino Interativa (Split A/B/C)
+- Divisão completa de treinos (Push / Pull / Legs ou ABC Superior/Inferior).
+- Checkbox de conclusão de séries por toque.
+- Ajuste rápido de carga (+/- 2kg) e repetições sem sair da ficha.
+- Cálculo em tempo real do **Volume Total de Carga (kg levantados)** e porcentagem de conclusão do treino.
+- **Cronômetro de Descanso**: Drawer com contagem regressiva, alerta sonoro e vibração háptica nos últimos segundos.
 
-Consulte [SECURITY_RULES.md](./SECURITY_RULES.md) para detalhes completos das políticas de commit e proteção.
+### 2. 📲 Catraca Digital Anti-Fraude (GymFlow Pass)
+- Geração dinâmica de QR Code em canvas de alta definição.
+- Token visual rotativo criptografado com renovação a cada 30 segundos, prevenindo prints e fraudes de acesso.
+- Exibição de matrícula do aluno e status de ativação do plano.
+- Simulação de leitura ótica e abertura da catraca com feedback de sucesso.
+
+### 3. 👥 Lotação em Tempo Real & Horários de Pico
+- Indicador visual do nível de ocupação da academia em tempo real (ex: 64% - Moderado).
+- Gráfico dinâmico por faixas de horário para planejar os melhores horários de treino com equipamentos livres.
+
+### 4. 🥊 Grade de Aulas Coletivas
+- Agendamento instantâneo para Spinning, Muay Thai, Yoga, FitDance e Treinamento Funcional.
+- Visualização de horários, vagas restantes em tempo real, instrutor responsável e gasto calórico estimado.
+
+### 5. 📈 Evolução Física & Gamificação
+- **Bioimpedância InBody**: Acompanhamento de peso corporal, percentual de gordura (% BF) e massa muscular magra com comparativo mensal.
+- **Contador de Ofensiva (Streaks 🔥)**: Registro de dias consecutivos de treino ativo com metas dinâmicas.
+- **Vitrine de Recordes Pessoais (PRs)**: Histórico de 1RM em supino, agachamento, levantamento terra e desenvolvimento.
+- **Insígnias & Medalhas**: Desbloqueio de conquistas ("Fogo Sagrado", "Clube das 06h", "Centurião", "Batedor de PR").
 
 ---
 
-## 🚀 Como Executar Localmente
+## 🤖 GymBot IA — Personal Trainer Gratuito
+
+- Assistente de inteligência artificial 24/7 para tirar dúvidas de biomecânica, cargas, aquecimento articular e nutrição esportiva.
+- **Custo Zero**:
+  - Motor local determinístico com conhecimento clínico e biomecânico refinado.
+  - Suporte nativo à API gratuita do Google Gemini (`NEXT_PUBLIC_GEMINI_API_KEY`) para respostas contextuais ricas.
+
+---
+
+## 💳 Planos & Checkout Mercado Pago (Sandbox)
+
+- Planos de adesão: **Smart Pass** (R$ 89,90), **Black VIP** (R$ 139,90) e **Anual Prime** (R$ 99,90).
+- Integração com Mercado Pago Sandbox:
+  - Geração instantânea de código PIX Copia e Cola.
+  - Pagamento com cartão de crédito tokenizado em ambiente de testes.
+  - Simulação de aprovação imediata com emissão de comprovante.
+
+---
+
+## 🔒 Segurança de Repositório Público
+
+Este repositório adota uma política rigorosa de segurança:
+1. **Zero Chaves no Código**: Nenhuma credencial ou token privado versionado.
+2. **Template Sanitizado**: Apenas `.env.example` com placeholders.
+3. **Proteção HTTP**: Headers de segurança (CSP, HSTS, X-Frame-Options DENY).
+
+---
+
+## 🚀 Como Executar o Projeto
 
 ```bash
 # 1. Clonar o repositório
 git clone https://github.com/cauacreis/GymFlow.git
 cd GymFlow
 
-# 2. Instalar as dependências
+# 2. Instalar dependências
 npm install
 
-# 3. Configurar as variáveis de ambiente
+# 3. Configurar variáveis de ambiente (opcional para IA externa)
 cp .env.example .env.local
 
-# 4. Iniciar o servidor de desenvolvimento
+# 4. Iniciar em modo de desenvolvimento
 npm run dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000) no seu navegador ou emule o modo móvel no DevTools.
+Abra [http://localhost:3000](http://localhost:3000) no seu navegador ou emule como dispositivo móvel no DevTools.
 
 ---
 
-## 🗺️ Roadmap de Lançamento
+## 📦 Gerar APK Android para a Play Store
 
-- [x] **Commit 1**: Inicialização do repositório, `.gitignore`, `.env.example`, `SECURITY_RULES.md` e documentação base.
-- [ ] **Commit 2**: Setup do Obsidian Vault (`10_Projetos/GymFlow/`) com diário de bordo e decisões arquiteturais.
-- [ ] **Commit 3**: Setup do Next.js 14+ com Tailwind CSS, TypeScript e bibliotecas de animação e ícones.
-- [ ] **Commit 4**: Headers de segurança, middleware de rate-limiting e sanitização.
-- [ ] **Commit 5**: Design Tokens, tipografia e temas escuros de alta fidelidade (Ethereal Glass).
-- [ ] **Commit 6**: Sistema de Navegação Mobile (Navbar flutuante em pílula com indicador deslizante).
-- [ ] **Commit 7**: Banner Hero Rotativo e Clicável com microinterações e paginação minimalista.
-- [ ] **Commit 8**: Marquee Ticker interativo com links de âncora direta.
-- [ ] **Commit 9**: Montador de Pratos Fit com seletor de etapas e fotografia limpa.
-- [ ] **Commit 10**: Dashboard de Macronutrientes em Tempo Real (Calorias, Proteínas, Carbs, Gorduras).
-- [ ] **Commit 11**: Prova Social e Depoimentos com pessoas reais e avaliações autênticas.
-- [ ] **Commit 12**: Mapa Interativo Dark Mode com geolocalização e pinos pulsantes.
-- [ ] **Commit 13**: Sacola de Pedidos com drawer tátil e tela de confirmação festiva.
-- [ ] **Commit 14**: Tela de Autenticação estilo Aceternity UI com formulários validados por Zod.
-- [ ] **Commit 15**: Arquitetura de Pagamento Mercado Pago (Sandbox) + Assistente IA gratuito e manifesto PWA.
+```bash
+# 1. Construir a versão estática otimizada
+npm run build
+
+# 2. Sincronizar com o Capacitor Android
+npx cap add android
+npx cap sync android
+
+# 3. Abrir no Android Studio
+npx cap open android
+```
 
 ---
 
 ## 📄 Licença
-Distribuído sob licença MIT. Consulte `LICENSE` para mais detalhes.
+
+Distribuído sob a licença MIT. Consulte `LICENSE` para mais detalhes.
