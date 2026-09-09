@@ -2,11 +2,13 @@
 
 import React from "react";
 import Link from "next/link";
-import { Flame, Sparkles, QrCode, CreditCard, User } from "lucide-react";
+import { Flame, Sparkles, QrCode, User, UserCheck, GraduationCap } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 
 interface HeaderProps {
   streakDays?: number;
+  viewMode?: "student" | "coach";
+  onToggleViewMode?: () => void;
   onOpenCheckin: () => void;
   onOpenPlans: () => void;
   onOpenAuth: () => void;
@@ -15,13 +17,15 @@ interface HeaderProps {
 
 export function Header({
   streakDays = 16,
+  viewMode = "student",
+  onToggleViewMode,
   onOpenCheckin,
   onOpenPlans,
   onOpenAuth,
   user,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 w-full px-4 pt-2 pb-3 bg-gradient-to-b from-[#070709] via-[#070709]/95 to-transparent backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full px-4 pt-2 pb-2 bg-gradient-to-b from-[#070709] via-[#070709]/95 to-transparent backdrop-blur-md">
       <div className="flex items-center justify-between p-2 rounded-full bg-white/[0.04] border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.08)]">
         {/* Logo GymFlow */}
         <Link href="/" className="flex items-center gap-2 pl-2 group">
@@ -32,22 +36,52 @@ export function Header({
             <span className="text-sm font-black tracking-tight text-white leading-none">
               Gym<span className="text-emerald-400">Flow</span>
             </span>
-            <span className="text-[9px] font-bold text-zinc-400 tracking-wider uppercase leading-none mt-0.5">
-              Smart Fitness
+            <span className="text-[8px] font-bold text-zinc-400 tracking-wider uppercase leading-none mt-0.5">
+              {viewMode === "coach" ? "Portal Instrutor" : "Smart Fitness"}
             </span>
           </div>
         </Link>
 
         {/* Status / Ações Rápidas */}
         <div className="flex items-center gap-1.5">
-          {/* Streak Indicator */}
-          <div
-            title="Sequência de treinos"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-bold"
-          >
-            <Flame className="w-3 h-3 fill-amber-400 animate-pulse" />
-            <span>{streakDays}d</span>
-          </div>
+          {/* Botão de Alternância de Perfil (Aluno ⇄ Professor) */}
+          {onToggleViewMode && (
+            <button
+              onClick={() => {
+                triggerHaptic("medium");
+                onToggleViewMode();
+              }}
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border transition-all active:scale-95 ${
+                viewMode === "coach"
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                  : "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 hover:bg-emerald-500/25"
+              }`}
+              title={viewMode === "coach" ? "Voltar para Visão do Aluno" : "Acessar Modo Professor / Prescrição"}
+            >
+              {viewMode === "coach" ? (
+                <>
+                  <UserCheck className="w-3 h-3 text-amber-400" />
+                  <span>CREF Ativo</span>
+                </>
+              ) : (
+                <>
+                  <GraduationCap className="w-3 h-3 text-emerald-400" />
+                  <span>Área do Prof</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Streak Indicator (no modo aluno) */}
+          {viewMode === "student" && (
+            <div
+              title="Sequência de treinos"
+              className="hidden xs:flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-bold"
+            >
+              <Flame className="w-3 h-3 fill-amber-400 animate-pulse" />
+              <span>{streakDays}d</span>
+            </div>
+          )}
 
           {/* Botão de Acesso Rápido à Catraca */}
           <button
@@ -67,7 +101,7 @@ export function Header({
               triggerHaptic("selection");
               onOpenPlans();
             }}
-            className="hidden xs:flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all"
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all"
             title="Ver Planos"
           >
             <Sparkles className="w-3 h-3 text-emerald-400" />

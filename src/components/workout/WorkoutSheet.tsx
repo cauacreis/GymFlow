@@ -1,12 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
-import { Dumbbell, CheckCircle2, Circle, Timer, Flame, ChevronRight, Award, Plus, Minus, RotateCcw } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  Dumbbell,
+  CheckCircle2,
+  Circle,
+  Timer,
+  Flame,
+  Award,
+  Plus,
+  Minus,
+  RotateCcw,
+  UserCheck,
+  MessageSquareQuote,
+  ShieldCheck,
+} from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getStudentWorkout, subscribeToWorkoutChanges, StudentWorkoutPackage } from "@/lib/workout-store";
 
 export interface ExerciseSet {
   setNumber: number;
-  reps: number;
+  reps: number | string;
   weightKg: number;
   completed: boolean;
 }
@@ -17,209 +31,82 @@ export interface Exercise {
   muscle: string;
   equipment: string;
   target: string;
+  restSeconds?: number;
   notes?: string;
   sets: ExerciseSet[];
 }
 
 export interface WorkoutSplit {
-  id: "A" | "B" | "C";
+  id: "A" | "B" | "C" | "D";
   title: string;
   muscles: string;
   estimatedMinutes: number;
   exercises: Exercise[];
 }
 
-const INITIAL_SPLITS: WorkoutSplit[] = [
-  {
-    id: "A",
-    title: "Treino A — Superior Anterior",
-    muscles: "Peitoral, Deltoide Anterior & Tríceps",
-    estimatedMinutes: 50,
-    exercises: [
-      {
-        id: "ex-1",
-        name: "Supino Reto com Barra",
-        muscle: "Peitoral Maior",
-        equipment: "Barra Olímpica",
-        target: "4 séries × 8-10 reps",
-        notes: "Descer a barra até tocar levemente o peito. Cotovelos a 75°.",
-        sets: [
-          { setNumber: 1, reps: 10, weightKg: 60, completed: true },
-          { setNumber: 2, reps: 10, weightKg: 70, completed: true },
-          { setNumber: 3, reps: 8, weightKg: 80, completed: false },
-          { setNumber: 4, reps: 8, weightKg: 80, completed: false },
-        ],
-      },
-      {
-        id: "ex-2",
-        name: "Supino Inclinado com Halteres",
-        muscle: "Peitoral Superior",
-        equipment: "Banco 30° + Halteres",
-        target: "4 séries × 10-12 reps",
-        notes: "Alongamento profundo na base sem estalar as articulações.",
-        sets: [
-          { setNumber: 1, reps: 12, weightKg: 24, completed: false },
-          { setNumber: 2, reps: 10, weightKg: 26, completed: false },
-          { setNumber: 3, reps: 10, weightKg: 28, completed: false },
-          { setNumber: 4, reps: 10, weightKg: 28, completed: false },
-        ],
-      },
-      {
-        id: "ex-3",
-        name: "Crossover no Pulley Médio",
-        muscle: "Peitoral Médio",
-        equipment: "Polia Dupla",
-        target: "3 séries × 12-15 reps",
-        notes: "Aperte e segure 1 segundo no pico de contração.",
-        sets: [
-          { setNumber: 1, reps: 15, weightKg: 15, completed: false },
-          { setNumber: 2, reps: 12, weightKg: 20, completed: false },
-          { setNumber: 3, reps: 12, weightKg: 20, completed: false },
-        ],
-      },
-      {
-        id: "ex-4",
-        name: "Desenvolvimento com Halteres",
-        muscle: "Deltoide",
-        equipment: "Banco 75°",
-        target: "4 séries × 10 reps",
-        notes: "Controle na descida até a altura das orelhas.",
-        sets: [
-          { setNumber: 1, reps: 10, weightKg: 18, completed: false },
-          { setNumber: 2, reps: 10, weightKg: 20, completed: false },
-          { setNumber: 3, reps: 10, weightKg: 22, completed: false },
-          { setNumber: 4, reps: 8, weightKg: 22, completed: false },
-        ],
-      },
-      {
-        id: "ex-5",
-        name: "Tríceps Corda no Pulley",
-        muscle: "Tríceps Braquial",
-        equipment: "Polia Alta + Corda",
-        target: "4 séries × 12 reps",
-        notes: "Afaste a ponta da corda na fase final do movimento.",
-        sets: [
-          { setNumber: 1, reps: 12, weightKg: 25, completed: false },
-          { setNumber: 2, reps: 12, weightKg: 30, completed: false },
-          { setNumber: 3, reps: 10, weightKg: 35, completed: false },
-          { setNumber: 4, reps: 10, weightKg: 35, completed: false },
-        ],
-      },
-    ],
-  },
-  {
-    id: "B",
-    title: "Treino B — Superior Posterior",
-    muscles: "Dorsais, Deltoide Posterior & Bíceps",
-    estimatedMinutes: 55,
-    exercises: [
-      {
-        id: "ex-b1",
-        name: "Puxada Frontal Aberta",
-        muscle: "Latíssimo do Dorso",
-        equipment: "Polia Alta",
-        target: "4 séries × 10 reps",
-        notes: "Puxe direcionando os cotovelos para os bolsos.",
-        sets: [
-          { setNumber: 1, reps: 10, weightKg: 55, completed: false },
-          { setNumber: 2, reps: 10, weightKg: 65, completed: false },
-          { setNumber: 3, reps: 8, weightKg: 70, completed: false },
-          { setNumber: 4, reps: 8, weightKg: 70, completed: false },
-        ],
-      },
-      {
-        id: "ex-b2",
-        name: "Remada Curvada com Barra",
-        muscle: "Espessura Dorsal",
-        equipment: "Barra + Anilhas",
-        target: "4 séries × 8-10 reps",
-        notes: "Coluna lombar travada em 45 graus.",
-        sets: [
-          { setNumber: 1, reps: 10, weightKg: 50, completed: false },
-          { setNumber: 2, reps: 10, weightKg: 60, completed: false },
-          { setNumber: 3, reps: 8, weightKg: 70, completed: false },
-          { setNumber: 4, reps: 8, weightKg: 70, completed: false },
-        ],
-      },
-      {
-        id: "ex-b3",
-        name: "Rosca Direta com Barra W",
-        muscle: "Bíceps Braquial",
-        equipment: "Barra W",
-        target: "4 séries × 10 reps",
-        notes: "Cotovelos fixos ao lado do tronco.",
-        sets: [
-          { setNumber: 1, reps: 10, weightKg: 20, completed: false },
-          { setNumber: 2, reps: 10, weightKg: 25, completed: false },
-          { setNumber: 3, reps: 8, weightKg: 30, completed: false },
-          { setNumber: 4, reps: 8, weightKg: 30, completed: false },
-        ],
-      },
-    ],
-  },
-  {
-    id: "C",
-    title: "Treino C — Membros Inferiores & Core",
-    muscles: "Quadríceps, Glúteos, Isquiotibiais & Abdômen",
-    estimatedMinutes: 60,
-    exercises: [
-      {
-        id: "ex-c1",
-        name: "Agachamento Livre com Barra",
-        muscle: "Quadríceps & Glúteos",
-        equipment: "Gaiola de Agachamento",
-        target: "4 séries × 8 reps",
-        notes: "Descida profunda controlada, joelhos apontando na linha dos pés.",
-        sets: [
-          { setNumber: 1, reps: 10, weightKg: 60, completed: false },
-          { setNumber: 2, reps: 8, weightKg: 80, completed: false },
-          { setNumber: 3, reps: 8, weightKg: 90, completed: false },
-          { setNumber: 4, reps: 6, weightKg: 100, completed: false },
-        ],
-      },
-      {
-        id: "ex-c2",
-        name: "Leg Press 45°",
-        muscle: "Pernas Completo",
-        equipment: "Máquina 45°",
-        target: "4 séries × 12 reps",
-        notes: "Sem hiperextender os joelhos no topo.",
-        sets: [
-          { setNumber: 1, reps: 12, weightKg: 160, completed: false },
-          { setNumber: 2, reps: 12, weightKg: 200, completed: false },
-          { setNumber: 3, reps: 10, weightKg: 240, completed: false },
-          { setNumber: 4, reps: 10, weightKg: 260, completed: false },
-        ],
-      },
-      {
-        id: "ex-c3",
-        name: "Mesa Flexora",
-        muscle: "Isquiotibiais",
-        equipment: "Mesa Flexora",
-        target: "4 séries × 12 reps",
-        notes: "Quadril colado no banco durante toda a flexão.",
-        sets: [
-          { setNumber: 1, reps: 12, weightKg: 35, completed: false },
-          { setNumber: 2, reps: 12, weightKg: 40, completed: false },
-          { setNumber: 3, reps: 10, weightKg: 45, completed: false },
-          { setNumber: 4, reps: 10, weightKg: 45, completed: false },
-        ],
-      },
-    ],
-  },
-];
-
 interface WorkoutSheetProps {
-  onOpenTimer: () => void;
+  studentId?: string;
+  onOpenTimer: (defaultSeconds?: number) => void;
 }
 
-export function WorkoutSheet({ onOpenTimer }: WorkoutSheetProps) {
-  const [selectedSplit, setSelectedSplit] = useState<"A" | "B" | "C">("A");
-  const [splits, setSplits] = useState<WorkoutSplit[]>(INITIAL_SPLITS);
+export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: WorkoutSheetProps) {
+  const [workoutPackage, setWorkoutPackage] = useState<StudentWorkoutPackage>(() =>
+    getStudentWorkout(studentId)
+  );
+  const [selectedSplitId, setSelectedSplitId] = useState<string>("A");
+  const [splits, setSplits] = useState<WorkoutSplit[]>([]);
 
-  const currentSplit = splits.find((s) => s.id === selectedSplit) || splits[0];
+  // Sincronização reativa com prescrições do professor
+  useEffect(() => {
+    const loadWorkout = () => {
+      const pkg = getStudentWorkout(studentId);
+      setWorkoutPackage(pkg);
 
-  // Cálculo de progresso
+      // Converte os splits do pacote para o formato interno com estado de checkboxes
+      const mappedSplits: WorkoutSplit[] = pkg.splits.map((s) => ({
+        id: s.id,
+        title: s.title,
+        muscles: s.muscles,
+        estimatedMinutes: s.estimatedMinutes,
+        exercises: s.exercises.map((ex) => ({
+          id: ex.id,
+          name: ex.name,
+          muscle: ex.muscle,
+          equipment: ex.equipment,
+          target: ex.target,
+          restSeconds: ex.restSeconds || 60,
+          notes: ex.notes,
+          sets: ex.sets.map((set, idx) => ({
+            setNumber: set.setNumber || idx + 1,
+            reps: set.reps,
+            weightKg: set.weightKg,
+            completed: set.completed || false,
+          })),
+        })),
+      }));
+
+      setSplits(mappedSplits);
+      if (mappedSplits.length > 0 && !mappedSplits.some((s) => s.id === selectedSplitId)) {
+        setSelectedSplitId(mappedSplits[0].id);
+      }
+    };
+
+    loadWorkout();
+    const unsubscribe = subscribeToWorkoutChanges(loadWorkout);
+    return () => unsubscribe();
+  }, [studentId]);
+
+  const currentSplit = splits.find((s) => s.id === selectedSplitId) || splits[0];
+
+  if (!currentSplit) {
+    return (
+      <div className="p-8 text-center text-zinc-500 text-xs">
+        Carregando ficha de treino do aluno...
+      </div>
+    );
+  }
+
+  // Cálculo de progresso do treino
   const totalSets = currentSplit.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
   const completedSets = currentSplit.exercises.reduce(
     (acc, ex) => acc + ex.sets.filter((s) => s.completed).length,
@@ -227,13 +114,13 @@ export function WorkoutSheet({ onOpenTimer }: WorkoutSheetProps) {
   );
   const progressPercent = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
 
-  // Carga total levantada
+  // Carga total acumulada no treino
   const totalVolumeKg = currentSplit.exercises.reduce((acc, ex) => {
     return (
       acc +
       ex.sets
         .filter((s) => s.completed)
-        .reduce((sum, s) => sum + s.weightKg * s.reps, 0)
+        .reduce((sum, s) => sum + s.weightKg * (typeof s.reps === "number" ? s.reps : 10), 0)
     );
   }, 0);
 
@@ -242,16 +129,17 @@ export function WorkoutSheet({ onOpenTimer }: WorkoutSheetProps) {
     triggerHaptic("medium");
     setSplits((prev) =>
       prev.map((split) => {
-        if (split.id !== selectedSplit) return split;
+        if (split.id !== selectedSplitId) return split;
         return {
           ...split,
           exercises: split.exercises.map((ex) => {
             if (ex.id !== exerciseId) return ex;
             return {
               ...ex,
-              sets: ex.sets.map((s) =>
-                s.setNumber === setNumber ? { ...s, completed: !s.completed } : s
-              ),
+              sets: ex.sets.map((s) => {
+                if (s.setNumber !== setNumber) return s;
+                return { ...s, completed: !s.completed };
+              }),
             };
           }),
         };
@@ -259,23 +147,23 @@ export function WorkoutSheet({ onOpenTimer }: WorkoutSheetProps) {
     );
   };
 
-  // Ajuste de peso
+  // Ajuste de carga (+/- 2kg)
   const handleAdjustWeight = (exerciseId: string, setNumber: number, delta: number) => {
     triggerHaptic("light");
     setSplits((prev) =>
       prev.map((split) => {
-        if (split.id !== selectedSplit) return split;
+        if (split.id !== selectedSplitId) return split;
         return {
           ...split,
           exercises: split.exercises.map((ex) => {
             if (ex.id !== exerciseId) return ex;
             return {
               ...ex,
-              sets: ex.sets.map((s) =>
-                s.setNumber === setNumber
-                  ? { ...s, weightKg: Math.max(0, s.weightKg + delta) }
-                  : s
-              ),
+              sets: ex.sets.map((s) => {
+                if (s.setNumber !== setNumber) return s;
+                const newWeight = Math.max(0, s.weightKg + delta);
+                return { ...s, weightKg: newWeight };
+              }),
             };
           }),
         };
@@ -283,121 +171,174 @@ export function WorkoutSheet({ onOpenTimer }: WorkoutSheetProps) {
     );
   };
 
+  // Reset do split atual
+  const handleResetWorkout = () => {
+    triggerHaptic("heavy");
+    if (confirm("Deseja desmarcar todas as séries deste treino?")) {
+      setSplits((prev) =>
+        prev.map((split) => {
+          if (split.id !== selectedSplitId) return split;
+          return {
+            ...split,
+            exercises: split.exercises.map((ex) => ({
+              ...ex,
+              sets: ex.sets.map((s) => ({ ...s, completed: false })),
+            })),
+          };
+        })
+      );
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 text-left w-full">
-      {/* Seletor de Divisão de Treino (Tabs A, B, C) */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-zinc-950/80 border border-white/[0.08] shadow-inner">
-        {(["A", "B", "C"] as const).map((splitId) => (
-          <button
-            key={splitId}
-            onClick={() => {
-              triggerHaptic("light");
-              setSelectedSplit(splitId);
-            }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              selectedSplit === splitId
-                ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-black shadow-[0_0_16px_rgba(16,185,129,0.35)]"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Dumbbell className="w-3.5 h-3.5" />
-            <span>Treino {splitId}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Card Resumo do Treino Atual */}
-      <div className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-b from-zinc-900/90 to-zinc-950 border border-white/[0.08] shadow-xl">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+      {/* Card do Professor / Prescrição Oficial */}
+      <div className="rounded-2xl p-3.5 bg-gradient-to-br from-emerald-950/40 via-zinc-900 to-zinc-950 border border-emerald-500/30 shadow-lg relative overflow-hidden">
         <div className="flex items-start justify-between">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">
-              Ficha Ativa
-            </span>
-            <h2 className="text-base font-extrabold text-white mt-0.5">{currentSplit.title}</h2>
-            <p className="text-xs text-zinc-400 mt-0.5">{currentSplit.muscles}</p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" /> Prescrição Profissional
+              </span>
+              <h3 className="text-xs font-black text-white">{workoutPackage.routineTitle}</h3>
+              <p className="text-[10px] text-zinc-400">
+                {workoutPackage.prescribedBy} • {workoutPackage.prescribedAt}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={onOpenTimer}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold hover:bg-emerald-500/25 active:scale-95 transition-all shadow-sm"
-          >
-            <Timer className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-            <span>Descanso</span>
-          </button>
         </div>
 
-        {/* Barra de Progresso do Treino */}
-        <div className="mt-4 pt-3 border-t border-white/[0.06] flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-zinc-400">
-              Progresso ({completedSets}/{totalSets} séries)
-            </span>
-            <span className="font-mono font-bold text-emerald-400">{progressPercent}%</span>
+        {workoutPackage.coachNotes && (
+          <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-start gap-1.5 text-[10px] text-zinc-300">
+            <MessageSquareQuote className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+            <p className="leading-snug italic">"{workoutPackage.coachNotes}"</p>
           </div>
-          <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
+        )}
+      </div>
+
+      {/* Header com Seletor de Divisões (A / B / C / D) */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {splits.map((split) => {
+            const isSelected = split.id === selectedSplitId;
+            return (
+              <button
+                key={split.id}
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setSelectedSplitId(split.id);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+                  isSelected
+                    ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/25"
+                    : "bg-zinc-900 border border-white/[0.08] text-zinc-400 hover:text-white"
+                }`}
+              >
+                Treino {split.id}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={handleResetWorkout}
+          className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors"
+          title="Reiniciar Treino"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Status do Treino: Progresso & Volume de Carga */}
+      <div className="rounded-2xl p-3.5 bg-zinc-900/60 border border-white/[0.08] flex flex-col gap-2.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xs font-black text-white">{currentSplit.title}</h3>
+            <span className="text-[10px] text-emerald-400 font-medium">{currentSplit.muscles}</span>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1">
-            <span className="flex items-center gap-1">
-              <Flame className="w-3 h-3 text-amber-400" />
-              Volume: <strong className="text-zinc-200">{totalVolumeKg.toLocaleString("pt-BR")} kg</strong>
+          <div className="text-right">
+            <span className="text-[11px] font-mono font-bold text-white">
+              {completedSets}/{totalSets} séries
             </span>
-            <span>Tempo Médio: ~{currentSplit.estimatedMinutes} min</span>
+            <span className="text-[9px] text-zinc-400 block">~{currentSplit.estimatedMinutes} min</span>
           </div>
+        </div>
+
+        {/* Barra de Progresso */}
+        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300 rounded-full"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono pt-1">
+          <span className="flex items-center gap-1">
+            <Flame className="w-3 h-3 text-amber-400" />
+            Volume: <b className="text-zinc-200">{totalVolumeKg.toLocaleString()} kg</b>
+          </span>
+          <span className="text-emerald-400 font-bold">{progressPercent}% concluído</span>
         </div>
       </div>
 
-      {/* Lista de Exercícios */}
+      {/* Lista de Exercícios do Treino Ativo */}
       <div className="flex flex-col gap-3">
         {currentSplit.exercises.map((exercise, exIndex) => {
-          const isAllCompleted = exercise.sets.every((s) => s.completed);
+          const allCompleted =
+            exercise.sets.length > 0 && exercise.sets.every((s) => s.completed);
 
           return (
             <div
               key={exercise.id}
-              className={`rounded-2xl p-4 transition-all duration-300 border ${
-                isAllCompleted
-                  ? "bg-emerald-950/20 border-emerald-500/30"
-                  : "bg-zinc-900/60 border-white/[0.08]"
+              className={`rounded-2xl p-3.5 border transition-all ${
+                allCompleted
+                  ? "bg-zinc-900/40 border-emerald-500/30 opacity-80"
+                  : "bg-zinc-900/90 border-white/[0.08]"
               }`}
             >
-              {/* Header do Exercício */}
-              <div className="flex items-start justify-between gap-2 mb-2.5">
+              {/* Topo do Exercício */}
+              <div className="flex items-start justify-between gap-2 mb-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-white/[0.06] text-zinc-300 font-mono text-[10px] flex items-center justify-center font-bold">
+                    <span className="w-5 h-5 rounded-md bg-white/[0.06] text-zinc-300 font-mono text-[10px] font-bold flex items-center justify-center">
                       {exIndex + 1}
                     </span>
-                    <h3 className="text-sm font-bold text-white">{exercise.name}</h3>
+                    <h4 className="text-xs font-bold text-white leading-tight">
+                      {exercise.name}
+                    </h4>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-medium">
-                      {exercise.muscle}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-mono">
-                      {exercise.equipment}
-                    </span>
+                  <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-400">
+                    <span className="text-emerald-400 font-medium">{exercise.muscle}</span>
+                    <span>•</span>
+                    <span>{exercise.equipment}</span>
                   </div>
                 </div>
 
-                <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.04] px-2 py-1 rounded-lg">
-                  {exercise.target}
-                </span>
+                {/* Botão de Timer específico do exercício */}
+                <button
+                  onClick={() => onOpenTimer(exercise.restSeconds || 60)}
+                  className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-[10px] font-mono flex items-center gap-1 border border-white/[0.06] shrink-0 active:scale-95 transition-all"
+                  title="Cronômetro de descanso"
+                >
+                  <Timer className="w-3 h-3 text-amber-400" />
+                  <span>{exercise.restSeconds || 60}s</span>
+                </button>
               </div>
 
+              {/* Notas técnicas do exercício */}
               {exercise.notes && (
-                <p className="text-[11px] text-zinc-400 italic bg-white/[0.02] p-2 rounded-lg mb-3 border-l-2 border-emerald-500/40">
+                <p className="text-[10px] text-zinc-400 bg-white/[0.02] p-2 rounded-xl border border-white/[0.04] mb-2.5 leading-relaxed">
                   💡 {exercise.notes}
                 </p>
               )}
 
-              {/* Tabela de Séries com Interação Tátil */}
+              {/* Tabela de Séries */}
               <div className="flex flex-col gap-1.5">
-                <div className="grid grid-cols-12 text-[10px] font-bold text-zinc-400 uppercase tracking-wider px-2 py-1">
+                <div className="grid grid-cols-12 text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-2">
                   <span className="col-span-2">Série</span>
                   <span className="col-span-3 text-center">Reps</span>
                   <span className="col-span-5 text-center">Carga (kg)</span>
@@ -416,8 +357,8 @@ export function WorkoutSheet({ onOpenTimer }: WorkoutSheetProps) {
                     <span className="col-span-2 font-mono font-bold text-[11px]">
                       #{set.setNumber}
                     </span>
-                    <span className="col-span-3 text-center font-mono font-medium">
-                      {set.reps} reps
+                    <span className="col-span-3 text-center font-mono font-medium text-[11px]">
+                      {set.reps}
                     </span>
 
                     {/* Controle de Carga com Botões +/- */}
@@ -428,7 +369,7 @@ export function WorkoutSheet({ onOpenTimer }: WorkoutSheetProps) {
                       >
                         <Minus className="w-2.5 h-2.5" />
                       </button>
-                      <span className="font-mono font-bold w-12 text-center text-white">
+                      <span className="font-mono font-bold w-12 text-center text-white text-[11px]">
                         {set.weightKg} kg
                       </span>
                       <button
