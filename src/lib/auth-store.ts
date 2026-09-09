@@ -21,6 +21,13 @@ export interface UserProfile {
   bio?: string;
   hourlyRate?: number;
   avatarUrl?: string;
+  instagram?: string;
+  location?: string;
+  pricing?: {
+    dailySession: number;
+    weeklyPlan: number;
+    monthlyPlan: number;
+  };
 }
 
 const STORAGE_KEY_AUTH = "gymflow_current_user_v2";
@@ -33,12 +40,20 @@ const DEFAULT_USER: UserProfile = {
   phone: "11991234567",
   activeRole: "student",
   enabledRoles: ["student", "coach"],
+  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
   goal: "Hipertrofia",
   matricula: "GF-84920",
   cref: "08412-SP",
   specialty: "Hipertrofia & Biomecânica",
-  bio: "Personal Trainer e atleta amador. Acredito na periodização científica e no acompanhamento individualizado.",
+  bio: "Personal Trainer e atleta amador. Acredito na periodização científica e no acompanhamento individualizado com biomecânica refinada.",
   hourlyRate: 75,
+  instagram: "@rodrigo.gymflow",
+  location: "Salão Principal • Musculação & Área Funcional",
+  pricing: {
+    dailySession: 75,
+    weeklyPlan: 190,
+    monthlyPlan: 580,
+  },
 };
 
 export function getCurrentUser(): UserProfile {

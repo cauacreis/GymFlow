@@ -14,7 +14,7 @@ interface HeaderProps {
   onOpenAuth: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
-  user: { name: string; email: string; activeRole?: "student" | "coach" } | null;
+  user: { name: string; email: string; activeRole?: "student" | "coach"; avatarUrl?: string } | null;
 }
 
 export function Header({
@@ -109,13 +109,13 @@ export function Header({
             <span>Planos</span>
           </button>
 
-          {/* Botão de Perfil / Configurações da Conta */}
+          {/* Botão de Perfil / Configurações da Conta com Foto */}
           <button
             onClick={() => {
               triggerHaptic("light");
               onOpenProfile();
             }}
-            className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
+            className={`w-8 h-8 rounded-full border overflow-hidden flex items-center justify-center transition-all ${
               isCoach
                 ? "bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold text-xs"
                 : user
@@ -124,7 +124,13 @@ export function Header({
             }`}
             title="Minha Conta & Configurações de Perfil"
           >
-            {user ? user.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+            ) : user ? (
+              user.name.charAt(0).toUpperCase()
+            ) : (
+              <User className="w-3.5 h-3.5" />
+            )}
           </button>
         </div>
       </div>

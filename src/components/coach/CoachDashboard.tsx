@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Play,
   BarChart3,
+  Users,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -42,15 +43,17 @@ import {
 } from "@/lib/workout-store";
 
 import { CoachAgendaManager } from "./CoachAgendaManager";
+import { CoachStudentsManager } from "./CoachStudentsManager";
 import { ExerciseGifModal, ExerciseModalData } from "../workout/ExerciseGifModal";
 import { CoachAnalyticsDashboard } from "../analytics/CoachAnalyticsDashboard";
 
 interface CoachDashboardProps {
   onSwitchToStudentView?: () => void;
+  defaultTab?: "students" | "agenda" | "workouts" | "analytics";
 }
 
-export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
-  const [mainTab, setMainTab] = useState<"agenda" | "workouts" | "analytics">("agenda");
+export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" }: CoachDashboardProps) {
+  const [mainTab, setMainTab] = useState<"students" | "agenda" | "workouts" | "analytics">(defaultTab);
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("student_carlos");
   const [modeTab, setModeTab] = useState<"preformed" | "custom">("preformed");
@@ -275,14 +278,29 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
           )}
         </div>
 
-        {/* Seletor Principal: Agenda vs Fichas vs Analytics */}
-        <div className="pt-3 border-t border-white/[0.06] grid grid-cols-3 p-1 rounded-2xl bg-zinc-950 border border-white/[0.08]">
+        {/* Seletor Principal: Alunos vs Agenda vs Fichas vs Analytics */}
+        <div className="pt-3 border-t border-white/[0.06] grid grid-cols-4 p-1 rounded-2xl bg-zinc-950 border border-white/[0.08]">
+          <button
+            onClick={() => {
+              triggerHaptic("selection");
+              setMainTab("students");
+            }}
+            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+              mainTab === "students"
+                ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Alunos</span>
+          </button>
+
           <button
             onClick={() => {
               triggerHaptic("selection");
               setMainTab("agenda");
             }}
-            className={`py-2 px-1 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
               mainTab === "agenda"
                 ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
                 : "text-zinc-400 hover:text-white"
@@ -297,7 +315,7 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
               triggerHaptic("selection");
               setMainTab("workouts");
             }}
-            className={`py-2 px-1 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
               mainTab === "workouts"
                 ? "bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20"
                 : "text-zinc-400 hover:text-white"
@@ -312,7 +330,7 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
               triggerHaptic("selection");
               setMainTab("analytics");
             }}
-            className={`py-2 px-1 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
               mainTab === "analytics"
                 ? "bg-gradient-to-r from-amber-500 to-emerald-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
                 : "text-zinc-400 hover:text-white"
@@ -323,6 +341,16 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
           </button>
         </div>
       </div>
+
+      {/* ABA PRINCIPAL 0: CARTEIRA DE ALUNOS & CRM (ONLINE E OFFLINE) */}
+      {mainTab === "students" && (
+        <CoachStudentsManager
+          onPrescribeWorkoutForStudent={(id) => {
+            setSelectedStudentId(id);
+            setMainTab("workouts");
+          }}
+        />
+      )}
 
       {/* ABA PRINCIPAL 1: AGENDA & GESTÃO DE HORÁRIOS / ALUNOS PRESENCIAIS */}
       {mainTab === "agenda" && <CoachAgendaManager coachId="coach_rodrigo" />}

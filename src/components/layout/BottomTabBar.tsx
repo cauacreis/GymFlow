@@ -27,8 +27,8 @@ export function BottomTabBar({ currentTab, onSelectTab, role = "student" }: Bott
 
   const studentTabs = [
     { id: "treino" as GymTabType, label: "Treino", icon: Dumbbell },
+    { id: "agenda" as GymTabType, label: "Agenda", icon: Calendar },
     { id: "personal" as GymTabType, label: "Personal", icon: UserCheck },
-    { id: "aulas" as GymTabType, label: "Aulas", icon: CalendarDays },
     { id: "evolucao" as GymTabType, label: "Evolução", icon: TrendingUp },
     { id: "perfil" as GymTabType, label: "Perfil", icon: User },
   ];

@@ -8,7 +8,12 @@ export interface TrainerSlot {
   id: string;
   time: string; // Ex: "07:00", "08:00", "18:00"
   isAvailable: boolean;
-  day: "Hoje" | "Amanhã" | "Quinta" | "Sexta" | "Sábado";
+  day: "Hoje" | "Amanhã" | "Quinta" | "Sexta" | "Sábado" | string;
+  studentId?: string;
+  studentName?: string;
+  studentAvatar?: string;
+  studentPlan?: string;
+  isBlocked?: boolean;
 }
 
 export interface CoachTrainer {
@@ -22,12 +27,24 @@ export interface CoachTrainer {
   rating: number;
   reviewCount: number;
   bio: string;
+  instagram?: string;
+  location?: string;
   pricing: {
-    dailySession: number; // Ex: 70
-    weeklyPlan: number;   // Ex: 180 (3x/semana)
-    monthlyPlan: number;  // Ex: 550 (acompanhamento presencial)
+    dailySession: number; // Ex: 75
+    weeklyPlan: number;   // Ex: 190 (3x/semana)
+    monthlyPlan: number;  // Ex: 580 (acompanhamento presencial)
   };
   slots: TrainerSlot[];
+}
+
+export interface RescheduleProposal {
+  id: string;
+  requestedBy: "student" | "coach";
+  proposedDay: string;
+  proposedTime: string;
+  reason?: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: string;
 }
 
 export interface BookingRequest {
@@ -49,6 +66,7 @@ export interface BookingRequest {
   attendanceStatus: "scheduled" | "attended" | "missed" | "rescheduled";
   notes?: string;
   createdAt: string;
+  rescheduleRequest?: RescheduleProposal;
 }
 
 export interface AppNotification {
@@ -83,17 +101,19 @@ const INITIAL_COACHES: CoachTrainer[] = [
     rating: 4.9,
     reviewCount: 48,
     bio: "Especialista em periodização de alta intensidade e correção postural em exercícios compostos.",
+    instagram: "@rodrigo.gymflow",
+    location: "Salão Principal • Musculação & Área Funcional",
     pricing: {
       dailySession: 75,
       weeklyPlan: 190,
       monthlyPlan: 580,
     },
     slots: [
-      { id: "s1", day: "Hoje", time: "07:00", isAvailable: false },
+      { id: "s1", day: "Hoje", time: "07:00", isAvailable: false, studentName: "Lucas Mendes", studentPlan: "Mensal VIP" },
       { id: "s2", day: "Hoje", time: "08:00", isAvailable: true },
       { id: "s3", day: "Hoje", time: "09:00", isAvailable: true },
       { id: "s4", day: "Hoje", time: "17:00", isAvailable: true },
-      { id: "s5", day: "Hoje", time: "18:00", isAvailable: false },
+      { id: "s5", day: "Hoje", time: "18:00", isAvailable: false, studentName: "Carlos Silva", studentPlan: "Mensal VIP" },
       { id: "s6", day: "Hoje", time: "19:00", isAvailable: true },
       { id: "s7", day: "Amanhã", time: "06:00", isAvailable: true },
       { id: "s8", day: "Amanhã", time: "07:00", isAvailable: true },
@@ -482,6 +502,204 @@ export function updateCoachPricing(
   if (typeof window === "undefined") return;
   const coaches = getStoredCoaches();
   const updated = coaches.map((c) => (c.id === coachId ? { ...c, pricing } : c));
+  localStorage.setItem(STORAGE_COACHES, JSON.stringify(updated));
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+}
+
+export function occupySlot(
+  coachId: string,
+  slotId: string,
+  studentName: string,
+  studentId?: string,
+  studentPlan?: string
+): void {
+  if (typeof window === "undefined") return;
+  const coaches = getStoredCoaches();
+  const updated = coaches.map((c) => {
+    if (c.id === coachId) {
+      return {
+        ...c,
+        slots: c.slots.map((s) =>
+          s.id === slotId
+            ? {
+                ...s,
+                isAvailable: false,
+                studentName,
+                studentId: studentId || `student_offline_${Date.now()}`,
+                studentPlan: studentPlan || "Presencial Individual",
+              }
+            : s
+        ),
+      };
+    }
+    return c;
+  });
+  localStorage.setItem(STORAGE_COACHES, JSON.stringify(updated));
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+}
+
+export function freeSlot(coachId: string, slotId: string): void {
+  if (typeof window === "undefined") return;
+  const coaches = getStoredCoaches();
+  const updated = coaches.map((c) => {
+    if (c.id === coachId) {
+      return {
+        ...c,
+        slots: c.slots.map((s) =>
+          s.id === slotId
+            ? {
+                ...s,
+                isAvailable: true,
+                studentName: undefined,
+                studentId: undefined,
+                studentPlan: undefined,
+              }
+            : s
+        ),
+      };
+    }
+    return c;
+  });
+  localStorage.setItem(STORAGE_COACHES, JSON.stringify(updated));
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+}
+
+export function requestReschedule(params: {
+  bookingId: string;
+  requestedBy: "student" | "coach";
+  proposedDay: string;
+  proposedTime: string;
+  reason?: string;
+}): void {
+  if (typeof window === "undefined") return;
+  const bookings = getStoredBookings();
+  const booking = bookings.find((b) => b.id === params.bookingId);
+  if (!booking) return;
+
+  const proposal: RescheduleProposal = {
+    id: `resched_${Date.now()}`,
+    requestedBy: params.requestedBy,
+    proposedDay: params.proposedDay,
+    proposedTime: params.proposedTime,
+    reason: params.reason,
+    status: "pending",
+    createdAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+  };
+
+  const updated = bookings.map((b) =>
+    b.id === params.bookingId
+      ? {
+          ...b,
+          rescheduleRequest: proposal,
+        }
+      : b
+  );
+  localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
+
+  // Notificação para a outra parte
+  if (params.requestedBy === "student") {
+    addNotification({
+      targetRole: "coach",
+      coachId: booking.coachId,
+      type: "rescheduled",
+      title: "Solicitação de Remanejamento de Horário 🔄",
+      message: `${booking.studentName} solicitou mudar o treino de ${booking.slotDay} (${booking.slotTime}) para ${params.proposedDay} às ${params.proposedTime}${params.reason ? ` (Motivo: "${params.reason}")` : ""}.`,
+    });
+  } else {
+    addNotification({
+      targetRole: "student",
+      studentId: booking.studentId,
+      type: "rescheduled",
+      title: "Proposta de Novo Horário do Treinador 🔄",
+      message: `${booking.coachName} sugeriu alterar seu treino para ${params.proposedDay} às ${params.proposedTime}. Verifique na sua agenda para aceitar.`,
+    });
+  }
+
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+}
+
+export function respondToReschedule(bookingId: string, accept: boolean): void {
+  if (typeof window === "undefined") return;
+  const bookings = getStoredBookings();
+  const booking = bookings.find((b) => b.id === bookingId);
+  if (!booking || !booking.rescheduleRequest) return;
+
+  const req = booking.rescheduleRequest;
+  if (accept) {
+    const updated = bookings.map((b) =>
+      b.id === bookingId
+        ? {
+            ...b,
+            slotDay: req.proposedDay,
+            slotTime: req.proposedTime,
+            attendanceStatus: "rescheduled" as const,
+            rescheduleRequest: {
+              ...req,
+              status: "accepted" as const,
+            },
+          }
+        : b
+    );
+    localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
+
+    // Notifica quem solicitou que foi aceito
+    if (req.requestedBy === "student") {
+      addNotification({
+        targetRole: "student",
+        studentId: booking.studentId,
+        type: "booking_accepted",
+        title: "Remanejamento Aceito! ✅",
+        message: `${booking.coachName} aprovou sua mudança de horário para ${req.proposedDay} às ${req.proposedTime}.`,
+      });
+    } else {
+      addNotification({
+        targetRole: "coach",
+        coachId: booking.coachId,
+        type: "booking_accepted",
+        title: "Aluno Concordou com o Novo Horário! ✅",
+        message: `${booking.studentName} aceitou o treino remanejado para ${req.proposedDay} às ${req.proposedTime}.`,
+      });
+    }
+  } else {
+    const updated = bookings.map((b) =>
+      b.id === bookingId
+        ? {
+            ...b,
+            rescheduleRequest: {
+              ...req,
+              status: "rejected" as const,
+            },
+          }
+        : b
+    );
+    localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
+
+    if (req.requestedBy === "student") {
+      addNotification({
+        targetRole: "student",
+        studentId: booking.studentId,
+        type: "rescheduled",
+        title: "Remanejamento Recusado ❌",
+        message: `${booking.coachName} não pode atender no horário sugerido. O horário original (${booking.slotDay} às ${booking.slotTime}) foi mantido.`,
+      });
+    } else {
+      addNotification({
+        targetRole: "coach",
+        coachId: booking.coachId,
+        type: "rescheduled",
+        title: "Aluno Manteve o Horário Original ❌",
+        message: `${booking.studentName} não pôde aceitar a nova data sugerida. Horário mantido.`,
+      });
+    }
+  }
+
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+}
+
+export function updateCoachPublicProfile(coachId: string, profile: Partial<CoachTrainer>): void {
+  if (typeof window === "undefined") return;
+  const coaches = getStoredCoaches();
+  const updated = coaches.map((c) => (c.id === coachId ? { ...c, ...profile } : c));
   localStorage.setItem(STORAGE_COACHES, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_BOOKING));
 }

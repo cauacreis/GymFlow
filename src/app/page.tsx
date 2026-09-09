@@ -17,6 +17,7 @@ import { PersonalMarketplaceView } from "@/components/personal/PersonalMarketpla
 import { NotificationBellModal } from "@/components/notifications/NotificationBellModal";
 import { CoachAnalyticsDashboard } from "@/components/analytics/CoachAnalyticsDashboard";
 import { StudentAnalyticsDashboard } from "@/components/analytics/StudentAnalyticsDashboard";
+import { StudentAgendaCalendar } from "@/components/student/StudentAgendaCalendar";
 import {
   getCurrentUser,
   switchUserRole,
@@ -182,12 +183,12 @@ export default function GymFlowApp() {
           <div className="flex flex-col gap-4 animate-in fade-in duration-200">
             {/* ABA 1 DO PROFESSOR: ALUNOS & PRESCRIÇÕES */}
             {currentTab === "alunos" && (
-              <CoachDashboard onSwitchToStudentView={handleToggleRole} />
+              <CoachDashboard defaultTab="students" onSwitchToStudentView={handleToggleRole} />
             )}
 
             {/* ABA 2 DO PROFESSOR: MINHA AGENDA & SOLICITAÇÕES */}
             {currentTab === "agenda" && (
-              <CoachDashboard onSwitchToStudentView={handleToggleRole} />
+              <CoachDashboard defaultTab="agenda" onSwitchToStudentView={handleToggleRole} />
             )}
 
             {/* ABA 3 DO PROFESSOR: AULAS & TURMAS */}
@@ -233,7 +234,17 @@ export default function GymFlowApp() {
               </div>
             )}
 
-            {/* ABA 2 DO ALUNO: PERSONAL TRAINER & AGENDAMENTO ESTILO BARBEARIA */}
+            {/* ABA 2 DO ALUNO: MINHA AGENDA (PRESENÇAS, FALTAS & REMANEJAMENTO) */}
+            {currentTab === "agenda" && (
+              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+                <StudentAgendaCalendar
+                  studentId="student_carlos"
+                  onNavigateToWorkout={() => setCurrentTab("treino")}
+                />
+              </div>
+            )}
+
+            {/* ABA 3 DO ALUNO: PERSONAL TRAINER & AGENDAMENTO ESTILO BARBEARIA */}
             {currentTab === "personal" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <PersonalMarketplaceView
@@ -243,7 +254,7 @@ export default function GymFlowApp() {
               </div>
             )}
 
-            {/* ABA 3 DO ALUNO: AULAS COLETIVAS */}
+            {/* ABA 4 DO ALUNO: AULAS COLETIVAS */}
             {currentTab === "aulas" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
@@ -261,7 +272,7 @@ export default function GymFlowApp() {
               </div>
             )}
 
-            {/* ABA 4 DO ALUNO: EVOLUÇÃO, PRS & GAMIFICAÇÃO */}
+            {/* ABA 5 DO ALUNO: EVOLUÇÃO, PRS & GAMIFICAÇÃO */}
             {currentTab === "evolucao" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <GymBadgesStreak />

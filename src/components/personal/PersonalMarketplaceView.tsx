@@ -41,7 +41,7 @@ export function PersonalMarketplaceView({
 }: PersonalMarketplaceViewProps) {
   const [coaches, setCoaches] = useState<CoachTrainer[]>([]);
   const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_rodrigo");
-  const [selectedDay, setSelectedDay] = useState<"Hoje" | "Amanhã" | "Quinta" | "Sexta">("Hoje");
+  const [selectedDay, setSelectedDay] = useState<string>("Hoje");
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
   const [selectedPlanType, setSelectedPlanType] = useState<"diario" | "semanal" | "mensal">("mensal");
   const [extraAmount, setExtraAmount] = useState<number>(20);
@@ -313,7 +313,7 @@ export function PersonalMarketplaceView({
 
           {/* Seletor de Dias */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {(["Hoje", "Amanhã", "Quinta", "Sexta"] as const).map((day) => (
+            {(["Hoje", "Amanhã", "Quinta", "Sexta", "Sábado"] as const).map((day) => (
               <button
                 key={day}
                 onClick={() => {
@@ -407,34 +407,36 @@ export function PersonalMarketplaceView({
             </div>
           </div>
 
-          {/* Oferta de Valor Adicional (O aluno pode pagar mais se quiser) */}
-          <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col gap-2">
+          {/* Oferta de Valor Adicional / Gorjeta (O aluno pode pagar mais se quiser) */}
+          <div className="p-3 rounded-2xl bg-white/[0.02] border border-amber-500/20 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-zinc-300 flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                Oferecer Valor Extra pelo Horário (Opcional):
+                Gorjeta / Valor Extra ao Personal (Opcional):
               </span>
-              <span className="text-[10px] font-mono text-amber-400 font-bold">+ R$ {extraAmount}</span>
+              <span className="text-[10px] font-mono text-amber-400 font-bold">
+                {extraAmount > 0 ? `+ R$ ${extraAmount},00` : "Sem gorjeta"}
+              </span>
             </div>
-            <p className="text-[10px] text-zinc-500 leading-tight">
-              Alunos que oferecem valor adicional têm maior prioridade de aceite em horários nobres de pico.
+            <p className="text-[10px] text-zinc-400 leading-tight">
+              Alunos que oferecem valor extra têm maior prioridade de aceite em horários concorridos. O professor decidirá se aceita ou recusa.
             </p>
 
             <div className="flex items-center gap-1.5">
-              {[0, 15, 25, 50].map((amt) => (
+              {[0, 15, 30, 50].map((amt) => (
                 <button
                   key={amt}
                   onClick={() => {
                     triggerHaptic("light");
                     setExtraAmount(amt);
                   }}
-                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-mono font-bold transition-all ${
+                  className={`flex-1 py-1.5 rounded-xl text-[10px] font-mono font-bold transition-all ${
                     extraAmount === amt
-                      ? "bg-amber-500 text-zinc-950"
-                      : "bg-white/[0.04] text-zinc-400 hover:text-white"
+                      ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20 font-black"
+                      : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.04]"
                   }`}
                 >
-                  {amt === 0 ? "Sem extra" : `+R$ ${amt}`}
+                  {amt === 0 ? "Sem gorjeta" : `+R$ ${amt}`}
                 </button>
               ))}
             </div>
