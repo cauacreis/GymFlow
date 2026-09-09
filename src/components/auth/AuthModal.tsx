@@ -3,7 +3,23 @@
 import React, { useState } from "react";
 import { z } from "zod";
 import { Drawer } from "@/components/ui/Drawer";
-import { ShieldCheck, Lock, Mail, User, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+import {
+  ShieldCheck,
+  Lock,
+  Mail,
+  User,
+  CheckCircle,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  Dumbbell,
+  Target,
+  Sparkles,
+  Phone,
+} from "lucide-react";
+import { registerNewUser, saveUserProfile, UserRole, UserProfile } from "@/lib/auth-store";
+import { triggerHaptic } from "@/lib/haptic";
 
 // Schemas Zod Estritos (Anti-Injeção e Validação de Formato)
 const loginSchema = z.object({
@@ -16,9 +32,7 @@ const signupSchema = z.object({
   email: z.string().email("Formato de e-mail inválido").max(100),
   password: z
     .string()
-    .min(8, "Senha deve ter no mínimo 8 caracteres")
-    .regex(/[0-9]/, "A senha deve conter ao menos um número")
-    .regex(/[A-Z]/, "A senha deve conter ao menos uma letra maiúscula")
+    .min(6, "Senha deve ter no mínimo 6 caracteres")
     .max(100),
 });
 
@@ -46,14 +60,21 @@ const LabelInputContainer = ({
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccessLogin?: (user: { name: string; email: string }) => void;
+  onSuccessLogin?: (user: { name: string; email: string; role?: UserRole }) => void;
 }
 
 export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("student");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [cref, setCref] = useState("");
+  const [specialty, setSpecialty] = useState("");
+  const [goal, setGoal] = useState<UserProfile["goal"]>("Hipertrofia");
+
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -62,7 +83,7 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
   // Força de senha visual
   const getPasswordStrength = (pass: string) => {
     let score = 0;
-    if (pass.length >= 8) score++;
+    if (pass.length >= 6) score++;
     if (/[A-Z]/.test(pass)) score++;
     if (/[0-9]/.test(pass)) score++;
     if (/[^A-Za-z0-9]/.test(pass)) score++;
@@ -80,22 +101,52 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
     try {
       if (mode === "login") {
         loginSchema.parse({ email, password });
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 600));
 
-        setSuccessMessage("Login efetuado com sucesso! Acessando GymFlow...");
+        // Atualiza perfil logado
+        const loggedUser = saveUserProfile({
+          email,
+          name: email.split("@")[0],
+        });
+
+        setSuccessMessage(`Login efetuado! Entrando como ${loggedUser.activeRole === "coach" ? "Professor" : "Aluno"}...`);
         if (onSuccessLogin) {
-          onSuccessLogin({ name: email.split("@")[0], email });
+          onSuccessLogin({
+            name: loggedUser.name,
+            email: loggedUser.email,
+            role: loggedUser.activeRole,
+          });
         }
         setTimeout(() => {
           onClose();
-        }, 900);
+        }, 800);
       } else {
         signupSchema.parse({ name, email, password });
-        await new Promise((resolve) => setTimeout(resolve, 900));
+        await new Promise((resolve) => setTimeout(resolve, 700));
 
-        setSuccessMessage("Matrícula criada com sucesso! Bem-vindo ao time.");
+        // Registra novo usuário com o papel escolhido
+        const newUser = registerNewUser({
+          name,
+          email,
+          role: selectedRole,
+          phone,
+          cref: selectedRole === "coach" ? cref || "08412-SP" : undefined,
+          specialty: selectedRole === "coach" ? specialty || "Musculação & Hipertrofia" : undefined,
+          goal: selectedRole === "student" ? goal : undefined,
+        });
+
+        setSuccessMessage(
+          selectedRole === "coach"
+            ? "Perfil de Professor criado! Você também poderá treinar no Modo Aluno quando quiser."
+            : "Perfil de Aluno criado! Você também poderá prescrever treinos no Modo Professor."
+        );
+
         if (onSuccessLogin) {
-          onSuccessLogin({ name, email });
+          onSuccessLogin({
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.activeRole,
+          });
         }
         setTimeout(() => {
           onClose();
@@ -113,7 +164,11 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
   };
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} title={mode === "login" ? "Entrar na Academia" : "Criar Conta de Membro"}>
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title={mode === "login" ? "Acessar GymFlow" : "Criar Conta de Usuário"}
+    >
       <div className="relative w-full flex flex-col gap-4 text-left">
         {/* Glow de Fundo e Feixes Neon Estilo Aceternity */}
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-36 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -123,16 +178,17 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
         <div className="text-center pb-1">
           <p className="text-xs text-zinc-400">
             {mode === "login"
-              ? "Acesse seus treinos, check-in da catraca e evolução física."
-              : "Cadastre-se para gerenciar seus treinos e aulas coletivas."}
+              ? "Acesse seu perfil de Aluno ou Professor para treinar e prescrever."
+              : "Cadastre-se e escolha se deseja iniciar como Aluno ou Professor."}
           </p>
         </div>
 
-        {/* Seletor de Modo (Abas Animadas) */}
+        {/* Seletor de Modo: Entrar vs Criar Conta */}
         <div className="relative flex p-1 rounded-2xl bg-zinc-950/80 border border-white/[0.08] shadow-inner">
           <button
             type="button"
             onClick={() => {
+              triggerHaptic("selection");
               setMode("login");
               setErrorMessage(null);
             }}
@@ -147,6 +203,7 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
           <button
             type="button"
             onClick={() => {
+              triggerHaptic("selection");
               setMode("signup");
               setErrorMessage(null);
             }}
@@ -159,6 +216,67 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
             Criar Conta
           </button>
         </div>
+
+        {/* SELEÇÃO DO PAPEL NO CADASTRO (ALUNO OU PROFESSOR) */}
+        {mode === "signup" && (
+          <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-zinc-900/60 border border-white/[0.08]">
+            <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Como você deseja atuar inicialmente?
+            </span>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setSelectedRole("student");
+                }}
+                className={`p-3 rounded-xl border flex flex-col items-center text-center transition-all ${
+                  selectedRole === "student"
+                    ? "bg-emerald-500/15 border-emerald-500/50 shadow-md shadow-emerald-500/15 ring-1 ring-emerald-500/40"
+                    : "bg-zinc-950 border-white/[0.06] text-zinc-400 hover:text-white"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-1.5 ${
+                  selectedRole === "student" ? "bg-emerald-500 text-zinc-950" : "bg-white/[0.06] text-zinc-400"
+                }`}>
+                  <Dumbbell className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-black text-white">Sou Aluno</span>
+                <span className="text-[9px] text-zinc-400 mt-0.5 leading-tight">
+                  Quero treinar e contratar personais
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setSelectedRole("coach");
+                }}
+                className={`p-3 rounded-xl border flex flex-col items-center text-center transition-all ${
+                  selectedRole === "coach"
+                    ? "bg-amber-500/15 border-amber-500/50 shadow-md shadow-amber-500/15 ring-1 ring-amber-500/40"
+                    : "bg-zinc-950 border-white/[0.06] text-zinc-400 hover:text-white"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-1.5 ${
+                  selectedRole === "coach" ? "bg-amber-500 text-zinc-950" : "bg-white/[0.06] text-zinc-400"
+                }`}>
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-black text-white">Sou Professor</span>
+                <span className="text-[9px] text-zinc-400 mt-0.5 leading-tight">
+                  Quero prescrever treinos e atender
+                </span>
+              </button>
+            </div>
+
+            <p className="text-[9px] text-zinc-400 leading-snug italic mt-1">
+              ✨ Não se preocupe: nas configurações da conta você pode alternar livremente para treinar e também ser treinador com a mesma conta!
+            </p>
+          </div>
+        )}
 
         {/* Mensagens de Feedback */}
         {errorMessage && (
@@ -174,25 +292,90 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
           </div>
         )}
 
-        {/* Formulário Aceternity UI Blocks */}
+        {/* Formulário */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 z-10">
           {mode === "signup" && (
-            <LabelInputContainer>
-              <label className="text-[11px] font-semibold text-zinc-300">Nome Completo</label>
-              <div className="group/input relative flex items-center rounded-xl bg-zinc-900/70 border border-white/[0.08] focus-within:border-emerald-500/60 focus-within:shadow-[0_0_16px_rgba(16,185,129,0.25)] transition-all">
-                <User className="w-4 h-4 text-zinc-400 ml-3 shrink-0" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex: Carlos Silva"
-                  autoComplete="name"
-                  required
-                  className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none"
-                />
-                <BottomGradient />
-              </div>
-            </LabelInputContainer>
+            <>
+              <LabelInputContainer>
+                <label className="text-[11px] font-semibold text-zinc-300">Nome Completo</label>
+                <div className="group/input relative flex items-center rounded-xl bg-zinc-900/70 border border-white/[0.08] focus-within:border-emerald-500/60 focus-within:shadow-[0_0_16px_rgba(16,185,129,0.25)] transition-all">
+                  <User className="w-4 h-4 text-zinc-400 ml-3 shrink-0" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={selectedRole === "coach" ? "Ex: Prof. Camila Martins" : "Ex: Carlos Silva"}
+                    autoComplete="name"
+                    required
+                    className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none"
+                  />
+                  <BottomGradient />
+                </div>
+              </LabelInputContainer>
+
+              <LabelInputContainer>
+                <label className="text-[11px] font-semibold text-zinc-300">WhatsApp / Telefone</label>
+                <div className="group/input relative flex items-center rounded-xl bg-zinc-900/70 border border-white/[0.08] focus-within:border-emerald-500/60 transition-all">
+                  <Phone className="w-4 h-4 text-zinc-400 ml-3 shrink-0" />
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Ex: 11991234567"
+                    className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none"
+                  />
+                  <BottomGradient />
+                </div>
+              </LabelInputContainer>
+
+              {/* Se for Professor: CREF e Especialidade */}
+              {selectedRole === "coach" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <LabelInputContainer>
+                    <label className="text-[11px] font-semibold text-zinc-300">Registro CREF</label>
+                    <div className="relative flex items-center rounded-xl bg-zinc-900/70 border border-white/[0.08]">
+                      <input
+                        type="text"
+                        value={cref}
+                        onChange={(e) => setCref(e.target.value)}
+                        placeholder="Ex: 08412-SP"
+                        className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none"
+                      />
+                    </div>
+                  </LabelInputContainer>
+
+                  <LabelInputContainer>
+                    <label className="text-[11px] font-semibold text-zinc-300">Especialidade</label>
+                    <div className="relative flex items-center rounded-xl bg-zinc-900/70 border border-white/[0.08]">
+                      <input
+                        type="text"
+                        value={specialty}
+                        onChange={(e) => setSpecialty(e.target.value)}
+                        placeholder="Ex: Hipertrofia"
+                        className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none"
+                      />
+                    </div>
+                  </LabelInputContainer>
+                </div>
+              )}
+
+              {/* Se for Aluno: Meta/Objetivo */}
+              {selectedRole === "student" && (
+                <LabelInputContainer>
+                  <label className="text-[11px] font-semibold text-zinc-300">Objetivo de Treino</label>
+                  <select
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value as UserProfile["goal"])}
+                    className="w-full p-2.5 rounded-xl bg-zinc-900/70 border border-white/[0.08] text-xs text-white outline-none focus:border-emerald-500/60"
+                  >
+                    <option value="Hipertrofia">Hipertrofia & Ganho de Massa</option>
+                    <option value="Emagrecimento">Emagrecimento & Definição</option>
+                    <option value="Força & Performance">Força & Performance 5×5</option>
+                    <option value="Condicionamento Geral">Condicionamento Físico & Saúde</option>
+                  </select>
+                </LabelInputContainer>
+              )}
+            </>
           )}
 
           <LabelInputContainer>
@@ -203,7 +386,7 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="atleta@gymflow.com"
+                placeholder="usuario@gymflow.com"
                 autoComplete="username"
                 required
                 className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none"
@@ -218,7 +401,7 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
               {mode === "login" && (
                 <button
                   type="button"
-                  onClick={() => alert("Link de redefinição de senha enviado para o e-mail cadastrado.")}
+                  onClick={() => alert("Link de redefinição de senha enviado para o e-mail informado.")}
                   className="text-[10px] text-emerald-400 hover:underline"
                 >
                   Esqueceu a senha?
@@ -246,30 +429,14 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
               <BottomGradient />
             </div>
 
-            {/* Medidor de força de senha no cadastro */}
+            {/* Medidor de força de senha */}
             {mode === "signup" && password.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1.5">
                 <div className="flex-1 h-1 rounded-full bg-zinc-800 overflow-hidden flex gap-1">
-                  <div
-                    className={`h-full flex-1 transition-all ${
-                      strength >= 1 ? "bg-red-500" : "bg-transparent"
-                    }`}
-                  />
-                  <div
-                    className={`h-full flex-1 transition-all ${
-                      strength >= 2 ? "bg-amber-500" : "bg-transparent"
-                    }`}
-                  />
-                  <div
-                    className={`h-full flex-1 transition-all ${
-                      strength >= 3 ? "bg-emerald-400" : "bg-transparent"
-                    }`}
-                  />
-                  <div
-                    className={`h-full flex-1 transition-all ${
-                      strength >= 4 ? "bg-emerald-500" : "bg-transparent"
-                    }`}
-                  />
+                  <div className={`h-full flex-1 transition-all ${strength >= 1 ? "bg-red-500" : "bg-transparent"}`} />
+                  <div className={`h-full flex-1 transition-all ${strength >= 2 ? "bg-amber-500" : "bg-transparent"}`} />
+                  <div className={`h-full flex-1 transition-all ${strength >= 3 ? "bg-emerald-400" : "bg-transparent"}`} />
+                  <div className={`h-full flex-1 transition-all ${strength >= 4 ? "bg-emerald-500" : "bg-transparent"}`} />
                 </div>
                 <span className="text-[10px] text-zinc-400 font-mono">
                   {strength <= 1 ? "Fraca" : strength <= 2 ? "Média" : "Forte"}
@@ -278,89 +445,29 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
             )}
           </LabelInputContainer>
 
-          {/* Botão de Envio com Efeito Aceternity Shimmer */}
+          {/* Botão de Envio */}
           <button
             type="submit"
             disabled={isLoading}
             className="group/btn relative w-full h-11 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-black font-bold text-xs uppercase tracking-wider shadow-[0_4px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_6px_25px_rgba(16,185,129,0.45)] transition-all active:scale-[0.98] disabled:opacity-50 overflow-hidden mt-1"
           >
-            <span>{isLoading ? "Processando..." : mode === "login" ? "Entrar na Academia &rarr;" : "Criar Minha Matrícula &rarr;"}</span>
+            <span>
+              {isLoading
+                ? "Processando..."
+                : mode === "login"
+                ? "Entrar no GymFlow &rarr;"
+                : selectedRole === "coach"
+                ? "Cadastrar Perfil de Professor &rarr;"
+                : "Cadastrar Perfil de Aluno &rarr;"}
+            </span>
             <BottomGradient />
           </button>
         </form>
 
-        {/* Divisor Aceternity */}
-        <div className="relative flex items-center justify-center my-1">
-          <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-          <span className="absolute px-2 bg-[#0C0C10] text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
-            ou acesse com
-          </span>
-        </div>
-
-        {/* Botões Sociais com Efeito Aceternity UI */}
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (onSuccessLogin) onSuccessLogin({ name: "Atleta Google", email: "atleta@gmail.com" });
-              onClose();
-            }}
-            className="group/btn relative flex items-center justify-center py-2.5 px-2 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-white/10 text-xs font-medium text-white transition-all active:scale-[0.98]"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#EA4335"
-                d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z"
-              />
-              <path
-                fill="#4285F4"
-                d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.6 7.2C.6 9.2 0 11.5 0 14s.6 4.8 1.6 6.8l3.7-2.9z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16c1.9 3.8 5.8 7 10.4 7z"
-              />
-            </svg>
-            <BottomGradient />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (onSuccessLogin) onSuccessLogin({ name: "Atleta Apple", email: "atleta@icloud.com" });
-              onClose();
-            }}
-            className="group/btn relative flex items-center justify-center py-2.5 px-2 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-white/10 text-xs font-medium text-white transition-all active:scale-[0.98]"
-          >
-            <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8 0.93-2.85-.9.04-1.99.6-2.64 1.35-.58.66-1.09 1.73-.95 2.76 1.01.08 2.04-.51 2.66-1.26z" />
-            </svg>
-            <BottomGradient />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (onSuccessLogin) onSuccessLogin({ name: "Atleta GitHub", email: "atleta@github.com" });
-              onClose();
-            }}
-            className="group/btn relative flex items-center justify-center py-2.5 px-2 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-white/10 text-xs font-medium text-white transition-all active:scale-[0.98]"
-          >
-            <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-            </svg>
-            <BottomGradient />
-          </button>
-        </div>
-
         {/* Rodapé de Segurança */}
         <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 mt-1">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Criptografia de ponta a ponta • LGPD compliant</span>
+          <span>GymFlow • Perfis de Alunos & Personal Trainers</span>
         </div>
       </div>
     </Drawer>

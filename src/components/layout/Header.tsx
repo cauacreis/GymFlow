@@ -2,32 +2,32 @@
 
 import React from "react";
 import Link from "next/link";
-import { Flame, Sparkles, QrCode, User, UserCheck, GraduationCap, Bell } from "lucide-react";
+import { Flame, Sparkles, User, GraduationCap, Dumbbell, Bell, ArrowRightLeft } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 
 interface HeaderProps {
   streakDays?: number;
   viewMode?: "student" | "coach";
   onToggleViewMode?: () => void;
-  onOpenCheckin: () => void;
+  onOpenProfile: () => void;
   onOpenPlans: () => void;
   onOpenAuth: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
-  user: { name: string; email: string } | null;
+  user: { name: string; email: string; activeRole?: "student" | "coach" } | null;
 }
 
 export function Header({
-  streakDays = 16,
   viewMode = "student",
   onToggleViewMode,
-  onOpenCheckin,
+  onOpenProfile,
   onOpenPlans,
-  onOpenAuth,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   user,
 }: HeaderProps) {
+  const isCoach = viewMode === "coach";
+
   return (
     <header className="sticky top-0 z-40 w-full px-4 pt-2 pb-2 bg-gradient-to-b from-[#070709] via-[#070709]/95 to-transparent backdrop-blur-md">
       <div className="flex items-center justify-between p-2 rounded-full bg-white/[0.04] border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.08)]">
@@ -41,36 +41,37 @@ export function Header({
               Gym<span className="text-emerald-400">Flow</span>
             </span>
             <span className="text-[8px] font-bold text-zinc-400 tracking-wider uppercase leading-none mt-0.5">
-              {viewMode === "coach" ? "Portal Instrutor" : "Smart Fitness"}
+              {isCoach ? "Portal do Professor" : "Perfil do Aluno"}
             </span>
           </div>
         </Link>
 
         {/* Status / Ações Rápidas */}
         <div className="flex items-center gap-1.5">
-          {/* Botão de Alternância de Perfil (Aluno ⇄ Professor) */}
+          {/* Botão de Alternância Rápida de Modo (Aluno ⇄ Professor) */}
           {onToggleViewMode && (
             <button
               onClick={() => {
                 triggerHaptic("medium");
                 onToggleViewMode();
               }}
-              className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 border transition-all active:scale-95 ${
-                viewMode === "coach"
-                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
-                  : "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 hover:bg-emerald-500/25"
+              className={`px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 border transition-all active:scale-95 shadow-sm ${
+                isCoach
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)] hover:bg-amber-500/30"
+                  : "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 shadow-[0_0_12px_rgba(16,185,129,0.2)] hover:bg-emerald-500/25"
               }`}
-              title={viewMode === "coach" ? "Voltar para Visão do Aluno" : "Acessar Modo Professor / Prescrição"}
+              title={isCoach ? "Alterne para o Modo Aluno (seguir ficha e treinar)" : "Alterne para o Modo Professor (prescrever e gerenciar agenda)"}
             >
-              {viewMode === "coach" ? (
+              <ArrowRightLeft className="w-2.5 h-2.5 opacity-70" />
+              {isCoach ? (
                 <>
-                  <UserCheck className="w-3 h-3 text-amber-400" />
-                  <span>CREF Ativo</span>
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Modo Professor</span>
                 </>
               ) : (
                 <>
-                  <GraduationCap className="w-3 h-3 text-emerald-400" />
-                  <span>Área do Prof</span>
+                  <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Modo Aluno</span>
                 </>
               )}
             </button>
@@ -95,18 +96,6 @@ export function Header({
             </button>
           )}
 
-          {/* Botão de Acesso Rápido à Catraca */}
-          <button
-            onClick={() => {
-              triggerHaptic("selection");
-              onOpenCheckin();
-            }}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white transition-colors"
-            title="Catraca Digital QR"
-          >
-            <QrCode className="w-3.5 h-3.5 text-emerald-400" />
-          </button>
-
           {/* Botão de Planos VIP */}
           <button
             onClick={() => {
@@ -120,18 +109,20 @@ export function Header({
             <span>Planos</span>
           </button>
 
-          {/* Botão de Login / Perfil */}
+          {/* Botão de Perfil / Configurações da Conta */}
           <button
             onClick={() => {
               triggerHaptic("light");
-              onOpenAuth();
+              onOpenProfile();
             }}
             className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${
-              user
+              isCoach
+                ? "bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold text-xs"
+                : user
                 ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 font-bold text-xs"
                 : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white"
             }`}
-            title={user ? `Logado como ${user.name}` : "Entrar / Cadastrar"}
+            title="Minha Conta & Configurações de Perfil"
           >
             {user ? user.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
           </button>
