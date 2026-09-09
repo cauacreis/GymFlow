@@ -7,7 +7,6 @@ import { PWAInstaller } from "@/components/pwa/PWAInstaller";
 import { WorkoutSheet } from "@/components/workout/WorkoutSheet";
 import { RestTimerModal } from "@/components/workout/RestTimerModal";
 import { GymClassesView } from "@/components/classes/GymClassesView";
-import { EvolutionDashboard } from "@/components/evolution/EvolutionDashboard";
 import { GymBadgesStreak } from "@/components/gamification/GymBadgesStreak";
 import { GymPlansModal } from "@/components/plans/GymPlansModal";
 import { GymBotAIModal } from "@/components/ai/GymBotAIModal";
@@ -16,6 +15,8 @@ import { UserProfileModal } from "@/components/profile/UserProfileModal";
 import { CoachDashboard } from "@/components/coach/CoachDashboard";
 import { PersonalMarketplaceView } from "@/components/personal/PersonalMarketplaceView";
 import { NotificationBellModal } from "@/components/notifications/NotificationBellModal";
+import { CoachAnalyticsDashboard } from "@/components/analytics/CoachAnalyticsDashboard";
+import { StudentAnalyticsDashboard } from "@/components/analytics/StudentAnalyticsDashboard";
 import {
   getCurrentUser,
   switchUserRole,
@@ -207,19 +208,10 @@ export default function GymFlowApp() {
               </div>
             )}
 
-            {/* ABA 4 DO PROFESSOR: EVOLUÇÃO DOS ALUNOS */}
+            {/* ABA 4 DO PROFESSOR: ANALYTICS & MÉTRICAS DE NEGÓCIO E ALUNOS */}
             {currentTab === "evolucao" && (
-              <div className="flex flex-col gap-5 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
-                      Progresso e Desempenho
-                    </span>
-                    <h2 className="text-base font-black text-white mt-0.5">Métricas dos Alunos</h2>
-                  </div>
-                </div>
-                <GymBadgesStreak />
-                <EvolutionDashboard />
+              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+                <CoachAnalyticsDashboard />
               </div>
             )}
           </div>
@@ -271,9 +263,9 @@ export default function GymFlowApp() {
 
             {/* ABA 4 DO ALUNO: EVOLUÇÃO, PRS & GAMIFICAÇÃO */}
             {currentTab === "evolucao" && (
-              <div className="flex flex-col gap-5 animate-in fade-in duration-200">
+              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <GymBadgesStreak />
-                <EvolutionDashboard />
+                <StudentAnalyticsDashboard />
               </div>
             )}
           </div>
