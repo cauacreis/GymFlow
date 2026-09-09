@@ -13,22 +13,26 @@ import { ShoppingBagDrawer, CartItem } from "@/components/bag/ShoppingBagDrawer"
 import { AuthModal } from "@/components/auth/AuthModal";
 import { MercadoPagoModal } from "@/components/payment/MercadoPagoModal";
 import { AIAdvisorModal } from "@/components/ai/AIAdvisorModal";
+import { PWAInstaller } from "@/components/pwa/PWAInstaller";
+import { OrderTrackingModal } from "@/components/orders/OrderTrackingModal";
+import { UserProfileDrawer } from "@/components/profile/UserProfileDrawer";
 import { PRESET_MEALS, PresetMeal } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Plus, Sparkles, Shield, Flame, CheckCircle, Cookie, Dumbbell } from "lucide-react";
+import { Plus, Cookie, Dumbbell, Sparkles } from "lucide-react";
 
 export default function GymFlowApp() {
   const [currentTab, setCurrentTab] = useState<TabType>("menu");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
+  const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [checkoutAmount, setCheckoutAmount] = useState(0);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
-  const [cookieConsent, setCookieConsent] = useState(true); // Se true, o banner foi aceito
+  const [cookieConsent, setCookieConsent] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
 
   // Adicionar refeição pronta (Preset)
@@ -102,6 +106,27 @@ export default function GymFlowApp() {
   const handlePaymentSuccess = () => {
     setCartItems([]);
     setIsPaymentOpen(false);
+    // Abre automaticamente o rastreador de entrega ao vivo
+    setTimeout(() => {
+      setIsTrackingOpen(true);
+    }, 400);
+  };
+
+  const handleReorder = (mealName: string, price: number) => {
+    setCartItems((prev) => [
+      ...prev,
+      {
+        id: `reorder-${Date.now()}`,
+        name: mealName,
+        unitPrice: price,
+        quantity: 1,
+        calories: 520,
+        protein: 45,
+        details: "Repetição rápida de pedido anterior",
+      },
+    ]);
+    setIsProfileOpen(false);
+    setIsCartOpen(true);
   };
 
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -117,12 +142,15 @@ export default function GymFlowApp() {
 
   return (
     <div className="w-full flex-1 flex flex-col justify-between relative pb-16">
+      {/* Banner de Instalação PWA */}
+      <PWAInstaller />
+
       {/* Header Fixo */}
       <Header
         cartCount={totalCartCount}
         activeCalories={totalCaloriesInCart}
         onOpenCart={() => setIsCartOpen(true)}
-        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenAuth={() => (user ? setIsProfileOpen(true) : setIsAuthOpen(true))}
       />
 
       {/* Conteúdo Dinâmico por Aba */}
@@ -314,11 +342,24 @@ export default function GymFlowApp() {
         onSuccessLogin={(userData) => setUser(userData)}
       />
 
+      <UserProfileDrawer
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={user}
+        onLogout={() => setUser(null)}
+        onReorder={handleReorder}
+      />
+
       <MercadoPagoModal
         isOpen={isPaymentOpen}
         onClose={() => setIsPaymentOpen(false)}
         amount={checkoutAmount}
         onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      <OrderTrackingModal
+        isOpen={isTrackingOpen}
+        onClose={() => setIsTrackingOpen(false)}
       />
 
       <AIAdvisorModal
