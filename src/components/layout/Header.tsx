@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Flame, Sparkles, QrCode, User, UserCheck, GraduationCap } from "lucide-react";
+import { Flame, Sparkles, QrCode, User, UserCheck, GraduationCap, Bell } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 
 interface HeaderProps {
@@ -12,6 +12,8 @@ interface HeaderProps {
   onOpenCheckin: () => void;
   onOpenPlans: () => void;
   onOpenAuth: () => void;
+  onOpenNotifications?: () => void;
+  unreadNotificationsCount?: number;
   user: { name: string; email: string } | null;
 }
 
@@ -22,6 +24,8 @@ export function Header({
   onOpenCheckin,
   onOpenPlans,
   onOpenAuth,
+  onOpenNotifications,
+  unreadNotificationsCount = 0,
   user,
 }: HeaderProps) {
   return (
@@ -72,15 +76,23 @@ export function Header({
             </button>
           )}
 
-          {/* Streak Indicator (no modo aluno) */}
-          {viewMode === "student" && (
-            <div
-              title="Sequência de treinos"
-              className="hidden xs:flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-bold"
+          {/* Botão do Sino de Notificações com Badge */}
+          {onOpenNotifications && (
+            <button
+              onClick={() => {
+                triggerHaptic("selection");
+                onOpenNotifications();
+              }}
+              className="relative w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-zinc-300 hover:text-white transition-colors"
+              title="Central de Alertas & Notificações"
             >
-              <Flame className="w-3 h-3 fill-amber-400 animate-pulse" />
-              <span>{streakDays}d</span>
-            </div>
+              <Bell className="w-3.5 h-3.5 text-zinc-300" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-mono font-bold text-[9px] flex items-center justify-center shadow-md animate-pulse">
+                  {unreadNotificationsCount}
+                </span>
+              )}
+            </button>
           )}
 
           {/* Botão de Acesso Rápido à Catraca */}
@@ -104,7 +116,7 @@ export function Header({
             className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all"
             title="Ver Planos"
           >
-            <Sparkles className="w-3 h-3 text-emerald-400" />
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
             <span>Planos</span>
           </button>
 

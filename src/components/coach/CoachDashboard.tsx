@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import {
   UserCheck,
+  Calendar,
   Plus,
   Dumbbell,
   CheckCircle2,
@@ -38,11 +39,14 @@ import {
   getStudentWorkout,
 } from "@/lib/workout-store";
 
+import { CoachAgendaManager } from "./CoachAgendaManager";
+
 interface CoachDashboardProps {
   onSwitchToStudentView?: () => void;
 }
 
 export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
+  const [mainTab, setMainTab] = useState<"agenda" | "workouts">("agenda");
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("student_carlos");
   const [modeTab, setModeTab] = useState<"preformed" | "custom">("preformed");
@@ -263,56 +267,97 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
           )}
         </div>
 
-        {/* Seletor de Alunos */}
-        <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
-          <div className="flex-1">
-            <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-1">
-              Aluno Selecionado para Prescrição:
-            </label>
-            <select
-              value={selectedStudentId}
-              onChange={(e) => {
-                triggerHaptic("light");
-                setSelectedStudentId(e.target.value);
-              }}
-              className="w-full py-2 px-3 rounded-xl bg-zinc-950 border border-white/[0.1] text-xs font-bold text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
-            >
-              {students.map((st) => (
-                <option key={st.id} value={st.id} className="bg-zinc-950 text-white">
-                  {st.name} — {st.matricula} ({st.goal})
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Seletor Principal: Agenda Barbearia vs Fichas ExerciseDB */}
+        <div className="pt-3 border-t border-white/[0.06] grid grid-cols-2 p-1 rounded-2xl bg-zinc-950 border border-white/[0.08]">
+          <button
+            onClick={() => {
+              triggerHaptic("selection");
+              setMainTab("agenda");
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              mainTab === "agenda"
+                ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Agenda & Solicitações</span>
+          </button>
 
           <button
             onClick={() => {
               triggerHaptic("selection");
-              setIsNewStudentModalOpen(true);
+              setMainTab("workouts");
             }}
-            className="mt-3.5 p-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 flex items-center justify-center shrink-0 active:scale-95 transition-all"
-            title="Cadastrar Novo Aluno"
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              mainTab === "workouts"
+                ? "bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20"
+                : "text-zinc-400 hover:text-white"
+            }`}
           >
-            <UserPlus className="w-4 h-4" />
+            <Dumbbell className="w-3.5 h-3.5" />
+            <span>Fichas & ExerciseDB</span>
           </button>
         </div>
-
-        {/* Card do Aluno Ativo */}
-        {currentStudent && (
-          <div className="mt-3 p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[11px] flex flex-col gap-1">
-            <div className="flex justify-between items-center">
-              <span className="text-zinc-400">Ficha Ativa no App do Aluno:</span>
-              <span className="font-bold text-emerald-400 truncate max-w-[180px]">
-                {currentStudent.currentRoutineTitle}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-zinc-500 text-[10px]">
-              <span>Última emissão: {currentStudent.prescribedAt}</span>
-              <span>Objetivo: {currentStudent.goal}</span>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* ABA PRINCIPAL 1: AGENDA & GESTÃO DE HORÁRIOS / ALUNOS PRESENCIAIS */}
+      {mainTab === "agenda" && <CoachAgendaManager coachId="coach_rodrigo" />}
+
+      {/* ABA PRINCIPAL 2: MONTAGEM E PRESCRIÇÃO DE FICHAS COM EXERCISEDB */}
+      {mainTab === "workouts" && (
+        <div className="flex flex-col gap-4 animate-in fade-in duration-150">
+          {/* Seletor de Alunos */}
+          <div className="rounded-3xl p-4 bg-zinc-900 border border-white/[0.08] flex flex-col gap-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex-1">
+                <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-1">
+                  Aluno Selecionado para Prescrição:
+                </label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => {
+                    triggerHaptic("light");
+                    setSelectedStudentId(e.target.value);
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-zinc-950 border border-white/[0.1] text-xs font-bold text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
+                >
+                  {students.map((st) => (
+                    <option key={st.id} value={st.id} className="bg-zinc-950 text-white">
+                      {st.name} — {st.matricula} ({st.goal})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setIsNewStudentModalOpen(true);
+                }}
+                className="mt-3.5 p-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 flex items-center justify-center shrink-0 active:scale-95 transition-all"
+                title="Cadastrar Novo Aluno"
+              >
+                <UserPlus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Card do Aluno Ativo */}
+            {currentStudent && (
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] text-[11px] flex flex-col gap-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">Ficha Ativa no App do Aluno:</span>
+                  <span className="font-bold text-emerald-400 truncate max-w-[180px]">
+                    {currentStudent.currentRoutineTitle}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-zinc-500 text-[10px]">
+                  <span>Última emissão: {currentStudent.prescribedAt}</span>
+                  <span>Objetivo: {currentStudent.goal}</span>
+                </div>
+              </div>
+            )}
+          </div>
 
       {/* Alternador de Modo de Prescrição: Pré-Formados vs Customizado ExerciseDB */}
       <div className="grid grid-cols-2 p-1 rounded-2xl bg-zinc-900 border border-white/[0.08]">
@@ -566,6 +611,8 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
             <Send className="w-4 h-4" />
             <span>Finalizar & Prescrever Ficha para {currentStudent?.name}</span>
           </button>
+        </div>
+      )}
         </div>
       )}
 

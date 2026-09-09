@@ -2,10 +2,10 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Dumbbell, QrCode, CalendarDays, TrendingUp, Bot } from "lucide-react";
+import { Dumbbell, QrCode, CalendarDays, TrendingUp, UserCheck } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 
-export type GymTabType = "treino" | "catraca" | "aulas" | "evolucao" | "gymbot";
+export type GymTabType = "treino" | "personal" | "catraca" | "aulas" | "evolucao";
 
 interface BottomTabBarProps {
   currentTab: GymTabType;
@@ -15,10 +15,10 @@ interface BottomTabBarProps {
 export function BottomTabBar({ currentTab, onSelectTab }: BottomTabBarProps) {
   const tabs = [
     { id: "treino" as GymTabType, label: "Treino", icon: Dumbbell },
+    { id: "personal" as GymTabType, label: "Personal", icon: UserCheck },
     { id: "catraca" as GymTabType, label: "Catraca", icon: QrCode },
     { id: "aulas" as GymTabType, label: "Aulas", icon: CalendarDays },
     { id: "evolucao" as GymTabType, label: "Evolução", icon: TrendingUp },
-    { id: "gymbot" as GymTabType, label: "GymBot IA", icon: Bot },
   ];
 
   return (

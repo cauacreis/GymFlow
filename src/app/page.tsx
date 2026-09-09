@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { BottomTabBar, GymTabType } from "@/components/layout/BottomTabBar";
 import { PWAInstaller } from "@/components/pwa/PWAInstaller";
@@ -15,6 +15,13 @@ import { GymPlansModal } from "@/components/plans/GymPlansModal";
 import { GymBotAIModal } from "@/components/ai/GymBotAIModal";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { CoachDashboard } from "@/components/coach/CoachDashboard";
+import { PersonalMarketplaceView } from "@/components/personal/PersonalMarketplaceView";
+import { NotificationBellModal } from "@/components/notifications/NotificationBellModal";
+import {
+  getStoredNotifications,
+  subscribeToNotifications,
+  AppNotification,
+} from "@/lib/booking-store";
 import { triggerHaptic } from "@/lib/haptic";
 import { QrCode, Sparkles, Dumbbell, CalendarDays, TrendingUp, Bot, ShieldCheck, Zap } from "lucide-react";
 
@@ -26,6 +33,10 @@ export default function GymFlowApp() {
     email: "carlos.silva@gymflow.app",
   });
 
+  // Notificações
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
   // Modais
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCheckinOpen, setIsCheckinOpen] = useState(false);
@@ -34,16 +45,30 @@ export default function GymFlowApp() {
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [isGymBotOpen, setIsGymBotOpen] = useState(false);
 
+  useEffect(() => {
+    const refreshNotifications = () => {
+      const all = getStoredNotifications();
+      setNotifications(all.filter((n) => n.targetRole === (viewMode === "coach" ? "coach" : "student")));
+    };
+    refreshNotifications();
+    const unsub = subscribeToNotifications(refreshNotifications);
+    return () => unsub();
+  }, [viewMode]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
   return (
     <div className="w-full min-h-screen bg-[#070709] text-white flex flex-col justify-between relative selection:bg-emerald-500/30 selection:text-emerald-300">
       {/* Banner PWA para instalação no celular */}
       <PWAInstaller />
 
-      {/* Header Fixo do GymFlow com Alternância Aluno ⇄ Professor */}
+      {/* Header Fixo do GymFlow com Alternância Aluno ⇄ Professor & Central de Notificações */}
       <Header
         streakDays={16}
         user={user}
         viewMode={viewMode}
+        unreadNotificationsCount={unreadCount}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
         onToggleViewMode={() => setViewMode((prev) => (prev === "student" ? "coach" : "student"))}
         onOpenCheckin={() => setIsCheckinOpen(true)}
         onOpenPlans={() => setIsPlansOpen(true)}
@@ -77,7 +102,17 @@ export default function GymFlowApp() {
               </div>
             )}
 
-            {/* ABA 2: CATRACA / CHECK-IN DIGITAL */}
+            {/* ABA 2: PERSONAL TRAINER & AGENDAMENTO ESTILO BARBEARIA */}
+            {currentTab === "personal" && (
+              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+                <PersonalMarketplaceView
+                  studentName={user?.name || "Carlos Silva"}
+                  studentPhone="5511991234567"
+                />
+              </div>
+            )}
+
+            {/* ABA 3: CATRACA / CHECK-IN DIGITAL */}
             {currentTab === "catraca" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <div className="rounded-3xl p-5 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-white/[0.08] shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
@@ -129,7 +164,7 @@ export default function GymFlowApp() {
               </div>
             )}
 
-            {/* ABA 3: AULAS COLETIVAS */}
+            {/* ABA 4: AULAS COLETIVAS */}
             {currentTab === "aulas" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
@@ -148,7 +183,7 @@ export default function GymFlowApp() {
               </div>
             )}
 
-            {/* ABA 4: EVOLUÇÃO & GAMIFICAÇÃO */}
+            {/* ABA 5: EVOLUÇÃO & GAMIFICAÇÃO */}
             {currentTab === "evolucao" && (
               <div className="flex flex-col gap-5 animate-in fade-in duration-200">
                 {/* Sequência de Treinos, PRs e Medalhas */}
@@ -158,57 +193,22 @@ export default function GymFlowApp() {
                 <EvolutionDashboard />
               </div>
             )}
-
-            {/* ABA 5: GYMBOT IA */}
-            {currentTab === "gymbot" && (
-              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-                <div className="rounded-3xl p-6 bg-gradient-to-br from-emerald-950/30 via-zinc-900 to-zinc-950 border border-emerald-500/20 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-3 shadow-xl">
-                    <Bot className="w-9 h-9 animate-pulse" />
-                  </div>
-
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      Gratuito & 24 Horas
-                    </span>
-                  </div>
-                  <h2 className="text-lg font-black text-white">GymBot IA Coach</h2>
-                  <p className="text-xs text-zinc-400 mt-1 max-w-[280px] leading-relaxed">
-                    Tire dúvidas de biomecânica, solicite substituições de exercícios para dores musculares, calcule suas proteínas e peça orientações de carga.
-                  </p>
-
-                  <button
-                    onClick={() => {
-                      triggerHaptic("medium");
-                      setIsGymBotOpen(true);
-                    }}
-                    className="w-full mt-4 py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Abrir Chat com o Coach</span>
-                  </button>
-                </div>
-
-                {/* Tópicos Mais Frequentes */}
-                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.08] flex flex-col gap-2">
-                  <span className="text-xs font-bold text-zinc-300">Dúvidas Frequentes no Salão</span>
-                  <div className="flex flex-col gap-1.5 text-xs text-zinc-400">
-                    <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                      • Como aquecer corretamente os manguitos rotadores
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                      • Quando usar cinto lombar no agachamento e terra
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                      • Quantidade de água recomendada no intra-treino
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
       </main>
+
+      {/* Botão Flutuante do GymBot IA */}
+      <button
+        onClick={() => {
+          triggerHaptic("medium");
+          setIsGymBotOpen(true);
+        }}
+        className="fixed bottom-20 right-4 z-40 p-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-xl shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-1.5"
+        title="Conversar com GymBot IA"
+      >
+        <Bot className="w-5 h-5" />
+        <span className="text-xs hidden xs:inline">GymBot IA</span>
+      </button>
 
       {/* Barra de Navegação Inferior Fixa (visível no modo aluno) */}
       {viewMode === "student" && (
@@ -219,6 +219,12 @@ export default function GymFlowApp() {
       )}
 
       {/* Modais Globais */}
+      <NotificationBellModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        targetRole={viewMode === "coach" ? "coach" : "student"}
+      />
+
       <TurnstileCheckinModal
         isOpen={isCheckinOpen}
         onClose={() => setIsCheckinOpen(false)}
