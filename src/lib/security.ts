@@ -26,11 +26,11 @@ export function checkRateLimit(
 
   // Limpeza de registros antigos expirados ocasionalmente
   if (rateLimitStore.size > 1000) {
-    for (const [k, rec] of rateLimitStore.entries()) {
+    rateLimitStore.forEach((rec, k) => {
       if (rec.resetTime < now) {
         rateLimitStore.delete(k);
       }
-    }
+    });
   }
 
   if (!record || record.resetTime < now) {
