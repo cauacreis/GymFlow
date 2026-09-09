@@ -7,16 +7,21 @@ import {
   Circle,
   Timer,
   Flame,
-  Award,
-  Plus,
-  Minus,
   RotateCcw,
   UserCheck,
   MessageSquareQuote,
   ShieldCheck,
+  Plus,
+  Minus,
+  Play,
+  Home,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { getStudentWorkout, subscribeToWorkoutChanges, StudentWorkoutPackage } from "@/lib/workout-store";
+import { getExerciseDetails, PREFORMED_ROUTINES, ExerciseInWorkout } from "@/lib/exercisedb";
+import { ExerciseGifModal, ExerciseModalData } from "./ExerciseGifModal";
 
 export interface ExerciseSet {
   setNumber: number;
@@ -27,12 +32,17 @@ export interface ExerciseSet {
 
 export interface Exercise {
   id: string;
+  exerciseId?: string;
   name: string;
   muscle: string;
   equipment: string;
   target: string;
   restSeconds?: number;
   notes?: string;
+  gifUrl?: string;
+  mediaFrames?: string[];
+  instructions?: string[];
+  tips?: string[];
   sets: ExerciseSet[];
 }
 
@@ -50,39 +60,73 @@ interface WorkoutSheetProps {
 }
 
 export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: WorkoutSheetProps) {
+  const [workoutMode, setWorkoutMode] = useState<"gym" | "home">("gym");
   const [workoutPackage, setWorkoutPackage] = useState<StudentWorkoutPackage>(() =>
     getStudentWorkout(studentId)
   );
   const [selectedSplitId, setSelectedSplitId] = useState<string>("A");
   const [splits, setSplits] = useState<WorkoutSplit[]>([]);
 
-  // Sincronização reativa com prescrições do professor
+  // Modal de Animação GIF / Execução
+  const [selectedExerciseModal, setSelectedExerciseModal] = useState<ExerciseModalData | null>(null);
+  const [isGifModalOpen, setIsGifModalOpen] = useState(false);
+
+  // Mapeia exercícios enriquecendo com o catálogo ExerciseDB
+  const mapExercises = (rawExercises: ExerciseInWorkout[]): Exercise[] => {
+    return rawExercises.map((ex) => {
+      const details = getExerciseDetails(ex.exerciseId || ex.name);
+      return {
+        id: ex.id,
+        exerciseId: ex.exerciseId,
+        name: ex.name,
+        muscle: ex.muscle || details?.target || "Geral",
+        equipment: ex.equipment || details?.equipment || "Livre",
+        target: ex.target,
+        restSeconds: ex.restSeconds || 60,
+        notes: ex.notes || details?.instructions?.[0],
+        gifUrl: ex.gifUrl || details?.gifUrl,
+        mediaFrames: ex.mediaFrames || details?.mediaFrames,
+        instructions: ex.instructions || details?.instructions,
+        tips: ex.tips || details?.tips,
+        sets: ex.sets.map((set, idx) => ({
+          setNumber: set.setNumber || idx + 1,
+          reps: set.reps,
+          weightKg: set.weightKg,
+          completed: set.completed || false,
+        })),
+      };
+    });
+  };
+
+  // Carrega treino de acordo com o modo ("gym" ou "home")
   useEffect(() => {
+    if (workoutMode === "home") {
+      const homeRoutine = PREFORMED_ROUTINES.find((r) => r.id === "routine_home_calisthenics");
+      if (homeRoutine) {
+        const mappedSplits: WorkoutSplit[] = homeRoutine.splits.map((s) => ({
+          id: s.id,
+          title: s.title,
+          muscles: s.muscles,
+          estimatedMinutes: s.estimatedMinutes,
+          exercises: mapExercises(s.exercises),
+        }));
+        setSplits(mappedSplits);
+        setSelectedSplitId(mappedSplits[0]?.id || "A");
+      }
+      return;
+    }
+
+    // Modo Academia
     const loadWorkout = () => {
       const pkg = getStudentWorkout(studentId);
       setWorkoutPackage(pkg);
 
-      // Converte os splits do pacote para o formato interno com estado de checkboxes
       const mappedSplits: WorkoutSplit[] = pkg.splits.map((s) => ({
         id: s.id,
         title: s.title,
         muscles: s.muscles,
         estimatedMinutes: s.estimatedMinutes,
-        exercises: s.exercises.map((ex) => ({
-          id: ex.id,
-          name: ex.name,
-          muscle: ex.muscle,
-          equipment: ex.equipment,
-          target: ex.target,
-          restSeconds: ex.restSeconds || 60,
-          notes: ex.notes,
-          sets: ex.sets.map((set, idx) => ({
-            setNumber: set.setNumber || idx + 1,
-            reps: set.reps,
-            weightKg: set.weightKg,
-            completed: set.completed || false,
-          })),
-        })),
+        exercises: mapExercises(s.exercises),
       }));
 
       setSplits(mappedSplits);
@@ -94,7 +138,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
     loadWorkout();
     const unsubscribe = subscribeToWorkoutChanges(loadWorkout);
     return () => unsubscribe();
-  }, [studentId]);
+  }, [studentId, workoutMode]);
 
   const currentSplit = splits.find((s) => s.id === selectedSplitId) || splits[0];
 
@@ -190,36 +234,106 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
     }
   };
 
+  // Abrir modal de GIF
+  const handleOpenGifModal = (exercise: Exercise) => {
+    triggerHaptic("selection");
+    setSelectedExerciseModal({
+      id: exercise.id,
+      name: exercise.name,
+      muscle: exercise.muscle,
+      target: exercise.target,
+      equipment: exercise.equipment,
+      notes: exercise.notes,
+      gifUrl: exercise.gifUrl,
+      mediaFrames: exercise.mediaFrames,
+      instructions: exercise.instructions,
+      tips: exercise.tips,
+    });
+    setIsGifModalOpen(true);
+  };
+
   return (
     <div className="flex flex-col gap-4 text-left w-full">
+      {/* Seletor Rápido: Ficha da Academia vs Treino em Casa (0 Equipamento) */}
+      <div className="grid grid-cols-2 p-1 bg-zinc-900/90 rounded-2xl border border-white/[0.08] shadow-md">
+        <button
+          onClick={() => {
+            triggerHaptic("selection");
+            setWorkoutMode("gym");
+          }}
+          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${
+            workoutMode === "gym"
+              ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Dumbbell className="w-3.5 h-3.5" />
+          <span>Ficha Academia</span>
+        </button>
+
+        <button
+          onClick={() => {
+            triggerHaptic("selection");
+            setWorkoutMode("home");
+          }}
+          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${
+            workoutMode === "home"
+              ? "bg-teal-400 text-zinc-950 shadow-md shadow-teal-400/20"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Home className="w-3.5 h-3.5" />
+          <span>Treino em Casa (GIFs)</span>
+        </button>
+      </div>
+
       {/* Card do Professor / Prescrição Oficial */}
-      <div className="rounded-2xl p-3.5 bg-gradient-to-br from-emerald-950/40 via-zinc-900 to-zinc-950 border border-emerald-500/30 shadow-lg relative overflow-hidden">
-        <div className="flex items-start justify-between">
+      {workoutMode === "gym" ? (
+        <div className="rounded-2xl p-3.5 bg-gradient-to-br from-emerald-950/40 via-zinc-900 to-zinc-950 border border-emerald-500/30 shadow-lg relative overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> Prescrição Profissional
+                </span>
+                <h3 className="text-xs font-black text-white">{workoutPackage.routineTitle}</h3>
+                <p className="text-[10px] text-zinc-400">
+                  {workoutPackage.prescribedBy} • {workoutPackage.prescribedAt}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {workoutPackage.coachNotes && (
+            <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-start gap-1.5 text-[10px] text-zinc-300">
+              <MessageSquareQuote className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+              <p className="leading-snug italic">"{workoutPackage.coachNotes}"</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-2xl p-3.5 bg-gradient-to-br from-teal-950/50 via-zinc-900 to-zinc-950 border border-teal-500/30 shadow-lg relative overflow-hidden">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-              <UserCheck className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300">
+              <Home className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3" /> Prescrição Profissional
+              <span className="text-[9px] font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> 100% Calistenia • 0 Equipamentos
               </span>
-              <h3 className="text-xs font-black text-white">{workoutPackage.routineTitle}</h3>
+              <h3 className="text-xs font-black text-white">Treino Funcional em Casa</h3>
               <p className="text-[10px] text-zinc-400">
-                {workoutPackage.prescribedBy} • {workoutPackage.prescribedAt}
+                Animações ExerciseDB passo a passo para sala ou quarto
               </p>
             </div>
           </div>
         </div>
+      )}
 
-        {workoutPackage.coachNotes && (
-          <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-start gap-1.5 text-[10px] text-zinc-300">
-            <MessageSquareQuote className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-            <p className="leading-snug italic">"{workoutPackage.coachNotes}"</p>
-          </div>
-        )}
-      </div>
-
-      {/* Header com Seletor de Divisões (A / B / C / D) */}
+      {/* Header com Seletor de Divisões (A / B / C) */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           {splits.map((split) => {
@@ -252,7 +366,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
         </button>
       </div>
 
-      {/* Status do Treino: Progresso & Volume de Carga */}
+      {/* Status do Treino: Progresso & Volume */}
       <div className="rounded-2xl p-3.5 bg-zinc-900/60 border border-white/[0.08] flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
           <div>
@@ -279,7 +393,11 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
         <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono pt-1">
           <span className="flex items-center gap-1">
             <Flame className="w-3 h-3 text-amber-400" />
-            Volume: <b className="text-zinc-200">{totalVolumeKg.toLocaleString()} kg</b>
+            {workoutMode === "home" ? (
+              <span>Intensidade: <b className="text-teal-300">Peso Corporal</b></span>
+            ) : (
+              <span>Volume: <b className="text-zinc-200">{totalVolumeKg.toLocaleString()} kg</b></span>
+            )}
           </span>
           <span className="text-emerald-400 font-bold">{progressPercent}% concluído</span>
         </div>
@@ -290,6 +408,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
         {currentSplit.exercises.map((exercise, exIndex) => {
           const allCompleted =
             exercise.sets.length > 0 && exercise.sets.every((s) => s.completed);
+          const firstFrame = exercise.mediaFrames?.[0];
 
           return (
             <div
@@ -301,39 +420,75 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
               }`}
             >
               {/* Topo do Exercício */}
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-white/[0.06] text-zinc-300 font-mono text-[10px] font-bold flex items-center justify-center">
+              <div className="flex items-start justify-between gap-2 mb-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Thumbnail com botão de play */}
+                  {firstFrame ? (
+                    <button
+                      onClick={() => handleOpenGifModal(exercise)}
+                      className="relative w-12 h-12 rounded-xl overflow-hidden bg-black/60 border border-white/10 shrink-0 group active:scale-95 transition-all"
+                      title="Ver demonstração animada"
+                    >
+                      <img
+                        src={firstFrame}
+                        alt={exercise.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-emerald-500 text-zinc-950 flex items-center justify-center shadow-md">
+                          <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
+                        </div>
+                      </div>
+                    </button>
+                  ) : (
+                    <span className="w-6 h-6 rounded-md bg-white/[0.06] text-zinc-300 font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
                       {exIndex + 1}
                     </span>
-                    <h4 className="text-xs font-bold text-white leading-tight">
+                  )}
+
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-white leading-tight truncate">
                       {exercise.name}
                     </h4>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-400">
-                    <span className="text-emerald-400 font-medium">{exercise.muscle}</span>
-                    <span>•</span>
-                    <span>{exercise.equipment}</span>
+                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-zinc-400">
+                      <span className="text-emerald-400 font-medium">{exercise.muscle}</span>
+                      <span>•</span>
+                      <span className="truncate">{exercise.equipment}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Botão de Timer específico do exercício */}
-                <button
-                  onClick={() => onOpenTimer(exercise.restSeconds || 60)}
-                  className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-[10px] font-mono flex items-center gap-1 border border-white/[0.06] shrink-0 active:scale-95 transition-all"
-                  title="Cronômetro de descanso"
-                >
-                  <Timer className="w-3 h-3 text-amber-400" />
-                  <span>{exercise.restSeconds || 60}s</span>
-                </button>
+                {/* Ações Rápidas: Ver GIF & Timer */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => handleOpenGifModal(exercise)}
+                    className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                    title="Ver GIF e execução"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>GIF</span>
+                  </button>
+
+                  <button
+                    onClick={() => onOpenTimer(exercise.restSeconds || 60)}
+                    className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-[10px] font-mono flex items-center gap-1 border border-white/[0.06] active:scale-95 transition-all"
+                    title="Cronômetro de descanso"
+                  >
+                    <Timer className="w-3 h-3 text-amber-400" />
+                    <span>{exercise.restSeconds || 60}s</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Notas técnicas do exercício */}
+              {/* Dica / Notas técnicas */}
               {exercise.notes && (
-                <p className="text-[10px] text-zinc-400 bg-white/[0.02] p-2 rounded-xl border border-white/[0.04] mb-2.5 leading-relaxed">
-                  💡 {exercise.notes}
-                </p>
+                <div
+                  onClick={() => handleOpenGifModal(exercise)}
+                  className="text-[10px] text-zinc-300 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer p-2 rounded-xl border border-white/[0.04] mb-2.5 leading-relaxed flex items-center justify-between gap-1 transition-colors"
+                >
+                  <span className="line-clamp-1">💡 {exercise.notes}</span>
+                  <span className="text-emerald-400 font-bold text-[9px] shrink-0">Ver técnica →</span>
+                </div>
               )}
 
               {/* Tabela de Séries */}
@@ -341,7 +496,9 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                 <div className="grid grid-cols-12 text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-2">
                   <span className="col-span-2">Série</span>
                   <span className="col-span-3 text-center">Reps</span>
-                  <span className="col-span-5 text-center">Carga (kg)</span>
+                  <span className="col-span-5 text-center">
+                    {workoutMode === "home" ? "Carga / Tipo" : "Carga (kg)"}
+                  </span>
                   <span className="col-span-2 text-right">Feito</span>
                 </div>
 
@@ -361,23 +518,31 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                       {set.reps}
                     </span>
 
-                    {/* Controle de Carga com Botões +/- */}
+                    {/* Controle de Carga com Botões +/- ou Peso Corporal */}
                     <div className="col-span-5 flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleAdjustWeight(exercise.id, set.setNumber, -2)}
-                        className="w-5 h-5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <Minus className="w-2.5 h-2.5" />
-                      </button>
-                      <span className="font-mono font-bold w-12 text-center text-white text-[11px]">
-                        {set.weightKg} kg
-                      </span>
-                      <button
-                        onClick={() => handleAdjustWeight(exercise.id, set.setNumber, 2)}
-                        className="w-5 h-5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <Plus className="w-2.5 h-2.5" />
-                      </button>
+                      {workoutMode === "home" && set.weightKg === 0 ? (
+                        <span className="text-[10px] font-mono text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-md border border-teal-500/20">
+                          Peso do Corpo
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleAdjustWeight(exercise.id, set.setNumber, -2)}
+                            className="w-5 h-5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 flex items-center justify-center active:scale-90 transition-all"
+                          >
+                            <Minus className="w-2.5 h-2.5" />
+                          </button>
+                          <span className="font-mono font-bold w-12 text-center text-white text-[11px]">
+                            {set.weightKg} kg
+                          </span>
+                          <button
+                            onClick={() => handleAdjustWeight(exercise.id, set.setNumber, 2)}
+                            className="w-5 h-5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 flex items-center justify-center active:scale-90 transition-all"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     {/* Botão de Conclusão da Série */}
@@ -400,6 +565,13 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
           );
         })}
       </div>
+
+      {/* Modal de GIF & Execução */}
+      <ExerciseGifModal
+        exercise={selectedExerciseModal}
+        isOpen={isGifModalOpen}
+        onClose={() => setIsGifModalOpen(false)}
+      />
     </div>
   );
 }

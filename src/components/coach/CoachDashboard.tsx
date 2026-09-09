@@ -20,6 +20,7 @@ import {
   Flame,
   Layers,
   ArrowRight,
+  Play,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -40,6 +41,7 @@ import {
 } from "@/lib/workout-store";
 
 import { CoachAgendaManager } from "./CoachAgendaManager";
+import { ExerciseGifModal, ExerciseModalData } from "../workout/ExerciseGifModal";
 
 interface CoachDashboardProps {
   onSwitchToStudentView?: () => void;
@@ -66,6 +68,10 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBodyPart, setSelectedBodyPart] = useState<string>("todos");
   const [searchResults, setSearchResults] = useState<ExerciseDBItem[]>(LOCAL_EXERCISE_DB);
+
+  // Preview de Animação / GIF de Exercício
+  const [previewExerciseModal, setPreviewExerciseModal] = useState<ExerciseModalData | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   // Splits customizados sendo construídos
   const [customSplits, setCustomSplits] = useState<WorkoutSplitTemplate[]>([
@@ -582,23 +588,80 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
                 key={item.id}
                 className="p-2.5 rounded-xl bg-zinc-900 border border-white/[0.06] flex items-center justify-between gap-2"
               >
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-white truncate">{item.name}</span>
-                    <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/[0.05] text-zinc-400">
-                      {item.equipment}
-                    </span>
+                <div className="flex items-center gap-2 min-w-0">
+                  {item.mediaFrames?.[0] && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setPreviewExerciseModal({
+                          id: item.id,
+                          name: item.name,
+                          muscle: item.target,
+                          target: item.target,
+                          equipment: item.equipment,
+                          instructions: item.instructions,
+                          tips: item.tips,
+                          gifUrl: item.gifUrl,
+                          mediaFrames: item.mediaFrames,
+                          difficulty: item.difficulty,
+                        });
+                        setIsPreviewModalOpen(true);
+                      }}
+                      className="w-9 h-9 rounded-lg overflow-hidden bg-black/50 border border-white/10 shrink-0 relative group"
+                      title="Ver demonstração"
+                    >
+                      <img src={item.mediaFrames[0]} alt={item.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-80 group-hover:opacity-100">
+                        <Play className="w-2.5 h-2.5 text-emerald-400 fill-current ml-0.5" />
+                      </div>
+                    </button>
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-white truncate">{item.name}</span>
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/[0.05] text-zinc-400">
+                        {item.equipment}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-emerald-400 mt-0.5 truncate">{item.target}</span>
                   </div>
-                  <span className="text-[10px] text-emerald-400 mt-0.5">{item.target}</span>
                 </div>
 
-                <button
-                  onClick={() => handleAddExerciseToSplit(item)}
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95 transition-all shadow-sm"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Add ao Treino {activeSplitId}</span>
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setPreviewExerciseModal({
+                        id: item.id,
+                        name: item.name,
+                        muscle: item.target,
+                        target: item.target,
+                        equipment: item.equipment,
+                        instructions: item.instructions,
+                        tips: item.tips,
+                        gifUrl: item.gifUrl,
+                        mediaFrames: item.mediaFrames,
+                        difficulty: item.difficulty,
+                      });
+                      setIsPreviewModalOpen(true);
+                    }}
+                    className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-emerald-400 text-xs flex items-center gap-1 border border-white/[0.06] transition-colors"
+                    title="Ver GIF e execução"
+                  >
+                    <Play className="w-3 h-3 fill-current text-emerald-400" />
+                    <span className="text-[10px] font-bold">GIF</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleAddExerciseToSplit(item)}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95 transition-all shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add Treino {activeSplitId}</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -696,6 +759,13 @@ export function CoachDashboard({ onSwitchToStudentView }: CoachDashboardProps) {
           </div>
         </div>
       )}
+
+      {/* Modal de Animação / GIF de Exercício */}
+      <ExerciseGifModal
+        exercise={previewExerciseModal}
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+      />
     </div>
   );
 }

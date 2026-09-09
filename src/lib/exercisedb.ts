@@ -1,6 +1,6 @@
 /**
  * ExerciseDB API Integration & Local Catalog Engine
- * Suporta o catálogo nativo offline-first e chamadas à ExerciseDB API (RapidAPI ou self-hosted)
+ * Suporta o catálogo nativo offline-first com animações (frames ExerciseDB) e chamadas à API
  */
 
 export interface ExerciseDBItem {
@@ -10,7 +10,9 @@ export interface ExerciseDBItem {
   target: string;
   equipment: "barbell" | "dumbbell" | "cable" | "machine" | "body weight" | "smith machine" | "band";
   gifUrl?: string;
+  mediaFrames?: string[];
   instructions: string[];
+  tips?: string[];
   difficulty?: "Iniciante" | "Intermediário" | "Avançado";
 }
 
@@ -30,6 +32,10 @@ export interface ExerciseInWorkout {
   target: string;
   restSeconds: number;
   notes?: string;
+  gifUrl?: string;
+  mediaFrames?: string[];
+  instructions?: string[];
+  tips?: string[];
   sets: WorkoutSetTemplate[];
 }
 
@@ -51,21 +57,252 @@ export interface PreFormedWorkoutRoutine {
   splits: WorkoutSplitTemplate[];
 }
 
+const CDN_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";
+
 // -------------------------------------------------------------
 // CATÁLOGO EXPANDIDO DE EXERCÍCIOS BASEADOS NA EXERCISEDB
+// COM ANIMAÇÕES (FRAMES CONCÊNTRICO/EXCÊNTRICO) E DICAS DO PERSONAL
 // -------------------------------------------------------------
 export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
-  // PEITO (CHEST)
+  // TREINO EM CASA / CALISTENIA (0 EQUIPAMENTOS)
+  {
+    id: "ex_pushups",
+    name: "Flexão de Braço (Push-ups)",
+    bodyPart: "chest",
+    target: "Peitoral, Tríceps & Core",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Pushups/0.jpg`,
+      `${CDN_BASE}/Pushups/1.jpg`,
+    ],
+    instructions: [
+      "Posicione as palmas das mãos no chão, ligeiramente mais afastadas que a largura dos ombros.",
+      "Mantenha o corpo alinhado da cabeça aos calcanhares, glúteos e abdômen contraídos.",
+      "Desça flexionando os cotovelos a 45° até o peito quase tocar o chão e empurre com força.",
+    ],
+    tips: [
+      "Mantenha a coluna neutra: nunca deixe o quadril desabar.",
+      "Expire no momento em que empurra o chão e inspire na descida.",
+      "Se cansar, apoie os joelhos temporariamente para manter o volume.",
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_bodyweight_squat",
+    name: "Agachamento Livre (Peso do Corpo)",
+    bodyPart: "upper legs",
+    target: "Quadríceps & Glúteos",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Bodyweight_Squat/0.jpg`,
+      `${CDN_BASE}/Bodyweight_Squat/1.jpg`,
+    ],
+    instructions: [
+      "Fique em pé com os pés na largura dos ombros e pontas apontando levemente para fora.",
+      "Inicie o movimento projetando os quadris para trás como se fosse sentar em uma cadeira.",
+      "Desça até os quadris ultrapassarem a linha dos joelhos (quebrar 90°) mantendo o peito ereto.",
+      "Empurre através de toda a sola do pé retornando à posição ereta.",
+    ],
+    tips: [
+      "Não deixe os joelhos fecharem para dentro (valgo dinâmico).",
+      "Mantenha os calcanhares totalmente colados ao chão.",
+      "Olhe fixamente para a frente para estabilizar o equilíbrio.",
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_plank",
+    name: "Prancha Abdominal Isométrica",
+    bodyPart: "waist",
+    target: "Core, Reto Abdominal & Transverso",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Plank/0.jpg`,
+      `${CDN_BASE}/Plank/0.jpg`,
+    ],
+    instructions: [
+      "Apoie os antebraços no chão alinhados logo abaixo da linha dos ombros.",
+      "Apoie as pontas dos pés atrás mantendo o corpo reto como uma prancha rígida.",
+      "Puxe o umbigo para dentro em direção à coluna e mantenha a respiração estável.",
+    ],
+    tips: [
+      "Contraia fortemente os glúteos para tirar pressão da lombar.",
+      "Não deixe o pescoço cair, mantenha a cabeça alinhada com as costas.",
+      "Foque em isometria ativa de 30 a 60 segundos por série.",
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_bench_dips",
+    name: "Tríceps no Banco / Cadeira",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial & Peitoral Inferior",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Bench_Dips/0.jpg`,
+      `${CDN_BASE}/Bench_Dips/1.jpg`,
+    ],
+    instructions: [
+      "Apoie as mãos na borda de um banco resistente, sofá ou cadeira com os dedos voltados para a frente.",
+      "Estenda as pernas para a frente (ou flexione joelhos para facilitar).",
+      "Desça o corpo flexionando os cotovelos até 90 graus, rente ao banco.",
+      "Empurre de volta contraindo os tríceps no topo da extensão.",
+    ],
+    tips: [
+      "Mantenha as costas o mais próximas possível do apoio durante a descida.",
+      "Evite hiperflexionar os ombros para não sobrecarregar a articulação.",
+      "Segure 1 segundo no pico de contração no topo.",
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_walking_lunge",
+    name: "Passada / Avanço com Peso do Corpo",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Glúteos & Isquiotibiais",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Bodyweight_Walking_Lunge/0.jpg`,
+      `${CDN_BASE}/Bodyweight_Walking_Lunge/1.jpg`,
+    ],
+    instructions: [
+      "Em pé com pés juntos, dê um passo largo para a frente.",
+      "Desça o joelho de trás até quase tocar o chão formando 90° em ambas as pernas.",
+      "Empurre pela perna da frente e avance com a perna oposta.",
+    ],
+    tips: [
+      "Mantenha o tronco ereto e o core sempre ativado.",
+      "O joelho da frente não deve colapsar para dentro.",
+      "Distribua a carga no calcanhar do pé dianteiro.",
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_crunches",
+    name: "Abdominal Supra Clássico",
+    bodyPart: "waist",
+    target: "Reto Abdominal (Foco Superior)",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Crunches/0.jpg`,
+      `${CDN_BASE}/Crunches/1.jpg`,
+    ],
+    instructions: [
+      "Deite-se no chão com os joelhos flexionados e pés apoiados.",
+      "Apoie as mãos ao lado das orelhas sem puxar a nuca.",
+      "Flexione a coluna elevando os ombros em direção aos joelhos, contraindo o abdômen.",
+      "Retorne sem relaxar a musculatura abdominal.",
+    ],
+    tips: [
+      "Imagine uma maçã entre seu queixo e peito para não forçar o pescoço.",
+      "Solte todo o ar (expire) no ponto mais alto da contração.",
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_butt_lift_bridge",
+    name: "Ponte de Glúteos no Solo (Glute Bridge)",
+    bodyPart: "upper legs",
+    target: "Glúteo Máximo & Isquiotibiais",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Butt_Lift_Bridge/0.jpg`,
+      `${CDN_BASE}/Butt_Lift_Bridge/1.jpg`,
+    ],
+    instructions: [
+      "Deite de costas com braços estendidos ao lado do corpo e joelhos flexionados.",
+      "Pressione os calcanhares contra o solo e eleve o quadril até formar uma linha reta com as coxas.",
+      "Aperte o glúteo no topo por 2 segundos antes de descer lentamente.",
+    ],
+    tips: [
+      "Evite arquear a coluna lombar no topo, o movimento vem do quadril.",
+      "Para aumentar a intensidade, faça com uma perna de cada vez (unilateral).",
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_mountain_climbers",
+    name: "Escalador na Prancha (Mountain Climbers)",
+    bodyPart: "waist",
+    target: "Core, Abdômen & Cardio",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Mountain_Climbers/0.jpg`,
+      `${CDN_BASE}/Mountain_Climbers/1.jpg`,
+    ],
+    instructions: [
+      "Inicie na posição de prancha alta com as mãos alinhadas aos ombros.",
+      "Puxe um dos joelhos em direção ao peito em velocidade constante.",
+      "Alterne as pernas rapidamente como se estivesse escalando em ritmo acelerado.",
+    ],
+    tips: [
+      "Não eleve o quadril muito alto, mantenha-o no plano dos ombros.",
+      "Excelente para queima calórica e condicionamento metabólico.",
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_jump_squat",
+    name: "Agachamento com Salto (Jump Squat)",
+    bodyPart: "upper legs",
+    target: "Potência de Membros Inferiores & Glúteos",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Freehand_Jump_Squat/0.jpg`,
+      `${CDN_BASE}/Freehand_Jump_Squat/1.jpg`,
+    ],
+    instructions: [
+      "Posicione-se para o agachamento e desça até 90°.",
+      "Exploda para cima num salto vertical impulsionando os braços.",
+      "Aterrisse suavemente com as pontas dos pés flexionando os joelhos para absorver o impacto.",
+    ],
+    tips: [
+      "Priorize uma aterrissagem macia e silenciosa para proteger os meniscos.",
+      "Respire no agachamento e solte o ar na explosão do salto.",
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_russian_twist",
+    name: "Russian Twist no Solo",
+    bodyPart: "waist",
+    target: "Oblíquos & Abdômen Lateral",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Russian_Twist/0.jpg`,
+      `${CDN_BASE}/Russian_Twist/1.jpg`,
+    ],
+    instructions: [
+      "Sente-se no chão, incline o tronco 45° para trás e retire levemente os pés do solo.",
+      "Gire o tronco de um lado para o outro tocando as mãos próximo ao chão de cada lado.",
+      "Mantenha o peito aberto e respiração contínua.",
+    ],
+    tips: [
+      "Gire os ombros por completo e não apenas os braços.",
+      "Se for difícil manter os pés suspensos, apoie os calcanhares no chão.",
+    ],
+    difficulty: "Iniciante",
+  },
+
+  // PEITO (CHEST - MUSCULAÇÃO)
   {
     id: "ex_bench_press",
     name: "Supino Reto com Barra",
     bodyPart: "chest",
     target: "Peitoral Maior",
     equipment: "barbell",
+    mediaFrames: [
+      `${CDN_BASE}/Barbell_Bench_Press_-_Medium_Grip/0.jpg`,
+      `${CDN_BASE}/Barbell_Bench_Press_-_Medium_Grip/1.jpg`,
+    ],
     instructions: [
       "Deite-se no banco plano com os olhos alinhados à barra.",
       "Pegada ligeiramente mais larga que os ombros, escápulas retraídas.",
       "Desça a barra controladamente até o terço inferior do peito e empurre.",
+    ],
+    tips: [
+      "Plante os pés firmemente no chão para tração de força (leg drive).",
+      "Cotovelos a 70 graus do tronco, nunca a 90 graus para preservar o manguito.",
     ],
     difficulty: "Intermediário",
   },
@@ -75,10 +312,18 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     bodyPart: "chest",
     target: "Peitoral Superior (Clavicular)",
     equipment: "dumbbell",
+    mediaFrames: [
+      `${CDN_BASE}/Incline_Dumbbell_Press/0.jpg`,
+      `${CDN_BASE}/Incline_Dumbbell_Press/1.jpg`,
+    ],
     instructions: [
       "Ajuste o banco entre 30° e 45°.",
       "Mantenha os cotovelos a 75° do tronco.",
       "Eleve os halteres em arco suave sem bater um no outro no topo.",
+    ],
+    tips: [
+      "Não use inclinação acima de 45°, pois transfere a carga para os ombros.",
+      "Desça sentindo o alongamento da porção clavicular do peito.",
     ],
     difficulty: "Intermediário",
   },
@@ -93,6 +338,7 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
       "Tronco levemente inclinado para frente, cotovelos semiflexionados.",
       "Aperte as mãos à frente do peito segurando o pico de contração por 1s.",
     ],
+    tips: ["Mantenha a articulação do cotovelo travada no mesmo ângulo."],
     difficulty: "Iniciante",
   },
   {
@@ -101,25 +347,17 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     bodyPart: "chest",
     target: "Peitoral Inferior & Tríceps",
     equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Dips_-_Chest_Version/0.jpg`,
+      `${CDN_BASE}/Dips_-_Chest_Version/1.jpg`,
+    ],
     instructions: [
       "Incline o tronco para a frente em aproximadamente 30 graus.",
       "Desça até os cotovelos atingirem 90 graus de flexão.",
       "Empurre ativando a porção inferior do peitoral.",
     ],
+    tips: ["Cruze as pernas atrás e mantenha o olhar para baixo para focar no peito."],
     difficulty: "Avançado",
-  },
-  {
-    id: "ex_chest_press_machine",
-    name: "Supino Reto Articulado / Máquina",
-    bodyPart: "chest",
-    target: "Peitoral Maior",
-    equipment: "machine",
-    instructions: [
-      "Ajuste a altura do banco para que as manoplas fiquem na linha do peito.",
-      "Mantenha os pés firmes e escápulas aduzidas.",
-      "Empurre de forma explosiva e controle a volta por 3 segundos.",
-    ],
-    difficulty: "Iniciante",
   },
 
   // COSTAS (BACK)
@@ -129,12 +367,38 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     bodyPart: "back",
     target: "Latíssimo do Dorso",
     equipment: "cable",
+    mediaFrames: [
+      `${CDN_BASE}/Wide-Grip_Lat_Pulldown/0.jpg`,
+      `${CDN_BASE}/Wide-Grip_Lat_Pulldown/1.jpg`,
+    ],
     instructions: [
       "Segure a barra com pegada pronada aberta.",
       "Puxe a barra em direção à parte superior do peito direcionando cotovelos para baixo.",
       "Evite balançar excessivamente o tronco para trás.",
     ],
+    tips: [
+      "Pense em 'puxar com os cotovelos' e não com as mãos para ativar as dorsais.",
+      "Alongue totalmente as escápulas na subida.",
+    ],
     difficulty: "Iniciante",
+  },
+  {
+    id: "ex_pullup",
+    name: "Barra Fixa Pronada (Pull-up)",
+    bodyPart: "back",
+    target: "Latíssimo do Dorso & Bíceps",
+    equipment: "body weight",
+    mediaFrames: [
+      `${CDN_BASE}/Pullups/0.jpg`,
+      `${CDN_BASE}/Pullups/1.jpg`,
+    ],
+    instructions: [
+      "Pegada mais larga que os ombros, corpo suspenso.",
+      "Inicie a tração com as escápulas antes dos braços.",
+      "Passe o queixo acima da barra e desça controlado.",
+    ],
+    tips: ["Evite o 'kipping' ou impulso das pernas para foco máximo em hipertrofia."],
+    difficulty: "Avançado",
   },
   {
     id: "ex_barbell_bent_over_row",
@@ -147,46 +411,8 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
       "Puxe a barra em direção à cicatriz umbilical.",
       "Aperte as escápulas no topo e desça com amplitude completa.",
     ],
+    tips: ["Lombar travada, nunca curve as costas para evitar lesões."],
     difficulty: "Intermediário",
-  },
-  {
-    id: "ex_seated_cable_row",
-    name: "Remada Baixa com Triângulo",
-    bodyPart: "back",
-    target: "Latíssimo e Miolo das Costas",
-    equipment: "cable",
-    instructions: [
-      "Sente-se com pés apoiados e coluna ereta.",
-      "Puxe a manopla contra o abdômen sem hiperextender a lombar.",
-      "Alongue bem as dorsais na fase excêntrica.",
-    ],
-    difficulty: "Iniciante",
-  },
-  {
-    id: "ex_deadlift",
-    name: "Levantamento Terra Clássico",
-    bodyPart: "back",
-    target: "Cadeia Posterior, Lombar e Dorsais",
-    equipment: "barbell",
-    instructions: [
-      "Pés na largura dos quadris, barra rente às canelas.",
-      "Abdômen travado com manobra de Valsalva.",
-      "Suba estendendo joelhos e quadris simultaneamente com a barra colada ao corpo.",
-    ],
-    difficulty: "Avançado",
-  },
-  {
-    id: "ex_pullup",
-    name: "Barra Fixa Pronada",
-    bodyPart: "back",
-    target: "Latíssimo do Dorso",
-    equipment: "body weight",
-    instructions: [
-      "Pegada mais larga que os ombros, corpo suspenso.",
-      "Inicie a tração com as escápulas antes dos braços.",
-      "Passe o queixo acima da barra e desça controlado.",
-    ],
-    difficulty: "Avançado",
   },
 
   // PERNAS & GLÚTEOS (UPPER LEGS & GLUTES)
@@ -196,10 +422,39 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     bodyPart: "upper legs",
     target: "Quadríceps, Glúteos & Core",
     equipment: "barbell",
+    mediaFrames: [
+      `${CDN_BASE}/Barbell_Squat/0.jpg`,
+      `${CDN_BASE}/Barbell_Squat/1.jpg`,
+    ],
     instructions: [
       "Barra apoiada sobre o trapézio, pés na largura dos ombros.",
       "Desça flexionando quadris e joelhos até que as coxas quebrem o paralelo (90°).",
       "Empurre o chão através dos calcanhares mantendo o peito ereto.",
+    ],
+    tips: [
+      "Mantenha os cotovelos sob a barra para suporte firme da parte superior das costas.",
+      "Preencha o abdômen com ar na descida e solte na subida.",
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_hip_thrust",
+    name: "Elevação Pélvica com Barra (Hip Thrust)",
+    bodyPart: "upper legs",
+    target: "Glúteo Máximo",
+    equipment: "barbell",
+    mediaFrames: [
+      `${CDN_BASE}/Barbell_Hip_Thrust/0.jpg`,
+      `${CDN_BASE}/Barbell_Hip_Thrust/1.jpg`,
+    ],
+    instructions: [
+      "Apoie as costas no banco abaixo das escápulas, barra sobre o quadril com almofada.",
+      "Pés firmes no chão, canelas verticais no topo do movimento.",
+      "Estenda o quadril completamente e contraia os glúteos por 2 segundos no topo.",
+    ],
+    tips: [
+      "Olhe sempre para a frente e mantenha o queixo apontado para o peito.",
+      "Empurre com os calcanhares para isolar o glúteo.",
     ],
     difficulty: "Intermediário",
   },
@@ -212,60 +467,9 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     instructions: [
       "Pés no meio da plataforma na largura dos ombros.",
       "Destrave o peso e desça até que os joelhos formem 90 graus sem tirar o quadril do encosto.",
-      "Empurre sem travar/hiperextender totalmente os joelhos no final.",
+      "Empurre sem travar totalmente os joelhos no final.",
     ],
-    difficulty: "Iniciante",
-  },
-  {
-    id: "ex_hip_thrust",
-    name: "Elevação Pélvica com Barra",
-    bodyPart: "upper legs",
-    target: "Glúteo Máximo",
-    equipment: "barbell",
-    instructions: [
-      "Apoie as costas no banco abaixo das escápulas, barra sobre o quadril com almofada.",
-      "Pés firmes no chão, canelas verticais no topo do movimento.",
-      "Estenda o quadril completamente e contraia os glúteos por 2 segundos no topo.",
-    ],
-    difficulty: "Intermediário",
-  },
-  {
-    id: "ex_bulgarian_split_squat",
-    name: "Agachamento Búlgaro com Halteres",
-    bodyPart: "upper legs",
-    target: "Glúteo e Quadríceps Unilateral",
-    equipment: "dumbbell",
-    instructions: [
-      "Apoie o peito do pé de trás sobre um banco.",
-      "Desça o joelho de trás em direção ao chão mantendo o tronco levemente inclinado à frente.",
-      "Empurre pela perna da frente focando na ativação glútea.",
-    ],
-    difficulty: "Avançado",
-  },
-  {
-    id: "ex_leg_extension",
-    name: "Cadeira Extensora",
-    bodyPart: "upper legs",
-    target: "Reto Femoral / Quadríceps",
-    equipment: "machine",
-    instructions: [
-      "Ajuste o rolo logo acima dos tornozelos e o encosto na lombar.",
-      "Estenda as pernas controlando o movimento, segure 1 segundo no pico.",
-      "Retorne lentamente sem deixar as placas de peso baterem.",
-    ],
-    difficulty: "Iniciante",
-  },
-  {
-    id: "ex_seated_leg_curl",
-    name: "Cadeira Flexora",
-    bodyPart: "upper legs",
-    target: "Isquiotibiais (Posterior de Coxa)",
-    equipment: "machine",
-    instructions: [
-      "Trave a almofada firmemente acima dos joelhos.",
-      "Flexione as pernas para trás puxando o calcanhar sob o assento.",
-      "Sinta o posterior de coxa alongar durante a subida controlada.",
-    ],
+    tips: ["Nunca tire a lombar ou bacia do apoio do assento."],
     difficulty: "Iniciante",
   },
 
@@ -276,11 +480,16 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     bodyPart: "shoulders",
     target: "Deltoide Anterior & Lateral",
     equipment: "dumbbell",
+    mediaFrames: [
+      `${CDN_BASE}/Dumbbell_Shoulder_Press/0.jpg`,
+      `${CDN_BASE}/Dumbbell_Shoulder_Press/1.jpg`,
+    ],
     instructions: [
       "Banco em 75°-80°, halteres na altura das orelhas.",
       "Pressione os pesos acima da cabeça em arco convergente.",
       "Desça lentamente sem relaxar a tensão muscular.",
     ],
+    tips: ["Não deixe a lombar arquear excessivamente para longe do banco."],
     difficulty: "Intermediário",
   },
   {
@@ -289,107 +498,37 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     bodyPart: "shoulders",
     target: "Deltoide Lateral",
     equipment: "dumbbell",
+    mediaFrames: [
+      `${CDN_BASE}/Side_Lateral_Raise/0.jpg`,
+      `${CDN_BASE}/Side_Lateral_Raise/1.jpg`,
+    ],
     instructions: [
       "Corpo levemente inclinado para a frente, cotovelos levemente flexionados.",
       "Eleve os braços lateralmente até a linha dos ombros.",
       "Foque em liderar a subida pelos cotovelos, não pelos punhos.",
     ],
-    difficulty: "Iniciante",
-  },
-  {
-    id: "ex_face_pull",
-    name: "Face Pull na Polia",
-    bodyPart: "shoulders",
-    target: "Deltoide Posterior & Manguito",
-    equipment: "cable",
-    instructions: [
-      "Corda na altura do rosto ou olhos.",
-      "Puxe em direção à testa afastando as mãos e rotacionando externamente os ombros.",
-      "Excelente para postura e proteção articular dos ombros.",
-    ],
+    tips: ["Evite usar embalo corporal ou jogar os halteres com os trapézios."],
     difficulty: "Iniciante",
   },
 
-  // BRAÇOS (UPPER ARMS - BICEPS & TRICEPS)
+  // BRAÇOS (UPPER ARMS)
   {
     id: "ex_barbell_curl",
-    name: "Rosca Direta com Barra W",
+    name: "Rosca Direta com Barra",
     bodyPart: "upper arms",
     target: "Bíceps Braquial",
     equipment: "barbell",
+    mediaFrames: [
+      `${CDN_BASE}/Barbell_Curl/0.jpg`,
+      `${CDN_BASE}/Barbell_Curl/1.jpg`,
+    ],
     instructions: [
       "Cotovelos colados ao lado do tronco durante toda a execução.",
       "Flexione os braços sem balançar a lombar.",
       "Desça estendendo quase por completo sem relaxar a tensão.",
     ],
+    tips: ["Não projete os cotovelos para a frente no topo do movimento."],
     difficulty: "Iniciante",
-  },
-  {
-    id: "ex_incline_dumbbell_curl",
-    name: "Rosca Inclinada 45°",
-    bodyPart: "upper arms",
-    target: "Cabeça Longa do Bíceps",
-    equipment: "dumbbell",
-    instructions: [
-      "Deite em banco inclinado a 45° com os braços suspensos para trás.",
-      "Flexione os cotovelos mantendo o alongamento máximo na base.",
-      "Supine os punhos no topo do movimento.",
-    ],
-    difficulty: "Intermediário",
-  },
-  {
-    id: "ex_triceps_rope_pushdown",
-    name: "Tríceps Corda no Pulley",
-    bodyPart: "upper arms",
-    target: "Cabeça Lateral do Tríceps",
-    equipment: "cable",
-    instructions: [
-      "Prenda a corda na polia alta, cotovelos travados ao lado do corpo.",
-      "Empurre para baixo e abra as pontas da corda na extensão total.",
-      "Retorne até os antebraços formarem 90 graus.",
-    ],
-    difficulty: "Iniciante",
-  },
-  {
-    id: "ex_skull_crusher",
-    name: "Tríceps Testa com Barra W",
-    bodyPart: "upper arms",
-    target: "Cabeça Longa e Medial do Tríceps",
-    equipment: "barbell",
-    instructions: [
-      "Deitado no banco, barra suspensa com braços verticais.",
-      "Flexione os cotovelos descendo a barra até a testa ou pouco atrás da cabeça.",
-      "Estenda os antebraços mantendo os cotovelos estáveis.",
-    ],
-    difficulty: "Intermediário",
-  },
-
-  // ABDÔMEN & CORE (WAIST)
-  {
-    id: "ex_hanging_leg_raise",
-    name: "Elevação de Pernas na Barra Fixa",
-    bodyPart: "waist",
-    target: "Abdômen Infra & Flexores de Quadril",
-    equipment: "body weight",
-    instructions: [
-      "Pendure-se na barra fixa com pegada firme.",
-      "Eleve os joelhos ou pernas retas em direção ao peito arredondando a bacia.",
-      "Desça sem usar o balanço pendular do corpo.",
-    ],
-    difficulty: "Avançado",
-  },
-  {
-    id: "ex_cable_crunch",
-    name: "Abdominal no Pulley (Cable Crunch)",
-    bodyPart: "waist",
-    target: "Reto Abdominal",
-    equipment: "cable",
-    instructions: [
-      "Ajoelhe-se em frente à polia alta segurando a corda atrás da nuca.",
-      "Flexione a coluna aproximando as costelas da pelve.",
-      "Mantenha o quadril fixo, sem sentar nos calcanhares.",
-    ],
-    difficulty: "Intermediário",
   },
 ];
 
@@ -397,13 +536,288 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
 // TEMPLATES DE TREINOS PRÉ-FORMADOS PRONTOS PARA O PROFESSOR
 // -------------------------------------------------------------
 export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
+  // 1. NOVO: TREINO EM CASA (0 EQUIPAMENTOS)
+  {
+    id: "routine_home_calisthenics",
+    name: "Treino em Casa (0 Equipamentos / Peso do Corpo)",
+    category: "Iniciante",
+    difficulty: "Iniciante",
+    frequency: "3 a 5 dias na semana",
+    description: "Sessão 100% funcional para realizar na sala ou quarto sem precisar de nenhum acessório. Acompanhe a cadência perfeita com as animações.",
+    splits: [
+      {
+        id: "A",
+        title: "Treino A — Superior & Core (Sala de Casa)",
+        muscles: "Peitoral, Tríceps, Abdômen & Core",
+        estimatedMinutes: 35,
+        exercises: [
+          {
+            id: "hc1",
+            exerciseId: "ex_pushups",
+            name: "Flexão de Braço (Push-ups)",
+            muscle: "Peitoral, Tríceps & Core",
+            equipment: "Peso do Corpo",
+            target: "4 séries × 10-15 reps",
+            restSeconds: 60,
+            notes: "Mantenha o corpo em linha reta e abdômen contraído.",
+            mediaFrames: [
+              `${CDN_BASE}/Pushups/0.jpg`,
+              `${CDN_BASE}/Pushups/1.jpg`,
+            ],
+            instructions: [
+              "Palmas apoiadas na largura dos ombros.",
+              "Desça o peito até 2 dedos do chão.",
+              "Empurre de volta com cadência controlada.",
+            ],
+            tips: ["Se necessário, apoie os joelhos nas últimas repetições."],
+            sets: [
+              { setNumber: 1, reps: 15, weightKg: 0 },
+              { setNumber: 2, reps: 12, weightKg: 0 },
+              { setNumber: 3, reps: 10, weightKg: 0 },
+              { setNumber: 4, reps: 10, weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc2",
+            exerciseId: "ex_bench_dips",
+            name: "Tríceps no Banco / Cadeira",
+            muscle: "Tríceps Braquial",
+            equipment: "Cadeira / Sofá",
+            target: "3 séries × 12-15 reps",
+            restSeconds: 45,
+            notes: "Mãos apoiadas no assento da cadeira, costas rentes ao apoio.",
+            mediaFrames: [
+              `${CDN_BASE}/Bench_Dips/0.jpg`,
+              `${CDN_BASE}/Bench_Dips/1.jpg`,
+            ],
+            instructions: [
+              "Apoie as mãos na borda do banco e estenda as pernas à frente.",
+              "Desça até 90 graus de flexão dos cotovelos.",
+              "Estenda os braços contraindo o tríceps no topo.",
+            ],
+            tips: ["Segure 1 segundo no pico de contração."],
+            sets: [
+              { setNumber: 1, reps: 15, weightKg: 0 },
+              { setNumber: 2, reps: 12, weightKg: 0 },
+              { setNumber: 3, reps: 12, weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc3",
+            exerciseId: "ex_mountain_climbers",
+            name: "Escalador na Prancha (Mountain Climbers)",
+            muscle: "Core & Queima Calórica",
+            equipment: "Solo / Peso do Corpo",
+            target: "3 séries × 30 segundos",
+            restSeconds: 45,
+            notes: "Alterne os joelhos ao peito mantendo a prancha firme.",
+            mediaFrames: [
+              `${CDN_BASE}/Mountain_Climbers/0.jpg`,
+              `${CDN_BASE}/Mountain_Climbers/1.jpg`,
+            ],
+            instructions: [
+              "Posição de prancha alta com mãos firmes.",
+              "Puxe os joelhos em ritmo dinâmico e ritmado.",
+            ],
+            tips: ["Não deixe o quadril subir muito alto."],
+            sets: [
+              { setNumber: 1, reps: "30s", weightKg: 0 },
+              { setNumber: 2, reps: "30s", weightKg: 0 },
+              { setNumber: 3, reps: "30s", weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc4",
+            exerciseId: "ex_crunches",
+            name: "Abdominal Supra Clássico",
+            muscle: "Reto Abdominal",
+            equipment: "Tapete / Solo",
+            target: "4 séries × 20 reps",
+            restSeconds: 45,
+            notes: "Expire todo o ar no topo da contração.",
+            mediaFrames: [
+              `${CDN_BASE}/Crunches/0.jpg`,
+              `${CDN_BASE}/Crunches/1.jpg`,
+            ],
+            instructions: [
+              "Deite com joelhos flexionados.",
+              "Flexione a coluna elevando os ombros do chão.",
+            ],
+            tips: ["Não puxe a cabeça com as mãos."],
+            sets: [
+              { setNumber: 1, reps: 20, weightKg: 0 },
+              { setNumber: 2, reps: 20, weightKg: 0 },
+              { setNumber: 3, reps: 18, weightKg: 0 },
+              { setNumber: 4, reps: 15, weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc5",
+            exerciseId: "ex_plank",
+            name: "Prancha Abdominal Isométrica",
+            muscle: "Core & Estabilizadores",
+            equipment: "Solo",
+            target: "3 séries × 45 segundos",
+            restSeconds: 60,
+            notes: "Corpo como uma barra de ferro, sem arquear a lombar.",
+            mediaFrames: [
+              `${CDN_BASE}/Plank/0.jpg`,
+              `${CDN_BASE}/Plank/0.jpg`,
+            ],
+            instructions: [
+              "Apoie antebraços e pontas dos pés.",
+              "Mantenha o alinhamento corporal perfeito.",
+            ],
+            tips: ["Aperte os glúteos para proteção da lombar."],
+            sets: [
+              { setNumber: 1, reps: "45s", weightKg: 0 },
+              { setNumber: 2, reps: "40s", weightKg: 0 },
+              { setNumber: 3, reps: "35s", weightKg: 0 },
+            ],
+          },
+        ],
+      },
+      {
+        id: "B",
+        title: "Treino B — Pernas & Glúteos (Zero Equipamentos)",
+        muscles: "Quadríceps, Glúteos & Oblíquos",
+        estimatedMinutes: 40,
+        exercises: [
+          {
+            id: "hc6",
+            exerciseId: "ex_bodyweight_squat",
+            name: "Agachamento Livre (Peso do Corpo)",
+            muscle: "Quadríceps & Glúteos",
+            equipment: "Peso do Corpo",
+            target: "4 séries × 15-20 reps",
+            restSeconds: 60,
+            notes: "Quebre o paralelo com peito aberto e calcanhares firmes.",
+            mediaFrames: [
+              `${CDN_BASE}/Bodyweight_Squat/0.jpg`,
+              `${CDN_BASE}/Bodyweight_Squat/1.jpg`,
+            ],
+            instructions: [
+              "Pés na largura dos ombros.",
+              "Desça empurrando o quadril para trás.",
+              "Suba apertando o quadríceps e glúteos.",
+            ],
+            tips: ["Não deixe os joelhos fecharem para dentro."],
+            sets: [
+              { setNumber: 1, reps: 20, weightKg: 0 },
+              { setNumber: 2, reps: 20, weightKg: 0 },
+              { setNumber: 3, reps: 15, weightKg: 0 },
+              { setNumber: 4, reps: 15, weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc7",
+            exerciseId: "ex_walking_lunge",
+            name: "Passada / Avanço com Peso do Corpo",
+            muscle: "Glúteos & Coxas",
+            equipment: "Passada no Quarto/Sala",
+            target: "3 séries × 12 reps cada perna",
+            restSeconds: 60,
+            notes: "Passo largo com 90° em ambos os joelhos.",
+            mediaFrames: [
+              `${CDN_BASE}/Bodyweight_Walking_Lunge/0.jpg`,
+              `${CDN_BASE}/Bodyweight_Walking_Lunge/1.jpg`,
+            ],
+            instructions: [
+              "Avance com uma perna flexionando até 90°.",
+              "Impulsione para o próximo passo.",
+            ],
+            tips: ["Mantenha o tronco ereto e o core acionado."],
+            sets: [
+              { setNumber: 1, reps: 12, weightKg: 0 },
+              { setNumber: 2, reps: 12, weightKg: 0 },
+              { setNumber: 3, reps: 12, weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc8",
+            exerciseId: "ex_butt_lift_bridge",
+            name: "Ponte de Glúteos no Solo",
+            muscle: "Glúteo Máximo",
+            equipment: "Tapete / Solo",
+            target: "4 séries × 15 reps (2s isometria)",
+            restSeconds: 45,
+            notes: "Segure 2 segundos apertando o glúteo no topo.",
+            mediaFrames: [
+              `${CDN_BASE}/Butt_Lift_Bridge/0.jpg`,
+              `${CDN_BASE}/Butt_Lift_Bridge/1.jpg`,
+            ],
+            instructions: [
+              "Deite de costas e eleve o quadril pelos calcanhares.",
+              "Contraia o topo e desça sem encostar totalmente o quadril.",
+            ],
+            tips: ["Mantenha os calcanhares firmes no chão."],
+            sets: [
+              { setNumber: 1, reps: 15, weightKg: 0 },
+              { setNumber: 2, reps: 15, weightKg: 0 },
+              { setNumber: 3, reps: 15, weightKg: 0 },
+              { setNumber: 4, reps: 15, weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc9",
+            exerciseId: "ex_jump_squat",
+            name: "Agachamento com Salto (Jump Squat)",
+            muscle: "Potência & Queima Metabólica",
+            equipment: "Peso do Corpo",
+            target: "3 séries × 10 reps",
+            restSeconds: 60,
+            notes: "Exploda no salto e aterrisse suavemente amortecendo.",
+            mediaFrames: [
+              `${CDN_BASE}/Freehand_Jump_Squat/0.jpg`,
+              `${CDN_BASE}/Freehand_Jump_Squat/1.jpg`,
+            ],
+            instructions: [
+              "Agache até 90° e salte com potência.",
+              "Aterrisse suave com a ponta dos pés.",
+            ],
+            tips: ["Aterrissagem macia para amortecer articulações."],
+            sets: [
+              { setNumber: 1, reps: 10, weightKg: 0 },
+              { setNumber: 2, reps: 10, weightKg: 0 },
+              { setNumber: 3, reps: 10, weightKg: 0 },
+            ],
+          },
+          {
+            id: "hc10",
+            exerciseId: "ex_russian_twist",
+            name: "Russian Twist no Solo",
+            muscle: "Oblíquos & Abdômen",
+            equipment: "Tapete / Solo",
+            target: "3 séries × 20 rotações",
+            restSeconds: 45,
+            notes: "Tronco em 45 graus, gire os ombros de um lado ao outro.",
+            mediaFrames: [
+              `${CDN_BASE}/Russian_Twist/0.jpg`,
+              `${CDN_BASE}/Russian_Twist/1.jpg`,
+            ],
+            instructions: [
+              "Sente-se inclinado para trás e gire o tronco alternando os lados.",
+            ],
+            tips: ["Gire os ombros por completo e não apenas os braços."],
+            sets: [
+              { setNumber: 1, reps: 20, weightKg: 0 },
+              { setNumber: 2, reps: 20, weightKg: 0 },
+              { setNumber: 3, reps: 20, weightKg: 0 },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+
+  // 2. HIPERTROFIA CLÁSSICA ABC
   {
     id: "routine_hypertrophy_abc",
     name: "Hipertrofia Clássica ABC (Push / Pull / Legs)",
     category: "Hipertrofia",
     difficulty: "Intermediário",
     frequency: "3 a 6 dias na semana",
-    description: "Divisão mais consagrada da musculação para ganho de massa magra e densidade muscular.",
+    description: "Divisão consagrada da musculação para ganho de massa magra e densidade muscular.",
     splits: [
       {
         id: "A",
@@ -420,6 +834,15 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
             target: "4 séries × 8-10 reps",
             restSeconds: 90,
             notes: "Cadência 3-0-1. Escápulas travadas no banco.",
+            mediaFrames: [
+              `${CDN_BASE}/Barbell_Bench_Press_-_Medium_Grip/0.jpg`,
+              `${CDN_BASE}/Barbell_Bench_Press_-_Medium_Grip/1.jpg`,
+            ],
+            instructions: [
+              "Deite com os olhos alinhados à barra e pegada na largura dos ombros.",
+              "Desça a barra até a linha dos mamilos controladamente e empurre.",
+            ],
+            tips: ["Mantenha os pés firmes no chão para empurrar com força."],
             sets: [
               { setNumber: 1, reps: 10, weightKg: 60 },
               { setNumber: 2, reps: 10, weightKg: 70 },
@@ -436,6 +859,14 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
             target: "4 séries × 10-12 reps",
             restSeconds: 60,
             notes: "Alongamento profundo sem hiperextensão do ombro.",
+            mediaFrames: [
+              `${CDN_BASE}/Incline_Dumbbell_Press/0.jpg`,
+              `${CDN_BASE}/Incline_Dumbbell_Press/1.jpg`,
+            ],
+            instructions: [
+              "Ajuste o banco em 30°. Empurre os halteres em arco convergente.",
+            ],
+            tips: ["Não deixe os halteres colidirem no topo."],
             sets: [
               { setNumber: 1, reps: 12, weightKg: 24 },
               { setNumber: 2, reps: 10, weightKg: 26 },
@@ -451,7 +882,15 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
             equipment: "Halteres",
             target: "4 séries × 12-15 reps",
             restSeconds: 45,
-            notes: "Conduza o movimento pelos cotovelos.",
+            notes: "Cotovelos ligeiramente flexionados, sem impulsão lombar.",
+            mediaFrames: [
+              `${CDN_BASE}/Side_Lateral_Raise/0.jpg`,
+              `${CDN_BASE}/Side_Lateral_Raise/1.jpg`,
+            ],
+            instructions: [
+              "Suba os halteres lateralmente até a linha do ombro liderando pelos cotovelos.",
+            ],
+            tips: ["Não jogue o tronco para trás."],
             sets: [
               { setNumber: 1, reps: 15, weightKg: 10 },
               { setNumber: 2, reps: 12, weightKg: 12 },
@@ -461,18 +900,25 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
           },
           {
             id: "e4",
-            exerciseId: "ex_triceps_rope_pushdown",
-            name: "Tríceps Corda no Pulley",
-            muscle: "Tríceps Braquial",
-            equipment: "Polia Alta + Corda",
-            target: "4 séries × 12 reps",
-            restSeconds: 45,
-            notes: "Abra a corda na contração máxima.",
+            exerciseId: "ex_dips_chest",
+            name: "Paralelas com Foco no Peito",
+            muscle: "Peitoral Inferior & Tríceps",
+            equipment: "Barras Paralelas",
+            target: "3 séries × até a falha",
+            restSeconds: 75,
+            notes: "Incline o tronco para a frente a 30 graus.",
+            mediaFrames: [
+              `${CDN_BASE}/Dips_-_Chest_Version/0.jpg`,
+              `${CDN_BASE}/Dips_-_Chest_Version/1.jpg`,
+            ],
+            instructions: [
+              "Incline o tronco e flexione os cotovelos a 90°.",
+            ],
+            tips: ["Se estiver pesado, use a máquina graviton."],
             sets: [
-              { setNumber: 1, reps: 12, weightKg: 25 },
-              { setNumber: 2, reps: 12, weightKg: 30 },
-              { setNumber: 3, reps: 10, weightKg: 35 },
-              { setNumber: 4, reps: 10, weightKg: 35 },
+              { setNumber: 1, reps: 12, weightKg: 0 },
+              { setNumber: 2, reps: 10, weightKg: 0 },
+              { setNumber: 3, reps: 8, weightKg: 0 },
             ],
           },
         ],
@@ -492,6 +938,14 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
             target: "4 séries × 10 reps",
             restSeconds: 75,
             notes: "Puxe direcionando cotovelos para o chão.",
+            mediaFrames: [
+              `${CDN_BASE}/Wide-Grip_Lat_Pulldown/0.jpg`,
+              `${CDN_BASE}/Wide-Grip_Lat_Pulldown/1.jpg`,
+            ],
+            instructions: [
+              "Segure aberto e traga a barra até o peito.",
+            ],
+            tips: ["Alongue as escápulas na subida."],
             sets: [
               { setNumber: 1, reps: 10, weightKg: 55 },
               { setNumber: 2, reps: 10, weightKg: 65 },
@@ -501,29 +955,45 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
           },
           {
             id: "e6",
-            exerciseId: "ex_barbell_bent_over_row",
-            name: "Remada Curvada com Barra",
-            muscle: "Espessura Dorsal",
-            equipment: "Barra + Anilhas",
+            exerciseId: "ex_pullup",
+            name: "Barra Fixa Pronada",
+            muscle: "Dorsais & Antebraço",
+            equipment: "Barra Fixa",
             target: "4 séries × 8-10 reps",
             restSeconds: 90,
-            notes: "Lombar travada em 45 graus.",
+            notes: "Passe o queixo acima da barra sem embalo.",
+            mediaFrames: [
+              `${CDN_BASE}/Pullups/0.jpg`,
+              `${CDN_BASE}/Pullups/1.jpg`,
+            ],
+            instructions: [
+              "Puxe com a força das costas passando o queixo da barra.",
+            ],
+            tips: ["Cruze os pés para maior estabilidade corporal."],
             sets: [
-              { setNumber: 1, reps: 10, weightKg: 50 },
-              { setNumber: 2, reps: 10, weightKg: 60 },
-              { setNumber: 3, reps: 8, weightKg: 70 },
-              { setNumber: 4, reps: 8, weightKg: 70 },
+              { setNumber: 1, reps: 10, weightKg: 0 },
+              { setNumber: 2, reps: 8, weightKg: 0 },
+              { setNumber: 3, reps: 8, weightKg: 0 },
+              { setNumber: 4, reps: 6, weightKg: 0 },
             ],
           },
           {
             id: "e7",
             exerciseId: "ex_barbell_curl",
-            name: "Rosca Direta com Barra W",
+            name: "Rosca Direta com Barra",
             muscle: "Bíceps Braquial",
-            equipment: "Barra W",
+            equipment: "Barra",
             target: "4 séries × 10-12 reps",
             restSeconds: 60,
             notes: "Sem usar embalo corporal.",
+            mediaFrames: [
+              `${CDN_BASE}/Barbell_Curl/0.jpg`,
+              `${CDN_BASE}/Barbell_Curl/1.jpg`,
+            ],
+            instructions: [
+              "Flexione os cotovelos sem movimentar a coluna.",
+            ],
+            tips: ["Mantenha os cotovelos colados ao lado das costelas."],
             sets: [
               { setNumber: 1, reps: 12, weightKg: 20 },
               { setNumber: 2, reps: 10, weightKg: 25 },
@@ -548,6 +1018,14 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
             target: "4 séries × 8-10 reps",
             restSeconds: 120,
             notes: "Quebre o paralelo com peito aberto.",
+            mediaFrames: [
+              `${CDN_BASE}/Barbell_Squat/0.jpg`,
+              `${CDN_BASE}/Barbell_Squat/1.jpg`,
+            ],
+            instructions: [
+              "Desça até quebrar o paralelo de 90 graus e suba com força.",
+            ],
+            tips: ["Pressione os calcanhares no chão."],
             sets: [
               { setNumber: 1, reps: 10, weightKg: 80 },
               { setNumber: 2, reps: 10, weightKg: 90 },
@@ -557,40 +1035,34 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
           },
           {
             id: "e9",
-            exerciseId: "ex_leg_press_45",
-            name: "Leg Press 45°",
-            muscle: "Quadríceps e Glúteos",
-            equipment: "Aparelho 45°",
-            target: "4 séries × 12 reps",
-            restSeconds: 75,
-            notes: "Não hiperextenda os joelhos no topo.",
-            sets: [
-              { setNumber: 1, reps: 12, weightKg: 160 },
-              { setNumber: 2, reps: 12, weightKg: 200 },
-              { setNumber: 3, reps: 10, weightKg: 220 },
-              { setNumber: 4, reps: 10, weightKg: 220 },
+            exerciseId: "ex_hip_thrust",
+            name: "Elevação Pélvica com Barra",
+            muscle: "Glúteo Máximo",
+            equipment: "Barra + Banco",
+            target: "4 séries × 10-12 reps",
+            restSeconds: 90,
+            notes: "Segure 2s no topo contraindo o glúteo.",
+            mediaFrames: [
+              `${CDN_BASE}/Barbell_Hip_Thrust/0.jpg`,
+              `${CDN_BASE}/Barbell_Hip_Thrust/1.jpg`,
             ],
-          },
-          {
-            id: "e10",
-            exerciseId: "ex_seated_leg_curl",
-            name: "Cadeira Flexora",
-            muscle: "Isquiotibiais",
-            equipment: "Aparelho Flexor",
-            target: "4 séries × 12 reps",
-            restSeconds: 60,
-            notes: "Segure 1s na contração do calcanhar.",
+            instructions: [
+              "Apoie as costas no banco e eleve a barra com a pelve.",
+            ],
+            tips: ["Segure 2 segundos de contração máxima."],
             sets: [
-              { setNumber: 1, reps: 12, weightKg: 40 },
-              { setNumber: 2, reps: 12, weightKg: 45 },
-              { setNumber: 3, reps: 10, weightKg: 50 },
-              { setNumber: 4, reps: 10, weightKg: 50 },
+              { setNumber: 1, reps: 12, weightKg: 70 },
+              { setNumber: 2, reps: 12, weightKg: 80 },
+              { setNumber: 3, reps: 10, weightKg: 90 },
+              { setNumber: 4, reps: 10, weightKg: 100 },
             ],
           },
         ],
       },
     ],
   },
+
+  // 3. FOCO GLÚTEOS & COXAS (FEMININO)
   {
     id: "routine_female_glutes",
     name: "Foco Glúteos & Coxas (Especial Feminino)",
@@ -614,6 +1086,14 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
             target: "4 séries × 10-12 reps",
             restSeconds: 90,
             notes: "2 segundos de isometria no topo em cada repetição.",
+            mediaFrames: [
+              `${CDN_BASE}/Barbell_Hip_Thrust/0.jpg`,
+              `${CDN_BASE}/Barbell_Hip_Thrust/1.jpg`,
+            ],
+            instructions: [
+              "Empurre pelos calcanhares até a extensão completa.",
+            ],
+            tips: ["Mantenha o queixo no peito."],
             sets: [
               { setNumber: 1, reps: 12, weightKg: 60 },
               { setNumber: 2, reps: 12, weightKg: 70 },
@@ -623,142 +1103,26 @@ export const PREFORMED_ROUTINES: PreFormedWorkoutRoutine[] = [
           },
           {
             id: "fg2",
-            exerciseId: "ex_bulgarian_split_squat",
-            name: "Agachamento Búlgaro com Halteres",
-            muscle: "Glúteo & Quadríceps",
-            equipment: "Halteres + Banco",
-            target: "3 séries × 10 reps cada perna",
-            restSeconds: 60,
-            notes: "Incline o tronco 20° para recrutar mais glúteo.",
-            sets: [
-              { setNumber: 1, reps: 10, weightKg: 10 },
-              { setNumber: 2, reps: 10, weightKg: 12 },
-              { setNumber: 3, reps: 10, weightKg: 12 },
-            ],
-          },
-          {
-            id: "fg3",
-            exerciseId: "ex_seated_leg_curl",
-            name: "Cadeira Flexora",
-            muscle: "Posterior de Coxa",
-            equipment: "Máquina Flexora",
-            target: "4 séries × 12 reps",
-            restSeconds: 45,
-            notes: "Foco na fase excêntrica lenta.",
-            sets: [
-              { setNumber: 1, reps: 12, weightKg: 35 },
-              { setNumber: 2, reps: 12, weightKg: 40 },
-              { setNumber: 3, reps: 10, weightKg: 45 },
-              { setNumber: 4, reps: 10, weightKg: 45 },
-            ],
-          },
-        ],
-      },
-      {
-        id: "B",
-        title: "Treino B — Superior & Deltoides Harmônicos",
-        muscles: "Dorsais, Ombros e Tríceps",
-        estimatedMinutes: 45,
-        exercises: [
-          {
-            id: "fg4",
-            exerciseId: "ex_lat_pulldown",
-            name: "Puxada Frontal Aberta",
-            muscle: "Dorsal",
-            equipment: "Polia",
-            target: "4 séries × 12 reps",
-            restSeconds: 60,
-            notes: "Criação de cintura visualmente mais fina.",
-            sets: [
-              { setNumber: 1, reps: 12, weightKg: 30 },
-              { setNumber: 2, reps: 12, weightKg: 35 },
-              { setNumber: 3, reps: 10, weightKg: 40 },
-              { setNumber: 4, reps: 10, weightKg: 40 },
-            ],
-          },
-          {
-            id: "fg5",
-            exerciseId: "ex_lateral_raise",
-            name: "Elevação Lateral com Halteres",
-            muscle: "Deltoide Lateral",
-            equipment: "Halteres",
-            target: "4 séries × 15 reps",
-            restSeconds: 45,
-            notes: "Execução cadenciada sem trancos.",
-            sets: [
-              { setNumber: 1, reps: 15, weightKg: 5 },
-              { setNumber: 2, reps: 15, weightKg: 6 },
-              { setNumber: 3, reps: 12, weightKg: 7 },
-              { setNumber: 4, reps: 12, weightKg: 7 },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "routine_strength_5x5",
-    name: "Força Bruta 5×5 (Compostos Básicos)",
-    category: "Força",
-    difficulty: "Avançado",
-    frequency: "3 dias na semana",
-    description: "Método clássico para maximizar o recrutamento neural e quebrar recordes pessoais de carga.",
-    splits: [
-      {
-        id: "A",
-        title: "Treino A — Base de Força",
-        muscles: "Quadríceps, Peito e Dorsal",
-        estimatedMinutes: 60,
-        exercises: [
-          {
-            id: "s1",
             exerciseId: "ex_barbell_squat",
             name: "Agachamento Livre com Barra",
             muscle: "Quadríceps & Glúteos",
             equipment: "Barra Olímpica",
-            target: "5 séries × 5 reps",
-            restSeconds: 150,
-            notes: "Carga pesada. Descanso longo obrigatório.",
-            sets: [
-              { setNumber: 1, reps: 5, weightKg: 100 },
-              { setNumber: 2, reps: 5, weightKg: 110 },
-              { setNumber: 3, reps: 5, weightKg: 120 },
-              { setNumber: 4, reps: 5, weightKg: 120 },
-              { setNumber: 5, reps: 5, weightKg: 120 },
+            target: "4 séries × 10 reps",
+            restSeconds: 90,
+            notes: "Desça com controle até passar os 90°.",
+            mediaFrames: [
+              `${CDN_BASE}/Barbell_Squat/0.jpg`,
+              `${CDN_BASE}/Barbell_Squat/1.jpg`,
             ],
-          },
-          {
-            id: "s2",
-            exerciseId: "ex_bench_press",
-            name: "Supino Reto com Barra",
-            muscle: "Peitoral Maior",
-            equipment: "Barra Olímpica",
-            target: "5 séries × 5 reps",
-            restSeconds: 150,
-            notes: "Arco torácico e leg drive estáveis.",
-            sets: [
-              { setNumber: 1, reps: 5, weightKg: 80 },
-              { setNumber: 2, reps: 5, weightKg: 85 },
-              { setNumber: 3, reps: 5, weightKg: 90 },
-              { setNumber: 4, reps: 5, weightKg: 90 },
-              { setNumber: 5, reps: 5, weightKg: 90 },
+            instructions: [
+              "Agache quebrando o paralelo e suba pelo calcanhar.",
             ],
-          },
-          {
-            id: "s3",
-            exerciseId: "ex_barbell_bent_over_row",
-            name: "Remada Curvada com Barra",
-            muscle: "Dorsal & Trapézio",
-            equipment: "Barra + Anilhas",
-            target: "5 séries × 5 reps",
-            restSeconds: 120,
-            notes: "Potência controlada na fase concêntrica.",
+            tips: ["Não deixe os joelhos fecharem."],
             sets: [
-              { setNumber: 1, reps: 5, weightKg: 70 },
-              { setNumber: 2, reps: 5, weightKg: 75 },
-              { setNumber: 3, reps: 5, weightKg: 80 },
-              { setNumber: 4, reps: 5, weightKg: 80 },
-              { setNumber: 5, reps: 5, weightKg: 80 },
+              { setNumber: 1, reps: 10, weightKg: 40 },
+              { setNumber: 2, reps: 10, weightKg: 50 },
+              { setNumber: 3, reps: 10, weightKg: 55 },
+              { setNumber: 4, reps: 8, weightKg: 60 },
             ],
           },
         ],
@@ -832,4 +1196,17 @@ export async function searchExercises(
   }
 
   return filtered;
+}
+
+/**
+ * Retorna os dados de mídia e instruções de um exercício por ID ou nome
+ */
+export function getExerciseDetails(exerciseIdOrName: string): ExerciseDBItem | undefined {
+  const matchById = LOCAL_EXERCISE_DB.find((ex) => ex.id === exerciseIdOrName);
+  if (matchById) return matchById;
+
+  const matchByName = LOCAL_EXERCISE_DB.find(
+    (ex) => ex.name.toLowerCase() === exerciseIdOrName.toLowerCase()
+  );
+  return matchByName;
 }
