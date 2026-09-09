@@ -3,8 +3,8 @@ import "./globals.css";
 import MobileShell from "@/components/layout/MobileShell";
 
 export const metadata: Metadata = {
-  title: "GymFlow — Nutrição Esportiva & Gastronomia Fit",
-  description: "Refeições personalizadas para atletas, contagem de macros em tempo real e entrega ultra-rápida.",
+  title: "GymFlow — App Oficial da Academia, Treinos & Aulas",
+  description: "Check-in na catraca via QR Code, fichas de treino A/B/C interativas, reserva de aulas e acompanhamento de evolução física.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

@@ -1,7 +1,7 @@
 {
-  "name": "GymFlow — Gastronomia & Nutrição Fit",
+  "name": "GymFlow — App da Academia & Treinos",
   "short_name": "GymFlow",
-  "description": "Marmitas fitness personalizadas, contagem de macronutrientes em tempo real e entrega rápida para atletas.",
+  "description": "Fichas de treino, check-in na catraca via QR Code, reserva de aulas coletivas e acompanhamento de evolução física.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
