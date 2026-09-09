@@ -16,10 +16,12 @@ import { AIAdvisorModal } from "@/components/ai/AIAdvisorModal";
 import { PWAInstaller } from "@/components/pwa/PWAInstaller";
 import { OrderTrackingModal } from "@/components/orders/OrderTrackingModal";
 import { UserProfileDrawer } from "@/components/profile/UserProfileDrawer";
+import { DishDetailModal } from "@/components/menu/DishDetailModal";
 import { PRESET_MEALS, PresetMeal } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
+import { triggerHaptic } from "@/lib/haptic";
 import { Button } from "@/components/ui/Button";
-import { Plus, Cookie, Dumbbell, Sparkles } from "lucide-react";
+import { Plus, Cookie, Dumbbell, Sparkles, Info } from "lucide-react";
 
 export default function GymFlowApp() {
   const [currentTab, setCurrentTab] = useState<TabType>("menu");
@@ -30,6 +32,7 @@ export default function GymFlowApp() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+  const [selectedDishDetail, setSelectedDishDetail] = useState<PresetMeal | null>(null);
   const [checkoutAmount, setCheckoutAmount] = useState(0);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [cookieConsent, setCookieConsent] = useState(true);
@@ -37,6 +40,7 @@ export default function GymFlowApp() {
 
   // Adicionar refeição pronta (Preset)
   const handleAddPresetMeal = (meal: PresetMeal) => {
+    triggerHaptic("light");
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === meal.id);
       if (existing) {
@@ -61,6 +65,7 @@ export default function GymFlowApp() {
 
   // Adicionar bowl personalizado
   const handleAddCustomMeal = (customMeal: CustomMealItem) => {
+    triggerHaptic("medium");
     setCartItems((prev) => [
       ...prev,
       {
@@ -80,6 +85,7 @@ export default function GymFlowApp() {
 
   // Ajuste de quantidade na sacola
   const handleUpdateQuantity = (id: string, delta: number) => {
+    triggerHaptic("light");
     setCartItems((prev) =>
       prev
         .map((item) => {
@@ -94,25 +100,28 @@ export default function GymFlowApp() {
   };
 
   const handleRemoveItem = (id: string) => {
+    triggerHaptic("medium");
     setCartItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleProceedToCheckout = (finalAmount: number) => {
+    triggerHaptic("medium");
     setCheckoutAmount(finalAmount);
     setIsCartOpen(false);
     setIsPaymentOpen(true);
   };
 
   const handlePaymentSuccess = () => {
+    triggerHaptic("success");
     setCartItems([]);
     setIsPaymentOpen(false);
-    // Abre automaticamente o rastreador de entrega ao vivo
     setTimeout(() => {
       setIsTrackingOpen(true);
     }, 400);
   };
 
   const handleReorder = (mealName: string, price: number) => {
+    triggerHaptic("light");
     setCartItems((prev) => [
       ...prev,
       {
@@ -185,7 +194,10 @@ export default function GymFlowApp() {
                 {["Todos", "Hipertrofia", "Definição", "Longevidade"].map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setSelectedCategory(cat);
+                    }}
                     className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                       selectedCategory === cat
                         ? "bg-emerald-500 text-black shadow-sm"
@@ -202,7 +214,8 @@ export default function GymFlowApp() {
                 {filteredMeals.map((meal) => (
                   <div
                     key={meal.id}
-                    className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] shadow-sm hover:border-emerald-500/30 transition-all flex flex-col justify-between"
+                    onClick={() => setSelectedDishDetail(meal)}
+                    className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] shadow-sm hover:border-emerald-500/30 transition-all flex flex-col justify-between cursor-pointer group"
                   >
                     <div>
                       <div className="relative w-full h-24 rounded-xl overflow-hidden mb-2 bg-black/40 border border-white/5">
@@ -210,7 +223,7 @@ export default function GymFlowApp() {
                           src={meal.image}
                           alt={meal.name}
                           fill
-                          className="object-cover"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
                           sizes="180px"
                         />
                         <div className="absolute top-1.5 left-1.5">
@@ -220,7 +233,9 @@ export default function GymFlowApp() {
                         </div>
                       </div>
 
-                      <h4 className="text-xs font-bold text-white truncate">{meal.name}</h4>
+                      <h4 className="text-xs font-bold text-white truncate group-hover:text-emerald-300 transition-colors">
+                        {meal.name}
+                      </h4>
                       <p className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5">
                         {meal.description}
                       </p>
@@ -235,8 +250,12 @@ export default function GymFlowApp() {
                       </div>
 
                       <button
-                        onClick={() => handleAddPresetMeal(meal)}
-                        className="w-7 h-7 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.3)] active:scale-95 transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddPresetMeal(meal);
+                        }}
+                        className="w-7 h-7 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.3)] active:scale-90 transition-all"
+                        title="Adicionar à Sacola"
                       >
                         <Plus className="w-4 h-4 stroke-[2.5]" />
                       </button>
@@ -315,6 +334,7 @@ export default function GymFlowApp() {
       <BottomTabBar
         currentTab={currentTab}
         onSelectTab={(tab) => {
+          triggerHaptic("light");
           if (tab === "bag") {
             setIsCartOpen(true);
           } else if (tab === "ai") {
@@ -327,6 +347,13 @@ export default function GymFlowApp() {
       />
 
       {/* Modais e Drawers */}
+      <DishDetailModal
+        meal={selectedDishDetail}
+        isOpen={!!selectedDishDetail}
+        onClose={() => setSelectedDishDetail(null)}
+        onAddToCart={handleAddPresetMeal}
+      />
+
       <ShoppingBagDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
