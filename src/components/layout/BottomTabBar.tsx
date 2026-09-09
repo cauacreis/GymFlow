@@ -2,27 +2,23 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { UtensilsCrossed, ChefHat, MapPin, Bot, ShoppingBag } from "lucide-react";
+import { Dumbbell, QrCode, CalendarDays, TrendingUp, Bot } from "lucide-react";
+import { triggerHaptic } from "@/lib/haptic";
 
-export type TabType = "menu" | "customizer" | "map" | "ai" | "bag";
+export type GymTabType = "treino" | "catraca" | "aulas" | "evolucao" | "gymbot";
 
 interface BottomTabBarProps {
-  currentTab: TabType;
-  onSelectTab: (tab: TabType) => void;
-  cartCount: number;
+  currentTab: GymTabType;
+  onSelectTab: (tab: GymTabType) => void;
 }
 
-export function BottomTabBar({
-  currentTab,
-  onSelectTab,
-  cartCount,
-}: BottomTabBarProps) {
+export function BottomTabBar({ currentTab, onSelectTab }: BottomTabBarProps) {
   const tabs = [
-    { id: "menu" as TabType, label: "Cardápio", icon: UtensilsCrossed },
-    { id: "customizer" as TabType, label: "Montador", icon: ChefHat },
-    { id: "ai" as TabType, label: "IA Nutri", icon: Bot },
-    { id: "map" as TabType, label: "Delivery", icon: MapPin },
-    { id: "bag" as TabType, label: "Sacola", icon: ShoppingBag, badge: cartCount },
+    { id: "treino" as GymTabType, label: "Treino", icon: Dumbbell },
+    { id: "catraca" as GymTabType, label: "Catraca", icon: QrCode },
+    { id: "aulas" as GymTabType, label: "Aulas", icon: CalendarDays },
+    { id: "evolucao" as GymTabType, label: "Evolução", icon: TrendingUp },
+    { id: "gymbot" as GymTabType, label: "GymBot IA", icon: Bot },
   ];
 
   return (
@@ -35,7 +31,10 @@ export function BottomTabBar({
           return (
             <button
               key={tab.id}
-              onClick={() => onSelectTab(tab.id)}
+              onClick={() => {
+                triggerHaptic("selection");
+                onSelectTab(tab.id);
+              }}
               className="relative flex flex-col items-center justify-center py-1.5 px-3 rounded-full transition-colors cursor-pointer select-none"
             >
               {/* Indicador animado com Framer Motion layoutId */}
@@ -43,7 +42,7 @@ export function BottomTabBar({
                 <motion.div
                   layoutId="activePill"
                   transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                  className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-emerald-400/20 border border-emerald-500/35 rounded-full shadow-[0_0_16px_rgba(16,185,129,0.25)]"
+                  className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-400/20 border border-emerald-500/35 rounded-full shadow-[0_0_16px_rgba(16,185,129,0.25)]"
                 />
               )}
 
@@ -55,16 +54,11 @@ export function BottomTabBar({
                       : "text-zinc-400 hover:text-zinc-200 stroke-[1.8]"
                   }`}
                 />
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 w-3.5 h-3.5 bg-emerald-500 text-black text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">
-                    {tab.badge}
-                  </span>
-                )}
               </div>
 
               <span
                 className={`relative z-10 text-[9px] font-medium tracking-tight mt-0.5 transition-colors ${
-                  isActive ? "text-emerald-400 font-semibold" : "text-zinc-400"
+                  isActive ? "text-emerald-400 font-bold" : "text-zinc-400"
                 }`}
               >
                 {tab.label}

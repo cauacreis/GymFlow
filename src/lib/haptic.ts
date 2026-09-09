@@ -2,12 +2,15 @@
  * Utilitário de Feedback Háptico e Tátil para Dispositivos Móveis
  */
 
-export function triggerHaptic(type: "light" | "medium" | "heavy" | "success" = "light") {
+export type HapticFeedbackType = "light" | "medium" | "heavy" | "success" | "selection";
+
+export function triggerHaptic(type: HapticFeedbackType = "light") {
   if (typeof window !== "undefined" && "vibrate" in navigator) {
     try {
       switch (type) {
+        case "selection":
         case "light":
-          navigator.vibrate(12);
+          navigator.vibrate(10);
           break;
         case "medium":
           navigator.vibrate(25);
