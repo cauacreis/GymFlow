@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="gymGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22C55E"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <radialGradient id="ambient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Fundo escuro com cantos arredondados squircle -->
+  <rect width="192" height="192" rx="48" fill="#070709"/>
+  <rect width="192" height="192" rx="48" fill="url(#ambient)"/>
+  <rect x="1" y="1" width="190" height="190" rx="47" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+
+  <!-- Logo GymFlow: Haltere dinâmico com folha nutricional integrada -->
+  <g transform="translate(40, 40) scale(1.16)">
+    <!-- Barra central -->
+    <rect x="24" y="44" width="48" height="8" rx="4" fill="url(#gymGlow)" filter="drop-shadow(0 0 8px rgba(16,185,129,0.5))"/>
+    
+    <!-- Anilha Esquerda -->
+    <rect x="12" y="28" width="12" height="40" rx="6" fill="#181820" stroke="url(#gymGlow)" stroke-width="2.5"/>
+    <rect x="4" y="34" width="8" height="28" rx="4" fill="#10B981"/>
+
+    <!-- Anilha Direita -->
+    <rect x="72" y="28" width="12" height="40" rx="6" fill="#181820" stroke="url(#gymGlow)" stroke-width="2.5"/>
+    <rect x="84" y="34" width="8" height="28" rx="4" fill="#10B981"/>
+
+    <!-- Folha / Chama Fit no centro -->
+    <path d="M48 24 C40 34 40 44 48 52 C56 44 56 34 48 24 Z" fill="#22C55E" filter="drop-shadow(0 0 10px rgba(34,197,94,0.8))"/>
+  </g>
+</svg>

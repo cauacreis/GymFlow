@@ -1,0 +1,25 @@
+{
+  "name": "GymFlow — Gastronomia & Nutrição Fit",
+  "short_name": "GymFlow",
+  "description": "Marmitas fitness personalizadas, contagem de macronutrientes em tempo real e entrega rápida para atletas.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030304",
+  "theme_color": "#030304",
+  "categories": ["fitness", "food", "health"],
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="gymGlow512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22C55E"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <radialGradient id="ambient512" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  
+  <rect width="512" height="512" rx="128" fill="#070709"/>
+  <rect width="512" height="512" rx="128" fill="url(#ambient512)"/>
+  <rect x="2" y="2" width="508" height="508" rx="126" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>
+
+  <g transform="translate(106, 106) scale(3.1)">
+    <rect x="24" y="44" width="48" height="8" rx="4" fill="url(#gymGlow512)" filter="drop-shadow(0 0 8px rgba(16,185,129,0.5))"/>
+    
+    <rect x="12" y="28" width="12" height="40" rx="6" fill="#181820" stroke="url(#gymGlow512)" stroke-width="2.5"/>
+    <rect x="4" y="34" width="8" height="28" rx="4" fill="#10B981"/>
+
+    <rect x="72" y="28" width="12" height="40" rx="6" fill="#181820" stroke="url(#gymGlow512)" stroke-width="2.5"/>
+    <rect x="84" y="34" width="8" height="28" rx="4" fill="#10B981"/>
+
+    <path d="M48 24 C40 34 40 44 48 52 C56 44 56 34 48 24 Z" fill="#22C55E" filter="drop-shadow(0 0 12px rgba(34,197,94,0.9))"/>
+  </g>
+</svg>
