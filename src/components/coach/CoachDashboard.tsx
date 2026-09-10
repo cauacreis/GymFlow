@@ -262,104 +262,67 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
         </div>
       )}
 
-      {/* Banner do Professor / Personal */}
-      <div className="rounded-3xl p-4 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-emerald-500/30 shadow-xl relative overflow-hidden">
-        <div className="absolute -top-8 -right-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+      {/* Navegação Segmentada do Professor: Alunos • Agenda • Fichas • Métricas */}
+      <div className="grid grid-cols-4 p-1 rounded-2xl bg-zinc-900/60 border border-white/[0.06] shadow-sm backdrop-blur-md">
+        <button
+          onClick={() => {
+            triggerHaptic("selection");
+            setMainTab("students");
+          }}
+          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mainTab === "students"
+              ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Users className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Alunos</span>
+        </button>
 
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
-              <UserCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-sm font-black text-white">{coachUser.name || "Prof. Rodrigo Costa"}</h2>
-                {coachUser.cref && (
-                  <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                    {coachUser.cref.startsWith("CREF") ? coachUser.cref : `CREF ${coachUser.cref}`}
-                  </span>
-                )}
-              </div>
-              <p className="text-[10px] text-zinc-400">{coachUser.specialty || "Personal Trainer & Fisiologia do Exercício"}</p>
-            </div>
-          </div>
+        <button
+          onClick={() => {
+            triggerHaptic("selection");
+            setMainTab("agenda");
+          }}
+          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mainTab === "agenda"
+              ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Agenda</span>
+        </button>
 
-          {onSwitchToStudentView && (
-            <button
-              onClick={() => {
-                triggerHaptic("selection");
-                onSwitchToStudentView();
-              }}
-              className="text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 border border-white/[0.08] flex items-center gap-1 transition-all active:scale-95"
-            >
-              <span>Ver como Aluno</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          )}
-        </div>
+        <button
+          onClick={() => {
+            triggerHaptic("selection");
+            setMainTab("workouts");
+          }}
+          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mainTab === "workouts"
+              ? "bg-emerald-500 text-zinc-950 font-black shadow-sm"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Fichas</span>
+        </button>
 
-        {/* Seletor Principal: Alunos vs Agenda vs Fichas vs Analytics */}
-        <div className="pt-3 border-t border-white/[0.06] grid grid-cols-4 p-1 rounded-2xl bg-zinc-950 border border-white/[0.08]">
-          <button
-            onClick={() => {
-              triggerHaptic("selection");
-              setMainTab("students");
-            }}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-              mainTab === "students"
-                ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Alunos</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic("selection");
-              setMainTab("agenda");
-            }}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-              mainTab === "agenda"
-                ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Agenda</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic("selection");
-              setMainTab("workouts");
-            }}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-              mainTab === "workouts"
-                ? "bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Dumbbell className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Fichas</span>
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic("selection");
-              setMainTab("analytics");
-            }}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-              mainTab === "analytics"
-                ? "bg-gradient-to-r from-amber-500 to-emerald-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Analytics</span>
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            triggerHaptic("selection");
+            setMainTab("analytics");
+          }}
+          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            mainTab === "analytics"
+              ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Analytics</span>
+        </button>
       </div>
 
       {/* ABA PRINCIPAL 0: CARTEIRA DE ALUNOS & CRM (ONLINE E OFFLINE) */}

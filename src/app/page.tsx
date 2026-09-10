@@ -132,53 +132,7 @@ export default function GymFlowApp() {
       />
 
       {/* Container Principal */}
-      <main className="w-full flex-1 flex flex-col px-4 pt-1 pb-20 max-w-md mx-auto">
-        {/* Banner de Boas-Vindas do Perfil com Botão de Troca Rápida */}
-        <div className="mb-3.5 p-3 rounded-2xl bg-zinc-900/60 border border-white/[0.06] flex items-center justify-between gap-2 shadow-sm">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                isCoach ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-300"
-              }`}
-            >
-              {isCoach ? <GraduationCap className="w-4 h-4" /> : <Dumbbell className="w-4 h-4" />}
-            </div>
-            <div className="overflow-hidden">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white truncate">{userProfile.name}</span>
-                <span
-                  className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
-                    isCoach
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                      : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                  }`}
-                >
-                  {isCoach ? "Prof" : "Aluno"}
-                </span>
-              </div>
-              <p className="text-[10px] text-zinc-400 truncate">
-                {isCoach
-                  ? userProfile.cref
-                    ? `CREF ${userProfile.cref} • ${userProfile.specialty || "Musculação"}`
-                    : (userProfile.specialty || "Treinador Personal")
-                  : `Meta: ${userProfile.goal || "Hipertrofia"}`}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleToggleRole}
-            className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1 shrink-0 border transition-all active:scale-95 ${
-              isCoach
-                ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30"
-            }`}
-            title="Alternar entre treinar ou ser treinador"
-          >
-            <ArrowRightLeft className="w-3 h-3" />
-            <span>Ir p/ {isCoach ? "Aluno" : "Professor"}</span>
-          </button>
-        </div>
+      <main className="w-full flex-1 flex flex-col px-3.5 pt-2 pb-20 max-w-md mx-auto">
 
         {/* ------------------------------------------------------------- */}
         {/* VISÃO DO PROFESSOR (COACH) */}

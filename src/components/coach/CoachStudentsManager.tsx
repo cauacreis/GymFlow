@@ -441,68 +441,40 @@ export function CoachStudentsManager({
         </div>
       )}
 
-      {/* Header do Módulo de Alunos */}
-      <div className="rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-white/[0.08] shadow-xl relative overflow-hidden">
-        <div className="absolute -top-10 -right-10 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5" /> Gestão de Alunos & CRM
+      {/* Header Minimalista do Módulo de Alunos */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div>
+          <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+            <span>Alunos do Treinador</span>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08]">
+              {students.length} cadastrados • {students.filter((s) => (s.status || "ativo") === "ativo").length} ativos
             </span>
-            <h2 className="text-base sm:text-lg font-black text-white mt-1">
-              Carteira de Alunos do Treinador
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Cadastre alunos presenciais mesmo sem conta no app e acompanhe presenças, faltas e fichas.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
-            <button
-              onClick={handleOpenManagePlans}
-              className="px-3 py-2 rounded-2xl bg-white/[0.05] hover:bg-white/[0.08] text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-              title="Configurar os planos que você oferece aos alunos"
-            >
-              <Tag className="w-3.5 h-3.5 text-amber-400" />
-              <span>Planos Oferecidos ({coachPlans.length})</span>
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHaptic("medium");
-                setIsNewStudentModalOpen(true);
-              }}
-              className="px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/20 active:scale-95 transition-all"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Novo Aluno</span>
-            </button>
-          </div>
+          </h2>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Gerencie frequência, presenças, planos e fichas técnicas com sincronização instantânea.
+          </p>
         </div>
 
-        {/* 3 Micro KPIs da Carteira */}
-        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-white/[0.06]">
-          <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-            <span className="text-[10px] text-zinc-400 block">Total de Alunos</span>
-            <span className="text-sm sm:text-base font-black text-white font-mono mt-0.5 block">
-              {students.length}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleOpenManagePlans}
+            className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
+            title="Configurar tabela de planos do personal"
+          >
+            <Tag className="w-3.5 h-3.5 text-amber-400" />
+            <span>Planos ({coachPlans.length})</span>
+          </button>
 
-          <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-            <span className="text-[10px] text-zinc-400 block">Alunos Ativos</span>
-            <span className="text-sm sm:text-base font-black text-emerald-400 font-mono mt-0.5 block">
-              {students.filter((s) => (s.status || "ativo") === "ativo").length}
-            </span>
-          </div>
-
-          <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-            <span className="text-[10px] text-zinc-400 block">Presenciais Offline</span>
-            <span className="text-sm sm:text-base font-black text-amber-400 font-mono mt-0.5 block">
-              {students.filter((s) => s.isOfflineStudent).length}
-            </span>
-          </div>
+          <button
+            onClick={() => {
+              triggerHaptic("medium");
+              setIsNewStudentModalOpen(true);
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Novo Aluno</span>
+          </button>
         </div>
       </div>
 
@@ -715,24 +687,24 @@ export function CoachStudentsManager({
                         )}
                       </div>
 
-                      {/* Base: AÇÕES DIRETAS (Presença, Falta, Atraso e Editar Treino) */}
-                      <div className="pt-1 flex items-center justify-between gap-1.5 flex-wrap">
-                        {/* 3 Botões de Frequência */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Base: AÇÕES UNIFICADAS (Presença, Falta, Atraso + Editar Treino) */}
+                      <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
+                        {/* Controle Segmentado de Frequência */}
+                        <div className="flex items-center p-0.5 rounded-xl bg-zinc-950 border border-white/[0.08] shadow-inner">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRecordAttendance(student.id, "presence");
                             }}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all active:scale-95 ${
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
                               isPresent
-                                ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/30"
-                                : "bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300"
+                                ? "bg-emerald-500 text-zinc-950 shadow-sm"
+                                : "text-zinc-400 hover:text-emerald-300"
                             }`}
-                            title="Confirmar presença do aluno no treino de hoje"
+                            title="Confirmar presença"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-3 h-3" />
                             <span>Presença</span>
                           </button>
 
@@ -742,14 +714,14 @@ export function CoachStudentsManager({
                               e.stopPropagation();
                               handleRecordAttendance(student.id, "absence");
                             }}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all active:scale-95 ${
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
                               isAbsent
-                                ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
-                                : "bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300"
+                                ? "bg-rose-500 text-white shadow-sm"
+                                : "text-zinc-400 hover:text-rose-300"
                             }`}
-                            title="Registrar falta do aluno no treino de hoje"
+                            title="Registrar falta"
                           >
-                            <XCircle className="w-3.5 h-3.5" />
+                            <XCircle className="w-3 h-3" />
                             <span>Falta</span>
                           </button>
 
@@ -761,30 +733,30 @@ export function CoachStudentsManager({
                                 delaySelectorStudentId === student.id ? null : student.id
                               );
                             }}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all active:scale-95 ${
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
                               isDelayed
-                                ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/30"
-                                : "bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300"
+                                ? "bg-amber-500 text-zinc-950 shadow-sm"
+                                : "text-zinc-400 hover:text-amber-300"
                             }`}
-                            title="Registrar atraso do aluno com notificação"
+                            title="Registrar atraso"
                           >
-                            <Clock className="w-3.5 h-3.5" />
+                            <Clock className="w-3 h-3" />
                             <span>Atraso</span>
                           </button>
                         </div>
 
-                        {/* Botão de Edição de Treino */}
+                        {/* Botão de Edição de Treino Minimalista */}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenEditWorkout(student);
                           }}
-                          className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-amber-300 flex items-center gap-1 transition-all active:scale-95"
+                          className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all active:scale-95"
                           title="Editar a rotina de treinos deste aluno e sincronizar no app dele"
                         >
-                          <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Editar Treino</span>
+                          <Edit3 className="w-3 h-3 text-amber-400" />
+                          <span>Treino</span>
                         </button>
                       </div>
 
@@ -833,8 +805,8 @@ export function CoachStudentsManager({
           />
         </div>
 
-        {/* Filtro por Status */}
-        <div className="flex items-center gap-1 p-1 rounded-2xl bg-zinc-900 border border-white/[0.08] shrink-0 self-start sm:self-auto">
+        {/* Filtro por Status Minimalista */}
+        <div className="flex items-center p-0.5 rounded-xl bg-zinc-900 border border-white/[0.06] shrink-0 self-start sm:self-auto">
           {(["todos", "ativo", "inativo", "pendente"] as const).map((st) => (
             <button
               key={st}
@@ -842,9 +814,9 @@ export function CoachStudentsManager({
                 triggerHaptic("selection");
                 setFilterStatus(st);
               }}
-              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold capitalize transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all ${
                 filterStatus === st
-                  ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
+                  ? "bg-amber-500 text-zinc-950 font-bold shadow-sm"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
@@ -973,56 +945,72 @@ export function CoachStudentsManager({
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRecordAttendance(student.id, "presence");
-                      }}
-                      className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
-                      title="Marcar presença no treino de hoje"
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Presença</span>
-                    </button>
+                    {/* Controle Segmentado de Frequência */}
+                    <div className="flex items-center p-0.5 rounded-xl bg-zinc-950 border border-white/[0.08] shadow-inner">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRecordAttendance(student.id, "presence");
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
+                          student.todayAttendanceStatus === "presente"
+                            ? "bg-emerald-500 text-zinc-950 shadow-sm"
+                            : "text-zinc-400 hover:text-emerald-300"
+                        }`}
+                        title="Marcar presença hoje"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Presença</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRecordAttendance(student.id, "absence");
-                      }}
-                      className="px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
-                      title="Marcar falta no treino de hoje"
-                    >
-                      <XCircle className="w-3 h-3" />
-                      <span>Falta</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRecordAttendance(student.id, "absence");
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
+                          student.todayAttendanceStatus === "falta"
+                            ? "bg-rose-500 text-white shadow-sm"
+                            : "text-zinc-400 hover:text-rose-300"
+                        }`}
+                        title="Marcar falta hoje"
+                      >
+                        <XCircle className="w-3 h-3" />
+                        <span>Falta</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRecordAttendance(student.id, "delay", 15);
-                      }}
-                      className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
-                      title="Marcar atraso no treino de hoje"
-                    >
-                      <Clock className="w-3 h-3" />
-                      <span>Atraso</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRecordAttendance(student.id, "delay", 15);
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
+                          student.todayAttendanceStatus === "atraso"
+                            ? "bg-amber-500 text-zinc-950 shadow-sm"
+                            : "text-zinc-400 hover:text-amber-300"
+                        }`}
+                        title="Marcar atraso hoje"
+                      >
+                        <Clock className="w-3 h-3" />
+                        <span>Atraso</span>
+                      </button>
+                    </div>
 
+                    {/* Botão de Edição de Treino */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleOpenEditWorkout(student);
                       }}
-                      className="px-2 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-amber-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                      className="px-2 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-300 hover:text-white text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
                       title="Editar ficha e treino deste aluno"
                     >
                       <Edit3 className="w-3 h-3 text-amber-400" />
-                      <span>Editar Treino</span>
+                      <span>Treino</span>
                     </button>
 
                     {student.phone && (
@@ -1031,10 +1019,10 @@ export function CoachStudentsManager({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline ml-1"
+                        className="p-1 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 flex items-center transition-colors"
+                        title="Conversar no WhatsApp"
                       >
-                        <MessageCircle className="w-3 h-3" />
-                        <span>WhatsApp</span>
+                        <MessageCircle className="w-3.5 h-3.5" />
                       </a>
                     )}
                   </div>

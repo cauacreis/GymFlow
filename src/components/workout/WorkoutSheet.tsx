@@ -372,16 +372,16 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
 
   return (
     <div className="flex flex-col gap-4 text-left w-full">
-      {/* Seletor Rápido: Ficha da Academia vs Treino em Casa (0 Equipamento) */}
-      <div className="grid grid-cols-2 p-1 bg-zinc-900/90 rounded-2xl border border-white/[0.08] shadow-md">
+      {/* Seletor Segmentado Minimalista: Academia vs Treino em Casa */}
+      <div className="grid grid-cols-2 p-1 bg-zinc-900/60 rounded-2xl border border-white/[0.06] shadow-sm backdrop-blur-md">
         <button
           onClick={() => {
             triggerHaptic("selection");
             setWorkoutMode("gym");
           }}
-          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${
+          className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${
             workoutMode === "gym"
-              ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/20"
+              ? "bg-emerald-500 text-zinc-950 shadow-sm"
               : "text-zinc-400 hover:text-white"
           }`}
         >
@@ -394,14 +394,14 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
             triggerHaptic("selection");
             setWorkoutMode("home");
           }}
-          className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${
+          className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${
             workoutMode === "home"
-              ? "bg-teal-400 text-zinc-950 shadow-md shadow-teal-400/20"
+              ? "bg-teal-400 text-zinc-950 shadow-sm"
               : "text-zinc-400 hover:text-white"
           }`}
         >
           <Home className="w-3.5 h-3.5" />
-          <span>Treino em Casa (GIFs)</span>
+          <span>Treino em Casa</span>
         </button>
       </div>
 
@@ -581,50 +581,52 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                   </div>
                 </div>
 
-                {/* Ações Rápidas: Ver GIF, Timer & Remover */}
+                {/* Ações Rápidas em Pílula Unificada */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => handleOpenGifModal(exercise)}
-                    className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
-                    title="Ver demonstração e execução"
-                  >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Guia</span>
-                  </button>
+                  <div className="flex items-center p-0.5 rounded-xl bg-zinc-950/80 border border-white/[0.08] shadow-inner">
+                    <button
+                      onClick={() => handleOpenGifModal(exercise)}
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-1 transition-all active:scale-95"
+                      title="Ver demonstração e execução"
+                    >
+                      <Play className="w-2.5 h-2.5 fill-current" />
+                      <span>Guia</span>
+                    </button>
 
-                  <button
-                    onClick={() => onOpenTimer(exercise.restSeconds || 60)}
-                    className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-[10px] font-mono flex items-center gap-1 border border-white/[0.06] active:scale-95 transition-all"
-                    title="Cronômetro de descanso"
-                  >
-                    <Timer className="w-3 h-3 text-amber-400" />
-                    <span>{exercise.restSeconds || 60}s</span>
-                  </button>
+                    <button
+                      onClick={() => onOpenTimer(exercise.restSeconds || 60)}
+                      className="px-2 py-1 rounded-lg text-[10px] font-mono text-zinc-300 hover:text-white hover:bg-white/[0.06] flex items-center gap-1 transition-all active:scale-95"
+                      title="Cronômetro de descanso"
+                    >
+                      <Timer className="w-2.5 h-2.5 text-amber-400" />
+                      <span>{exercise.restSeconds || 60}s</span>
+                    </button>
+                  </div>
 
                   {workoutMode === "gym" && (
                     <button
                       onClick={() => handleRemoveExercise(exercise.id, exercise.name)}
-                      className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-all"
+                      className="w-7 h-7 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 flex items-center justify-center transition-all active:scale-90"
                       title="Remover exercício da ficha"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Dica / Notas técnicas */}
+              {/* Dica técnica compacta */}
               {exercise.notes && (
                 <div
                   onClick={() => handleOpenGifModal(exercise)}
-                  className="text-[10px] text-zinc-300 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer p-2 rounded-xl border border-white/[0.04] mb-2.5 leading-relaxed flex items-center justify-between gap-1 transition-colors"
+                  className="text-[10px] text-zinc-400 hover:text-zinc-200 cursor-pointer px-2.5 py-1.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] mb-2 leading-relaxed flex items-center justify-between gap-1 transition-colors"
                 >
-                  <span className="line-clamp-1">💡 {exercise.notes}</span>
-                  <span className="text-emerald-400 font-bold text-[9px] shrink-0">Ver técnica →</span>
+                  <span className="truncate">💡 {exercise.notes}</span>
+                  <span className="text-emerald-400 font-medium text-[9px] shrink-0">Técnica →</span>
                 </div>
               )}
 
-              {/* Tabela de Séries */}
+              {/* Tabela de Séries Minimalista */}
               <div className="flex flex-col gap-1.5">
                 <div className="grid grid-cols-12 text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-2">
                   <span className="col-span-2">Série</span>
@@ -638,7 +640,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                 {exercise.sets.map((set) => (
                   <div
                     key={set.setNumber}
-                    className={`grid grid-cols-12 items-center px-2 py-1.5 rounded-xl text-xs transition-all ${
+                    className={`grid grid-cols-12 items-center px-2 py-1 rounded-xl text-xs transition-all ${
                       set.completed
                         ? "bg-emerald-500/10 border border-emerald-500/25 text-emerald-200"
                         : "bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300"
@@ -651,7 +653,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                       {set.reps}
                     </span>
 
-                    {/* Controle de Carga com Botões +/- ou Peso Corporal */}
+                    {/* Controle de Carga com Micro Botões +/- ou Peso Corporal */}
                     <div className="col-span-5 flex items-center justify-center gap-1.5">
                       {workoutMode === "home" && set.weightKg === 0 ? (
                         <span className="text-[10px] font-mono text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-md border border-teal-500/20">
@@ -661,18 +663,18 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                         <>
                           <button
                             onClick={() => handleAdjustWeight(exercise.id, set.setNumber, -2)}
-                            className="w-5 h-5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 flex items-center justify-center active:scale-90 transition-all"
+                            className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all"
                           >
-                            <Minus className="w-2.5 h-2.5" />
+                            <Minus className="w-2 h-2" />
                           </button>
-                          <span className="font-mono font-bold w-12 text-center text-white text-[11px]">
+                          <span className="font-mono font-medium w-12 text-center text-white text-[11px]">
                             {set.weightKg} kg
                           </span>
                           <button
                             onClick={() => handleAdjustWeight(exercise.id, set.setNumber, 2)}
-                            className="w-5 h-5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 flex items-center justify-center active:scale-90 transition-all"
+                            className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all"
                           >
-                            <Plus className="w-2.5 h-2.5" />
+                            <Plus className="w-2 h-2" />
                           </button>
                         </>
                       )}
@@ -685,9 +687,9 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                         className="p-1 text-zinc-400 hover:text-white transition-all active:scale-90"
                       >
                         {set.completed ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                         ) : (
-                          <Circle className="w-5 h-5 text-zinc-600 hover:text-zinc-400" />
+                          <Circle className="w-4 h-4 text-zinc-600 hover:text-zinc-400" />
                         )}
                       </button>
                     </div>
@@ -698,7 +700,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
           );
         })}
 
-        {/* Botão Adicionar Exercício ao Treino (Modo Academia) */}
+        {/* Botão Adicionar Exercício Minimalista */}
         {workoutMode === "gym" && (
           <button
             type="button"
@@ -706,9 +708,9 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
               triggerHaptic("light");
               setIsAddExerciseModalOpen(true);
             }}
-            className="w-full py-3.5 px-4 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800/90 border border-dashed border-emerald-500/30 hover:border-emerald-500/60 text-emerald-400 hover:text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-lg shadow-black/40 mt-2 group"
+            className="w-full py-2.5 px-4 rounded-2xl bg-zinc-900/40 hover:bg-zinc-900 border border-dashed border-white/[0.12] hover:border-emerald-500/40 text-zinc-400 hover:text-emerald-300 font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] mt-1"
           >
-            <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <Plus className="w-3.5 h-3.5 text-emerald-400" />
             <span>Adicionar Exercício ao Treino {currentSplit.id}</span>
           </button>
         )}
