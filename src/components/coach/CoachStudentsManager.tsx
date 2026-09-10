@@ -54,7 +54,7 @@ export function CoachStudentsManager({
   const [newStudentPhone, setNewStudentPhone] = useState("");
   const [newStudentEmail, setNewStudentEmail] = useState("");
   const [newStudentGoal, setNewStudentGoal] = useState<StudentProfile["goal"]>("Hipertrofia");
-  const [newStudentPlan, setNewStudentPlan] = useState("Mensal VIP Presencial");
+  const [newStudentPlan, setNewStudentPlan] = useState("Mensal Pro (R$ 45/mês)");
   const [newStudentAge, setNewStudentAge] = useState("28");
   const [newStudentEmergency, setNewStudentEmergency] = useState("");
   const [newStudentIsOffline, setNewStudentIsOffline] = useState(true);
@@ -695,10 +695,9 @@ export function CoachStudentsManager({
                     onChange={(e) => setNewStudentPlan(e.target.value)}
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white"
                   >
-                    <option value="Mensal VIP Presencial">Mensal VIP Presencial</option>
-                    <option value="Semanal 3x">Semanal 3x</option>
-                    <option value="Diária Avulsa">Diária Avulsa</option>
-                    <option value="Trimestral Premium">Trimestral Premium</option>
+                    <option value="Mensal Básico (R$ 35/mês)">Mensal Básico (R$ 35/mês)</option>
+                    <option value="Mensal Pro (R$ 45/mês)">Mensal Pro (R$ 45/mês)</option>
+                    <option value="Mensal VIP (R$ 55/mês)">Mensal VIP (R$ 55/mês)</option>
                   </select>
                 </div>
               </div>

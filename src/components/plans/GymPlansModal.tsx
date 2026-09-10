@@ -30,43 +30,43 @@ export interface PlanOption {
 
 const PLANS: PlanOption[] = [
   {
-    id: "smart",
-    name: "Smart Pass",
-    price: "89,90",
+    id: "basico",
+    name: "Plano Básico",
+    price: "35,00",
     billingPeriod: "/mês",
     features: [
-      "Acesso ilimitado à área de musculação",
-      "Fichas de treino dinâmicas (A/B/C/D)",
+      "Acesso à área de musculação e aeróbico",
+      "Fichas de treino essenciais",
       "Acesso à catraca via QR Code digital",
-      "Horário livre em sua unidade base",
+      "Horários livres em sua unidade base",
     ],
   },
   {
-    id: "black",
-    name: "Black VIP",
+    id: "pro",
+    name: "Plano Pro",
     tag: "MAIS ESCOLHIDO",
     popular: true,
-    price: "139,90",
+    price: "45,00",
     billingPeriod: "/mês",
     features: [
-      "Acesso a todas as unidades GymFlow",
-      "Todas as aulas coletivas (Spinning, Muay Thai, Yoga)",
-      "GymBot IA ilimitado para tirar dúvidas de treino e dieta",
-      "Leve 1 amigo para treinar 4x ao mês",
-      "Poltrona de massagem relaxante pós-treino",
+      "Acesso completo a todas as áreas GymFlow",
+      "Fichas completas com ExerciseDB (GIFs dinâmicos)",
+      "Todas as aulas coletivas (Spinning, Funcional, Alongamento)",
+      "GymBot IA ilimitado para dúvidas de treino e dieta",
     ],
   },
   {
-    id: "prime",
-    name: "Anual Prime",
-    tag: "ECONOMIZE 30%",
-    price: "99,90",
-    billingPeriod: "/mês (fidelidade anual)",
+    id: "vip",
+    name: "Plano VIP",
+    tag: "COMPLETO",
+    price: "55,00",
+    billingPeriod: "/mês",
     features: [
-      "Todos os benefícios do Plano Black VIP",
-      "Taxa zero de adesão e manutenção anual",
+      "Acesso VIP a todas as unidades GymFlow",
+      "Acompanhamento presencial com Personal Trainer",
+      "Remanejamento flexível de horários prioritário",
+      "Leve 1 amigo para treinar 4x ao mês",
       "Bioimpedância InBody gratuita todo mês",
-      "Camiseta oficial GymFlow Dry-Fit inclusa",
     ],
   },
 ];
@@ -77,7 +77,7 @@ interface GymPlansModalProps {
 }
 
 export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("black");
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("pro");
   const [checkoutStep, setCheckoutStep] = useState<"plans" | "payment" | "success">("plans");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [copiedPix, setCopiedPix] = useState(false);

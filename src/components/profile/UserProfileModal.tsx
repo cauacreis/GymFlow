@@ -58,10 +58,10 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
   const [instagram, setInstagram] = useState(profile.instagram || "@rodrigo.gymflow");
   const [location, setLocation] = useState(profile.location || "Salão Principal • Musculação");
 
-  // Preços do Personal
-  const [dailyPrice, setDailyPrice] = useState(profile.pricing?.dailySession || 75);
-  const [weeklyPrice, setWeeklyPrice] = useState(profile.pricing?.weeklyPlan || 190);
-  const [monthlyPrice, setMonthlyPrice] = useState(profile.pricing?.monthlyPlan || 580);
+  // Preços Mensais do Personal (35, 45, 55)
+  const [basicPrice, setBasicPrice] = useState(profile.pricing?.basicMonthly || profile.pricing?.dailySession || 35);
+  const [proPrice, setProPrice] = useState(profile.pricing?.proMonthly || profile.pricing?.weeklyPlan || 45);
+  const [vipPrice, setVipPrice] = useState(profile.pricing?.vipMonthly || profile.pricing?.monthlyPlan || 55);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -80,9 +80,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
       setBio(current.bio || "");
       setInstagram(current.instagram || "@rodrigo.gymflow");
       setLocation(current.location || "Salão Principal • Musculação");
-      setDailyPrice(current.pricing?.dailySession || 75);
-      setWeeklyPrice(current.pricing?.weeklyPlan || 190);
-      setMonthlyPrice(current.pricing?.monthlyPlan || 580);
+      setBasicPrice(current.pricing?.basicMonthly || current.pricing?.dailySession || 35);
+      setProPrice(current.pricing?.proMonthly || current.pricing?.weeklyPlan || 45);
+      setVipPrice(current.pricing?.vipMonthly || current.pricing?.monthlyPlan || 55);
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -103,9 +103,12 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
     triggerHaptic("success");
 
     const pricingObj = {
-      dailySession: Number(dailyPrice),
-      weeklyPlan: Number(weeklyPrice),
-      monthlyPlan: Number(monthlyPrice),
+      basicMonthly: Number(basicPrice) || 35,
+      proMonthly: Number(proPrice) || 45,
+      vipMonthly: Number(vipPrice) || 55,
+      dailySession: Number(basicPrice) || 35,
+      weeklyPlan: Number(proPrice) || 45,
+      monthlyPlan: Number(vipPrice) || 55,
     };
 
     const updated = saveUserProfile({
@@ -378,37 +381,37 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
                   />
                 </div>
 
-                {/* Preços dos Planos */}
+                {/* Preços dos Planos Mensais */}
                 <div className="sm:col-span-2 pt-1 border-t border-white/[0.04]">
                   <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-2">
-                    Tabela de Preços para os Alunos (R$):
+                    Tabela de Planos Mensais para os Alunos (R$ / mês):
                   </span>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="text-[9px] text-zinc-500 block mb-0.5">Diária (R$)</label>
+                      <label className="text-[9px] text-zinc-400 font-bold block mb-0.5">Básico (R$/mês)</label>
                       <input
                         type="number"
-                        value={dailyPrice}
-                        onChange={(e) => setDailyPrice(Number(e.target.value))}
+                        value={basicPrice}
+                        onChange={(e) => setBasicPrice(Number(e.target.value))}
                         className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono"
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] text-zinc-500 block mb-0.5">Semanal (R$)</label>
+                      <label className="text-[9px] text-amber-400 font-bold block mb-0.5">Pro (R$/mês)</label>
                       <input
                         type="number"
-                        value={weeklyPrice}
-                        onChange={(e) => setWeeklyPrice(Number(e.target.value))}
-                        className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono"
+                        value={proPrice}
+                        onChange={(e) => setProPrice(Number(e.target.value))}
+                        className="w-full p-2 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs text-white font-mono"
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] text-zinc-500 block mb-0.5">Mensal VIP (R$)</label>
+                      <label className="text-[9px] text-emerald-400 font-bold block mb-0.5">VIP (R$/mês)</label>
                       <input
                         type="number"
-                        value={monthlyPrice}
-                        onChange={(e) => setMonthlyPrice(Number(e.target.value))}
-                        className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono"
+                        value={vipPrice}
+                        onChange={(e) => setVipPrice(Number(e.target.value))}
+                        className="w-full p-2 rounded-xl bg-zinc-950 border border-emerald-500/30 text-xs text-white font-mono"
                       />
                     </div>
                   </div>

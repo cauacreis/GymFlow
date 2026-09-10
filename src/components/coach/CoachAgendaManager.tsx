@@ -54,10 +54,10 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
   const [newSlotTime, setNewSlotTime] = useState("");
   const [isEditingPrices, setIsEditingPrices] = useState(false);
 
-  // Preços editáveis
-  const [dailyPrice, setDailyPrice] = useState(75);
-  const [weeklyPrice, setWeeklyPrice] = useState(190);
-  const [monthlyPrice, setMonthlyPrice] = useState(580);
+  // Preços editáveis mensais (35, 45, 55)
+  const [basicPrice, setBasicPrice] = useState(35);
+  const [proPrice, setProPrice] = useState(45);
+  const [vipPrice, setVipPrice] = useState(55);
 
   // Modal Atribuir Aluno a Horário Vago
   const [assignModalSlot, setAssignModalSlot] = useState<TrainerSlot | null>(null);
@@ -80,9 +80,9 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
 
       const me = allCoaches.find((c) => c.id === coachId) || allCoaches[0];
       if (me) {
-        setDailyPrice(me.pricing.dailySession);
-        setWeeklyPrice(me.pricing.weeklyPlan);
-        setMonthlyPrice(me.pricing.monthlyPlan);
+        setBasicPrice(me.pricing.basicMonthly ?? me.pricing.dailySession ?? 35);
+        setProPrice(me.pricing.proMonthly ?? me.pricing.weeklyPlan ?? 45);
+        setVipPrice(me.pricing.vipMonthly ?? me.pricing.monthlyPlan ?? 55);
       }
     };
     refreshData();
@@ -159,9 +159,12 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
     triggerHaptic("success");
     if (!currentCoach) return;
     updateCoachPricing(currentCoach.id, {
-      dailySession: Number(dailyPrice),
-      weeklyPlan: Number(weeklyPrice),
-      monthlyPlan: Number(monthlyPrice),
+      basicMonthly: Number(basicPrice) || 35,
+      proMonthly: Number(proPrice) || 45,
+      vipMonthly: Number(vipPrice) || 55,
+      dailySession: Number(basicPrice) || 35,
+      weeklyPlan: Number(proPrice) || 45,
+      monthlyPlan: Number(vipPrice) || 55,
     });
     setIsEditingPrices(false);
     showToast("Tabela de preços atualizada no marketplace!");
@@ -560,34 +563,34 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
           {isEditingPrices && (
             <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col gap-2.5 animate-in fade-in duration-150">
               <span className="text-[10px] font-bold text-zinc-400 uppercase">
-                Seus Preços de Consultoria Presencial:
+                Tabela de Planos Mensais aos Alunos (R$ / mês):
               </span>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-[9px] text-zinc-500 block mb-0.5">Diária Avulsa (R$)</label>
+                  <label className="text-[9px] text-zinc-400 font-bold block mb-0.5">Básico (R$/mês)</label>
                   <input
                     type="number"
-                    value={dailyPrice}
-                    onChange={(e) => setDailyPrice(Number(e.target.value))}
+                    value={basicPrice}
+                    onChange={(e) => setBasicPrice(Number(e.target.value))}
                     className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] text-zinc-500 block mb-0.5">Semanal 3x (R$)</label>
+                  <label className="text-[9px] text-amber-400 font-bold block mb-0.5">Pro (R$/mês)</label>
                   <input
                     type="number"
-                    value={weeklyPrice}
-                    onChange={(e) => setWeeklyPrice(Number(e.target.value))}
-                    className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-white"
+                    value={proPrice}
+                    onChange={(e) => setProPrice(Number(e.target.value))}
+                    className="w-full p-2 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs font-mono text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] text-zinc-500 block mb-0.5">Mensal VIP (R$)</label>
+                  <label className="text-[9px] text-emerald-400 font-bold block mb-0.5">VIP (R$/mês)</label>
                   <input
                     type="number"
-                    value={monthlyPrice}
-                    onChange={(e) => setMonthlyPrice(Number(e.target.value))}
-                    className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-white"
+                    value={vipPrice}
+                    onChange={(e) => setVipPrice(Number(e.target.value))}
+                    className="w-full p-2 rounded-xl bg-zinc-950 border border-emerald-500/30 text-xs font-mono text-white"
                   />
                 </div>
               </div>

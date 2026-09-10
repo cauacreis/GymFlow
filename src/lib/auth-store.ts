@@ -24,13 +24,16 @@ export interface UserProfile {
   instagram?: string;
   location?: string;
   pricing?: {
-    dailySession: number;
-    weeklyPlan: number;
-    monthlyPlan: number;
+    basicMonthly: number;
+    proMonthly: number;
+    vipMonthly: number;
+    dailySession?: number;
+    weeklyPlan?: number;
+    monthlyPlan?: number;
   };
 }
 
-const STORAGE_KEY_AUTH = "gymflow_current_user_v2";
+const STORAGE_KEY_AUTH = "gymflow_current_user_v3";
 const EVENT_AUTH_CHANGED = "gymflow:auth-changed";
 
 const DEFAULT_USER: UserProfile = {
@@ -46,13 +49,16 @@ const DEFAULT_USER: UserProfile = {
   cref: "08412-SP",
   specialty: "Hipertrofia & Biomecânica",
   bio: "Personal Trainer e atleta amador. Acredito na periodização científica e no acompanhamento individualizado com biomecânica refinada.",
-  hourlyRate: 75,
+  hourlyRate: 35,
   instagram: "@rodrigo.gymflow",
   location: "Salão Principal • Musculação & Área Funcional",
   pricing: {
-    dailySession: 75,
-    weeklyPlan: 190,
-    monthlyPlan: 580,
+    basicMonthly: 35,
+    proMonthly: 45,
+    vipMonthly: 55,
+    dailySession: 35,
+    weeklyPlan: 45,
+    monthlyPlan: 55,
   },
 };
 
@@ -64,7 +70,22 @@ export function getCurrentUser(): UserProfile {
       localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(DEFAULT_USER));
       return DEFAULT_USER;
     }
-    return JSON.parse(raw);
+    const parsed: UserProfile = JSON.parse(raw);
+    // Normalização defensiva de preços
+    if (parsed.pricing) {
+      const basic = parsed.pricing.basicMonthly && parsed.pricing.basicMonthly <= 60 ? parsed.pricing.basicMonthly : 35;
+      const pro = parsed.pricing.proMonthly && parsed.pricing.proMonthly <= 75 ? parsed.pricing.proMonthly : 45;
+      const vip = parsed.pricing.vipMonthly && parsed.pricing.vipMonthly <= 90 ? parsed.pricing.vipMonthly : 55;
+      parsed.pricing = {
+        basicMonthly: basic,
+        proMonthly: pro,
+        vipMonthly: vip,
+        dailySession: basic,
+        weeklyPlan: pro,
+        monthlyPlan: vip,
+      };
+    }
+    return parsed;
   } catch (e) {
     return DEFAULT_USER;
   }

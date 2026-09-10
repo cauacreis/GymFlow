@@ -30,9 +30,12 @@ export interface CoachTrainer {
   instagram?: string;
   location?: string;
   pricing: {
-    dailySession: number; // Ex: 75
-    weeklyPlan: number;   // Ex: 190 (3x/semana)
-    monthlyPlan: number;  // Ex: 580 (acompanhamento presencial)
+    basicMonthly: number; // R$ 35/mês (Plano Básico)
+    proMonthly: number;   // R$ 45/mês (Plano Pro)
+    vipMonthly: number;   // R$ 55/mês (Plano VIP)
+    dailySession?: number; // Compatibilidade legada
+    weeklyPlan?: number;
+    monthlyPlan?: number;
   };
   slots: TrainerSlot[];
 }
@@ -57,7 +60,7 @@ export interface BookingRequest {
   coachPhone: string;
   slotDay: string;
   slotTime: string;
-  planType: "diario" | "semanal" | "mensal";
+  planType: "basico" | "pro" | "vip" | "diario" | "semanal" | "mensal";
   basePrice: number;
   extraOfferedAmount: number;
   totalPrice: number;
@@ -82,8 +85,8 @@ export interface AppNotification {
   actionUrl?: string;
 }
 
-const STORAGE_COACHES = "gymflow_coaches_v1";
-const STORAGE_BOOKINGS = "gymflow_bookings_v1";
+const STORAGE_COACHES = "gymflow_coaches_v3";
+const STORAGE_BOOKINGS = "gymflow_bookings_v2";
 const STORAGE_NOTIFICATIONS = "gymflow_notifications_v1";
 
 const EVENT_BOOKING = "gymflow:booking-updated";
@@ -104,12 +107,15 @@ const INITIAL_COACHES: CoachTrainer[] = [
     instagram: "@rodrigo.gymflow",
     location: "Salão Principal • Musculação & Área Funcional",
     pricing: {
-      dailySession: 75,
-      weeklyPlan: 190,
-      monthlyPlan: 580,
+      basicMonthly: 35,
+      proMonthly: 45,
+      vipMonthly: 55,
+      dailySession: 35,
+      weeklyPlan: 45,
+      monthlyPlan: 55,
     },
     slots: [
-      { id: "s1", day: "Hoje", time: "07:00", isAvailable: false, studentName: "Lucas Mendes", studentPlan: "Mensal VIP" },
+      { id: "s1", day: "Hoje", time: "07:00", isAvailable: false, studentName: "Lucas Mendes", studentPlan: "Mensal Pro" },
       { id: "s2", day: "Hoje", time: "08:00", isAvailable: true },
       { id: "s3", day: "Hoje", time: "09:00", isAvailable: true },
       { id: "s4", day: "Hoje", time: "17:00", isAvailable: true },
@@ -134,9 +140,12 @@ const INITIAL_COACHES: CoachTrainer[] = [
     reviewCount: 62,
     bio: "Foco em ativação de glúteos, condicionamento metabólico e alinhamento de cintura escapular.",
     pricing: {
-      dailySession: 80,
-      weeklyPlan: 210,
-      monthlyPlan: 620,
+      basicMonthly: 35,
+      proMonthly: 45,
+      vipMonthly: 55,
+      dailySession: 35,
+      weeklyPlan: 45,
+      monthlyPlan: 55,
     },
     slots: [
       { id: "c1", day: "Hoje", time: "08:00", isAvailable: true },
@@ -158,9 +167,12 @@ const INITIAL_COACHES: CoachTrainer[] = [
     reviewCount: 35,
     bio: "Treinador de atletas de força e reabilitação de joelho e ombro com foco em longevidade.",
     pricing: {
-      dailySession: 70,
-      weeklyPlan: 180,
-      monthlyPlan: 520,
+      basicMonthly: 35,
+      proMonthly: 45,
+      vipMonthly: 55,
+      dailySession: 35,
+      weeklyPlan: 45,
+      monthlyPlan: 55,
     },
     slots: [
       { id: "l1", day: "Hoje", time: "06:00", isAvailable: true },
@@ -182,14 +194,14 @@ const INITIAL_BOOKINGS: BookingRequest[] = [
     coachPhone: "5511987654321",
     slotDay: "Hoje",
     slotTime: "18:00",
-    planType: "mensal",
-    basePrice: 580,
-    extraOfferedAmount: 20,
-    totalPrice: 600,
+    planType: "vip",
+    basePrice: 55,
+    extraOfferedAmount: 0,
+    totalPrice: 55,
     status: "accepted",
     paymentStatus: "paid",
     attendanceStatus: "scheduled",
-    notes: "Foco em bater metas de carga no supino e terra.",
+    notes: "Foco em periodização de hipertrofia e biomecânica.",
     createdAt: "Hoje às 09:15",
   },
 ];
@@ -211,7 +223,7 @@ const INITIAL_NOTIFICATIONS: AppNotification[] = [
     studentId: "student_carlos",
     type: "payment_confirmed",
     title: "Pagamento Concluído ✅",
-    message: "O pagamento do Plano Mensal (R$ 600,00) foi confirmado pelo treinador.",
+    message: "O pagamento do Plano Mensal VIP (R$ 55,00) foi confirmado pelo treinador.",
     timestamp: "Hoje às 09:25",
     read: false,
   },
@@ -239,7 +251,25 @@ export function getStoredCoaches(): CoachTrainer[] {
       localStorage.setItem(STORAGE_COACHES, JSON.stringify(INITIAL_COACHES));
       return INITIAL_COACHES;
     }
-    return JSON.parse(raw);
+    const list: CoachTrainer[] = JSON.parse(raw);
+    // Normalização defensiva: garante que os preços 35/45/55 sejam aplicados
+    const normalized = list.map((c) => {
+      const basic = c.pricing?.basicMonthly && c.pricing.basicMonthly <= 60 ? c.pricing.basicMonthly : 35;
+      const pro = c.pricing?.proMonthly && c.pricing.proMonthly <= 75 ? c.pricing.proMonthly : 45;
+      const vip = c.pricing?.vipMonthly && c.pricing.vipMonthly <= 90 ? c.pricing.vipMonthly : 55;
+      return {
+        ...c,
+        pricing: {
+          basicMonthly: basic,
+          proMonthly: pro,
+          vipMonthly: vip,
+          dailySession: basic,
+          weeklyPlan: pro,
+          monthlyPlan: vip,
+        },
+      };
+    });
+    return normalized;
   } catch {
     return INITIAL_COACHES;
   }
@@ -318,7 +348,7 @@ export function requestTrainerBooking(params: {
   coachId: string;
   slotDay: string;
   slotTime: string;
-  planType: "diario" | "semanal" | "mensal";
+  planType: "basico" | "pro" | "vip" | "diario" | "semanal" | "mensal";
   extraOfferedAmount: number;
   notes?: string;
 }): BookingRequest {
@@ -326,11 +356,11 @@ export function requestTrainerBooking(params: {
   const coach = coaches.find((c) => c.id === params.coachId) || coaches[0];
 
   const basePrice =
-    params.planType === "diario"
-      ? coach.pricing.dailySession
-      : params.planType === "semanal"
-      ? coach.pricing.weeklyPlan
-      : coach.pricing.monthlyPlan;
+    params.planType === "basico" || params.planType === "diario"
+      ? (coach.pricing.basicMonthly ?? coach.pricing.dailySession ?? 35)
+      : params.planType === "pro" || params.planType === "semanal"
+      ? (coach.pricing.proMonthly ?? coach.pricing.weeklyPlan ?? 45)
+      : (coach.pricing.vipMonthly ?? coach.pricing.monthlyPlan ?? 55);
 
   const totalPrice = basePrice + Math.max(0, params.extraOfferedAmount);
 

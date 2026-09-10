@@ -43,8 +43,8 @@ export function PersonalMarketplaceView({
   const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_rodrigo");
   const [selectedDay, setSelectedDay] = useState<string>("Hoje");
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
-  const [selectedPlanType, setSelectedPlanType] = useState<"diario" | "semanal" | "mensal">("mensal");
-  const [extraAmount, setExtraAmount] = useState<number>(20);
+  const [selectedPlanType, setSelectedPlanType] = useState<"basico" | "pro" | "vip" | "diario" | "semanal" | "mensal">("pro");
+  const [extraAmount, setExtraAmount] = useState<number>(15);
   const [searchQuery, setSearchQuery] = useState("");
   const [myBookings, setMyBookings] = useState<BookingRequest[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -72,13 +72,13 @@ export function PersonalMarketplaceView({
   // Slots do dia selecionado
   const daySlots = (currentCoach?.slots || []).filter((s) => s.day === selectedDay);
 
-  // Preço base do plano selecionado
+  // Preço base do plano selecionado (Mensal 35 / 45 / 55)
   const basePrice = currentCoach
-    ? selectedPlanType === "diario"
-      ? currentCoach.pricing.dailySession
-      : selectedPlanType === "semanal"
-      ? currentCoach.pricing.weeklyPlan
-      : currentCoach.pricing.monthlyPlan
+    ? selectedPlanType === "basico" || selectedPlanType === "diario"
+      ? (currentCoach.pricing.basicMonthly ?? currentCoach.pricing.dailySession ?? 35)
+      : selectedPlanType === "pro" || selectedPlanType === "semanal"
+      ? (currentCoach.pricing.proMonthly ?? currentCoach.pricing.weeklyPlan ?? 45)
+      : (currentCoach.pricing.vipMonthly ?? currentCoach.pricing.monthlyPlan ?? 55)
     : 0;
 
   const totalPrice = basePrice + Math.max(0, extraAmount);
@@ -289,7 +289,7 @@ export function PersonalMarketplaceView({
                       </span>
                       <span>•</span>
                       <span className="font-mono text-zinc-300">
-                        A partir de R$ {coach.pricing.dailySession}/sessão
+                        A partir de R$ {coach.pricing.basicMonthly ?? coach.pricing.dailySession ?? 35}/mês
                       </span>
                     </div>
                   </div>
@@ -373,15 +373,35 @@ export function PersonalMarketplaceView({
             )}
           </div>
 
-          {/* Seletor de Planos Presenciais */}
+          {/* Seletor de Planos Presenciais (Mensal 35 / 45 / 55) */}
           <div className="flex flex-col gap-1.5 pt-2 border-t border-white/[0.06]">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase">Modalidade do Plano:</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">Modalidade do Plano Mensal:</span>
+              <span className="text-[9px] text-emerald-400 font-bold">Mensalidades Recorrentes</span>
+            </div>
 
             <div className="grid grid-cols-3 gap-1.5">
               {[
-                { id: "diario", title: "Diária Avulsa", price: currentCoach.pricing.dailySession },
-                { id: "semanal", title: "Semanal (3x)", price: currentCoach.pricing.weeklyPlan },
-                { id: "mensal", title: "Mensal VIP", price: currentCoach.pricing.monthlyPlan },
+                {
+                  id: "basico",
+                  title: "Básico",
+                  subtitle: "2x por semana",
+                  price: currentCoach.pricing.basicMonthly ?? currentCoach.pricing.dailySession ?? 35,
+                },
+                {
+                  id: "pro",
+                  title: "Pro",
+                  subtitle: "3x por semana",
+                  badge: "Mais Escolhido",
+                  price: currentCoach.pricing.proMonthly ?? currentCoach.pricing.weeklyPlan ?? 45,
+                },
+                {
+                  id: "vip",
+                  title: "VIP",
+                  subtitle: "Livre / Ilimitado",
+                  badge: "Completo",
+                  price: currentCoach.pricing.vipMonthly ?? currentCoach.pricing.monthlyPlan ?? 55,
+                },
               ].map((plan) => {
                 const isSelected = selectedPlanType === plan.id;
                 return (
@@ -391,15 +411,21 @@ export function PersonalMarketplaceView({
                       triggerHaptic("selection");
                       setSelectedPlanType(plan.id as any);
                     }}
-                    className={`p-2.5 rounded-xl border flex flex-col items-center text-center transition-all ${
+                    className={`relative p-2.5 rounded-xl border flex flex-col items-center text-center transition-all ${
                       isSelected
-                        ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300"
-                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400"
+                        ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-md shadow-emerald-500/10"
+                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/20"
                     }`}
                   >
-                    <span className="text-[10px] font-bold truncate">{plan.title}</span>
-                    <span className="text-xs font-mono font-black text-white mt-0.5">
-                      R$ {plan.price}
+                    {plan.badge && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[7px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 px-1.5 py-0.2 rounded-full whitespace-nowrap shadow">
+                        {plan.badge}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-black text-white truncate">{plan.title}</span>
+                    <span className="text-[9px] text-zinc-400">{plan.subtitle}</span>
+                    <span className="text-xs font-mono font-black text-emerald-400 mt-1">
+                      R$ {plan.price}/mês
                     </span>
                   </button>
                 );
@@ -445,13 +471,14 @@ export function PersonalMarketplaceView({
           {/* Resumo de Investimento e Botão de Confirmação */}
           <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
             <div>
-              <span className="text-[9px] uppercase font-bold text-zinc-400">Total a Pagar ao Personal:</span>
+              <span className="text-[9px] uppercase font-bold text-zinc-400">Total Mensal ao Personal:</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-base font-mono font-black text-emerald-400">
                   R$ {totalPrice.toFixed(2)}
                 </span>
+                <span className="text-[10px] text-zinc-400 font-mono">/mês</span>
                 {extraAmount > 0 && (
-                  <span className="text-[9px] text-zinc-400 line-through">
+                  <span className="text-[9px] text-zinc-400 line-through ml-1">
                     (Base R$ {basePrice})
                   </span>
                 )}
