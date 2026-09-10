@@ -44,8 +44,8 @@ export function BottomTabBar({ currentTab, onSelectTab, role = "student" }: Bott
   const activeTabs = isCoach ? coachTabs : studentTabs;
 
   return (
-    <nav aria-label="Navegação Principal" className="sticky bottom-2 z-40 w-full px-4 pt-1 pb-1">
-      <div className="relative flex items-center justify-around p-1.5 rounded-full bg-[#0E0E14]/90 backdrop-blur-2xl border border-white/[0.1] shadow-[0_12px_32px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.1)]">
+    <nav aria-label="Navegação Principal" className="fixed bottom-2 left-0 right-0 z-40 w-full max-w-md mx-auto px-4 pointer-events-none">
+      <div className="pointer-events-auto relative flex items-center justify-around p-1.5 rounded-full bg-[#0E0E14]/90 backdrop-blur-2xl border border-white/[0.1] shadow-[0_12px_32px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.1)]">
         {activeTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;

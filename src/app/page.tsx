@@ -291,7 +291,7 @@ export default function GymFlowApp() {
           triggerHaptic("medium");
           setIsGymBotOpen(true);
         }}
-        className="fixed bottom-20 right-4 z-40 p-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-xl shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-1.5"
+        className="fixed bottom-20 right-4 sm:right-[max(1rem,calc(50%-224px+1rem))] z-40 p-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-xl shadow-emerald-500/30 active:scale-95 transition-all flex items-center gap-1.5"
         title="Assistente GymBot IA"
       >
         <Bot className="w-5 h-5" />
