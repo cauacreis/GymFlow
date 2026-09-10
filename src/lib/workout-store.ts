@@ -4,6 +4,15 @@
  */
 
 import { WorkoutSplitTemplate, PREFORMED_ROUTINES } from "./exercisedb";
+import {
+  fetchStudentsFromSupabase,
+  upsertStudentToSupabase,
+  deleteStudentFromSupabase,
+  fetchWorkoutFromSupabase,
+  saveWorkoutToSupabase,
+  fetchCoachPlansFromSupabase,
+  saveCoachPlanToSupabase,
+} from "./supabase-service";
 
 export interface StudentProfile {
   id: string;
@@ -52,9 +61,9 @@ export interface StudentWorkoutPackage {
   splits: WorkoutSplitTemplate[];
 }
 
-const STORAGE_KEY_STUDENTS = "gymflow_students_v1";
-const STORAGE_KEY_WORKOUTS = "gymflow_student_workouts_v1";
-const STORAGE_KEY_COACH_PLANS = "gymflow_coach_plans_v1";
+const STORAGE_KEY_STUDENTS = "gymflow_students_v3";
+const STORAGE_KEY_WORKOUTS = "gymflow_student_workouts_v2";
+const STORAGE_KEY_COACH_PLANS = "gymflow_coach_plans_v2";
 const EVENT_NAME = "gymflow:workout-updated";
 
 export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
@@ -102,6 +111,8 @@ export function saveCoachPlans(plans: CoachPlanOption[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY_COACH_PLANS, JSON.stringify(plans));
   window.dispatchEvent(new Event(EVENT_NAME));
+
+  plans.forEach((p) => saveCoachPlanToSupabase(p).catch(() => {}));
 }
 
 export function addCustomCoachPlan(plan: Omit<CoachPlanOption, "id">): CoachPlanOption {
@@ -128,112 +139,25 @@ export function deleteCoachPlan(id: string): void {
   saveCoachPlans(updated);
 }
 
-const INITIAL_STUDENTS: StudentProfile[] = [
-  {
-    id: "student_carlos",
-    name: "Carlos Silva",
-    email: "carlos.silva@gymflow.app",
-    phone: "(11) 99123-4567",
-    matricula: "GF-84920",
-    goal: "Hipertrofia",
-    plan: "Mensal VIP Presencial",
-    status: "ativo",
-    monthlyPresence: 16,
-    monthlyAbsences: 1,
-    monthlyDelays: 0,
-    totalClasses: 48,
-    lastPresence: "Ontem às 18:00",
-    age: 29,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    scheduledTimeToday: "18:00",
-    todayAttendanceStatus: "agendado",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-    currentRoutineTitle: "Hipertrofia Clássica ABC (Push / Pull / Legs)",
-    prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
-    prescribedAt: "Hoje às 10:30",
-    notesFromCoach: "Foco especial na fase excêntrica do supino e amplitude no agachamento.",
-    emergencyContact: "(11) 98888-7777",
-  },
-  {
-    id: "student_beatriz",
-    name: "Beatriz Lima",
-    email: "beatriz.lima@gymflow.app",
-    phone: "(11) 97777-6666",
-    matricula: "GF-91402",
-    goal: "Hipertrofia",
-    plan: "Semanal 3x",
-    status: "ativo",
-    monthlyPresence: 12,
-    monthlyAbsences: 0,
-    monthlyDelays: 0,
-    totalClasses: 36,
-    lastPresence: "Ontem às 18:00",
-    age: 26,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    scheduledTimeToday: "19:30",
-    todayAttendanceStatus: "agendado",
-    avatarUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80",
-    currentRoutineTitle: "Foco Glúteos & Coxas (Especial Feminino)",
-    prescribedBy: "Profª. Camila Martins (CREF 09332-SP)",
-    prescribedAt: "08/Set/2026",
-    notesFromCoach: "Manter 2 segundos de pico na elevação pélvica.",
-    emergencyContact: "(11) 96666-5555",
-  },
-  {
-    id: "student_lucas",
-    name: "Lucas Mendes",
-    email: "lucas.mendes@gymflow.app",
-    phone: "(11) 96543-2109",
-    matricula: "GF-77211",
-    goal: "Força & Performance",
-    plan: "Mensal VIP Presencial",
-    status: "ativo",
-    monthlyPresence: 18,
-    monthlyAbsences: 2,
-    monthlyDelays: 1,
-    totalClasses: 52,
-    lastPresence: "Hoje às 07:00",
-    age: 31,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    scheduledTimeToday: "07:00",
-    todayAttendanceStatus: "presente",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-    currentRoutineTitle: "Força Bruta 5×5 (Compostos Básicos)",
-    prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
-    prescribedAt: "05/Set/2026",
-    notesFromCoach: "Respeitar rigorosamente os 2m30s de descanso nos compostos.",
-    emergencyContact: "(11) 95555-4444",
-  },
-  {
-    id: "student_fernanda",
-    name: "Fernanda Ribeiro",
-    email: "fernanda.ribeiro@gymflow.app",
-    phone: "(11) 94444-3333",
-    matricula: "GF-62198",
-    goal: "Emagrecimento",
-    plan: "Diária Avulsa",
-    status: "ativo",
-    monthlyPresence: 8,
-    monthlyAbsences: 1,
-    totalClasses: 18,
-    lastPresence: "07/Set/2026",
-    age: 34,
-    hasWorkoutSheet: false, // Aluna presencial sem ficha obrigatória!
-    isOfflineStudent: true,  // Aluna presencial cadastrada diretamente pelo professor
-    avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
-    currentRoutineTitle: "Acompanhamento Presencial Livre",
-    prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
-    prescribedAt: "Presencial Livre",
-    notesFromCoach: "Acompanhamento presencial direto no salão. Treino funcional e circuito metabólico sem ficha fixa.",
-    emergencyContact: "(11) 93333-2222",
-  },
-];
+const INITIAL_STUDENTS: StudentProfile[] = [];
+
+// Flag de sincronização inicial em memória
+let hasTriggeredInitialSupabaseSync = false;
 
 export function getStoredStudents(): StudentProfile[] {
   if (typeof window === "undefined") return INITIAL_STUDENTS;
+
+  // Sincronização assíncrona transparente com o Supabase (executada uma vez por sessão no client)
+  if (!hasTriggeredInitialSupabaseSync) {
+    hasTriggeredInitialSupabaseSync = true;
+    fetchStudentsFromSupabase().then((remoteStudents) => {
+      if (remoteStudents && remoteStudents.length > 0) {
+        localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(remoteStudents));
+        window.dispatchEvent(new Event(EVENT_NAME));
+      }
+    }).catch(() => {});
+  }
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
     if (!raw) {
@@ -261,7 +185,7 @@ export function saveNewStudent(studentData: {
   const newStudent: StudentProfile = {
     id: `student_${Date.now()}`,
     name: studentData.name,
-    email: studentData.email || `offline_${Date.now()}@gymflow.app`,
+    email: studentData.email || "",
     phone: studentData.phone || "",
     matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
     goal: studentData.goal,
@@ -274,11 +198,9 @@ export function saveNewStudent(studentData: {
     isOfflineStudent: studentData.isOfflineStudent ?? true,
     age: studentData.age || 25,
     emergencyContact: studentData.emergencyContact || "",
-    avatarUrl:
-      studentData.avatarUrl ||
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    avatarUrl: studentData.avatarUrl || "",
     currentRoutineTitle: "Acompanhamento Presencial Livre",
-    prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
+    prescribedBy: "",
     prescribedAt: "Sem Ficha Fixa",
   };
 
@@ -287,6 +209,10 @@ export function saveNewStudent(studentData: {
     localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
     window.dispatchEvent(new Event(EVENT_NAME));
   }
+
+  // Sincroniza em segundo plano com Supabase
+  upsertStudentToSupabase(newStudent).catch(() => {});
+
   return newStudent;
 }
 
@@ -296,9 +222,20 @@ export function updateStudentProfile(
 ): void {
   if (typeof window === "undefined") return;
   const students = getStoredStudents();
-  const updated = students.map((s) => (s.id === studentId ? { ...s, ...updates } : s));
+  let updatedStudent: StudentProfile | null = null;
+  const updated = students.map((s) => {
+    if (s.id === studentId) {
+      updatedStudent = { ...s, ...updates };
+      return updatedStudent;
+    }
+    return s;
+  });
   localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
+
+  if (updatedStudent) {
+    upsertStudentToSupabase(updatedStudent).catch(() => {});
+  }
 }
 
 export function deleteStudent(studentId: string): void {
@@ -307,6 +244,8 @@ export function deleteStudent(studentId: string): void {
   const updated = students.filter((s) => s.id !== studentId);
   localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
+
+  deleteStudentFromSupabase(studentId).catch(() => {});
 }
 
 export function recordStudentAttendance(
@@ -348,6 +287,11 @@ export function recordStudentAttendance(
   });
   localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
+
+  const updatedStudent = updated.find((st) => st.id === studentId);
+  if (updatedStudent) {
+    upsertStudentToSupabase(updatedStudent).catch(() => {});
+  }
 
   // 1. Sincroniza com o booking-store se houver reserva ativa
   try {
@@ -493,6 +437,9 @@ export function assignWorkoutToStudent(
 
     workoutsMap[studentId] = workoutPackage;
     localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
+
+    // Sincroniza ficha com Supabase
+    saveWorkoutToSupabase(workoutPackage).catch(() => {});
 
     // Atualiza também o status na lista de alunos
     const students = getStoredStudents();

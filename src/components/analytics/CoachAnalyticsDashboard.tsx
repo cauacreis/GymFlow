@@ -31,6 +31,7 @@ import {
 import { coachAnalyticsData } from "@/lib/analytics-data";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser } from "@/lib/auth-store";
+import { getStoredStudents } from "@/lib/workout-store";
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const HOURS = ["06:00", "07:00", "08:00", "09:00", "17:00", "18:00", "19:00", "20:00"];
@@ -57,8 +58,49 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function CoachAnalyticsDashboard() {
-  const { kpis, monthlyRevenueHistory, weeklyAttendance, busiestHours, agendaHeatmap, topStudents, recentCoachActivity } = coachAnalyticsData;
+  const [students, setStudents] = useState(() => getStoredStudents());
+  const { kpis, monthlyRevenueHistory, weeklyAttendance, busiestHours, agendaHeatmap, recentCoachActivity } = coachAnalyticsData;
   const [selectedTimeframe, setSelectedTimeframe] = useState<"mes" | "ano">("mes");
+
+  // Cálculos dinâmicos com dados reais
+  const activeStudentsCount = students.filter((s) => (s.status || "ativo") === "ativo").length;
+  const totalPresences = students.reduce((acc, s) => acc + (s.monthlyPresence || 0), 0);
+  const totalAbsences = students.reduce((acc, s) => acc + (s.monthlyAbsences || 0), 0);
+  const totalSessions = totalPresences + totalAbsences;
+  const presenceRate = totalSessions > 0 ? Math.round((totalPresences / totalSessions) * 100) : (students.length > 0 ? 100 : 0);
+
+  const realRevenue = students.reduce((acc, s) => {
+    const planName = (s.plan || "").toLowerCase();
+    let price = 45;
+    if (planName.includes("básico") || planName.includes("basico")) price = 35;
+    else if (planName.includes("vip")) price = 55;
+    else if (planName.includes("diária") || planName.includes("diaria")) price = 35;
+    return acc + price;
+  }, 0);
+
+  const dynamicTopStudents = students
+    .map((s) => {
+      const p = s.monthlyPresence || 0;
+      const a = s.monthlyAbsences || 0;
+      const total = p + a;
+      const rate = total > 0 ? Math.round((p / total) * 100) : 100;
+      const initials = s.name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+      return {
+        id: s.id,
+        name: s.name,
+        plan: s.plan || "Mensal Pro",
+        totalSessions: s.totalClasses || p,
+        presenceRate: rate,
+        avatar: initials || "AL",
+      };
+    })
+    .sort((a, b) => b.presenceRate - a.presenceRate)
+    .slice(0, 5);
 
   return (
     <div className="flex flex-col gap-4 text-left w-full animate-in fade-in duration-300">
@@ -116,8 +158,10 @@ export function CoachAnalyticsDashboard() {
               </span>
             </div>
             <div className="mt-2">
-              <span className="text-base font-black text-white font-mono">{kpis.monthlyRevenue}</span>
-              <span className="text-[9px] text-zinc-400 block">Receita no Mês</span>
+              <span className="text-base font-black text-white font-mono">
+                {realRevenue > 0 ? `R$ ${realRevenue.toLocaleString("pt-BR")}` : "R$ 0"}
+              </span>
+              <span className="text-[9px] text-zinc-400 block">Receita Estimada</span>
             </div>
           </div>
 
@@ -128,11 +172,11 @@ export function CoachAnalyticsDashboard() {
                 <Users className="w-4 h-4" />
               </div>
               <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
-                {kpis.studentsChange}
+                {activeStudentsCount > 0 ? `${activeStudentsCount} na carteira` : "Sem alunos"}
               </span>
             </div>
             <div className="mt-2">
-              <span className="text-base font-black text-white font-mono">{kpis.activeStudents}</span>
+              <span className="text-base font-black text-white font-mono">{activeStudentsCount}</span>
               <span className="text-[9px] text-zinc-400 block">Alunos Ativos</span>
             </div>
           </div>
@@ -144,11 +188,11 @@ export function CoachAnalyticsDashboard() {
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <span className="text-[9px] font-bold text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-md">
-                {kpis.presenceChange}
+                {totalSessions > 0 ? `${totalSessions} sessões` : "Sem sessões"}
               </span>
             </div>
             <div className="mt-2">
-              <span className="text-base font-black text-white font-mono">{kpis.presenceRate}</span>
+              <span className="text-base font-black text-white font-mono">{presenceRate}%</span>
               <span className="text-[9px] text-zinc-400 block">Taxa de Presença</span>
             </div>
           </div>
@@ -344,38 +388,44 @@ export function CoachAnalyticsDashboard() {
         </div>
 
         <div className="space-y-2.5">
-          {topStudents.map((st, i) => (
-            <div
-              key={st.id}
-              className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
-            >
-              <span className="w-6 text-center text-sm font-black shrink-0">
-                {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}º`}
-              </span>
-
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center shrink-0">
-                {st.avatar}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white truncate">{st.name}</span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-400">{st.presenceRate}%</span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-zinc-400 mt-0.5">
-                  <span>{st.plan}</span>
-                  <span>{st.totalSessions} treinos</span>
-                </div>
-                {/* Barra de Progresso */}
-                <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden mt-1.5">
-                  <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full"
-                    style={{ width: `${st.presenceRate}%` }}
-                  />
-                </div>
-              </div>
+          {dynamicTopStudents.length === 0 ? (
+            <div className="py-6 px-4 rounded-xl bg-white/[0.02] border border-white/[0.04] text-center text-xs text-zinc-400">
+              Nenhum aluno cadastrado na carteira ainda para calcular o ranking.
             </div>
-          ))}
+          ) : (
+            dynamicTopStudents.map((st, i) => (
+              <div
+                key={st.id}
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
+              >
+                <span className="w-6 text-center text-sm font-black shrink-0">
+                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}º`}
+                </span>
+
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center justify-center shrink-0">
+                  {st.avatar}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white truncate">{st.name}</span>
+                    <span className="text-[10px] font-mono font-bold text-emerald-400">{st.presenceRate}%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400 mt-0.5">
+                    <span>{st.plan}</span>
+                    <span>{st.totalSessions} treinos</span>
+                  </div>
+                  {/* Barra de Progresso */}
+                  <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden mt-1.5">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full"
+                      style={{ width: `${st.presenceRate}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

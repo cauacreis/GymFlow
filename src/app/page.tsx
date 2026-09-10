@@ -183,7 +183,7 @@ export default function GymFlowApp() {
             {currentTab === "treino" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <WorkoutSheet
-                  studentId="student_carlos"
+                  studentId={userProfile.id}
                   onOpenTimer={(seconds) => {
                     setTimerSeconds(seconds || 60);
                     setIsTimerOpen(true);
@@ -196,7 +196,7 @@ export default function GymFlowApp() {
             {currentTab === "agenda" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <StudentAgendaCalendar
-                  studentId="student_carlos"
+                  studentId={userProfile.id}
                   onNavigateToWorkout={() => setCurrentTab("treino")}
                 />
               </div>
@@ -207,7 +207,7 @@ export default function GymFlowApp() {
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <PersonalMarketplaceView
                   studentName={userProfile.name}
-                  studentPhone={userProfile.phone || "5511991234567"}
+                  studentPhone={userProfile.phone || ""}
                 />
               </div>
             )}

@@ -39,11 +39,11 @@ interface PersonalMarketplaceViewProps {
 }
 
 export function PersonalMarketplaceView({
-  studentName = "Carlos Silva",
-  studentPhone = "5511991234567",
+  studentName = "Aluno",
+  studentPhone = "",
 }: PersonalMarketplaceViewProps) {
   const [coaches, setCoaches] = useState<CoachTrainer[]>([]);
-  const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_rodrigo");
+  const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_principal");
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");

@@ -33,25 +33,27 @@ export interface UserProfile {
   };
 }
 
-const STORAGE_KEY_AUTH = "gymflow_current_user_v3";
+import { saveProfileToSupabase } from "./supabase-service";
+
+const STORAGE_KEY_AUTH = "gymflow_current_user_v4";
 const EVENT_AUTH_CHANGED = "gymflow:auth-changed";
 
 const DEFAULT_USER: UserProfile = {
-  id: "user_carlos",
-  name: "Carlos Silva",
-  email: "carlos.silva@gymflow.app",
-  phone: "11991234567",
-  activeRole: "student",
+  id: "user_me",
+  name: "Treinador",
+  email: "",
+  phone: "",
+  activeRole: "coach",
   enabledRoles: ["student", "coach"],
-  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
+  avatarUrl: "",
   goal: "Hipertrofia",
-  matricula: "GF-84920",
-  cref: "08412-SP",
-  specialty: "Hipertrofia & Biomecânica",
-  bio: "Personal Trainer e atleta amador. Acredito na periodização científica e no acompanhamento individualizado com biomecânica refinada.",
+  matricula: "GF-10001",
+  cref: "",
+  specialty: "Musculação & Hipertrofia",
+  bio: "Treinador e especialista em periodização e biomecânica.",
   hourlyRate: 35,
-  instagram: "@rodrigo.gymflow",
-  location: "Salão Principal • Musculação & Área Funcional",
+  instagram: "",
+  location: "Salão Principal",
   pricing: {
     basicMonthly: 35,
     proMonthly: 45,
@@ -105,6 +107,9 @@ export function saveUserProfile(updated: Partial<UserProfile>): UserProfile {
     window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: merged }));
   }
 
+  // Sincroniza em segundo plano com Supabase se estiver configurado
+  saveProfileToSupabase(merged).catch(() => {});
+
   return merged;
 }
 
@@ -141,7 +146,7 @@ export function registerNewUser(data: {
     id: `user_${Date.now()}`,
     name: data.name,
     email: data.email,
-    phone: data.phone || "11987654321",
+    phone: data.phone || "",
     activeRole: data.role,
     // Ao cadastrar, já habilita a flexibilidade de poder alternar para o outro modo quando desejar!
     enabledRoles: ["student", "coach"],
@@ -158,7 +163,17 @@ export function registerNewUser(data: {
     window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: newUser }));
   }
 
+  // Sincroniza em segundo plano com Supabase
+  saveProfileToSupabase(newUser).catch(() => {});
+
   return newUser;
+}
+
+export function logoutUser(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(STORAGE_KEY_AUTH);
+    window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: DEFAULT_USER }));
+  }
 }
 
 export function subscribeToAuthChanges(callback: (user: UserProfile) => void): () => void {

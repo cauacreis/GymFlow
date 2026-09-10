@@ -4,6 +4,11 @@
  * planos (diário, semanal, mensal), ofertas de valor extra, pagamentos e notificações.
  */
 
+import {
+  fetchBookingsFromSupabase,
+  saveBookingToSupabase,
+} from "./supabase-service";
+
 export interface TrainerSlot {
   id: string;
   time: string; // Ex: "07:00", "08:00", "18:00"
@@ -250,26 +255,26 @@ export function getCoachSlotsForDate(coach: CoachTrainer | undefined, targetDate
   }));
 }
 
-const STORAGE_COACHES = "gymflow_coaches_v3";
-const STORAGE_BOOKINGS = "gymflow_bookings_v2";
-const STORAGE_NOTIFICATIONS = "gymflow_notifications_v1";
+const STORAGE_COACHES = "gymflow_coaches_v4";
+const STORAGE_BOOKINGS = "gymflow_bookings_v3";
+const STORAGE_NOTIFICATIONS = "gymflow_notifications_v2";
 
 const EVENT_BOOKING = "gymflow:booking-updated";
 const EVENT_NOTIFICATIONS = "gymflow:notifications-updated";
 
 const INITIAL_COACHES: CoachTrainer[] = [
   {
-    id: "coach_rodrigo",
-    name: "Prof. Rodrigo Costa",
-    cref: "CREF 08412-SP",
+    id: "coach_principal",
+    name: "Treinador Principal",
+    cref: "",
     avatarUrl: "https://images.unsplash.com/photo-1567013127542-490d757e51fc?auto=format&fit=crop&w=200&q=80",
-    phone: "5511987654321",
+    phone: "",
     specialty: "Hipertrofia, Biomecânica & Força",
-    distance: "No salão principal (0m)",
-    rating: 4.9,
-    reviewCount: 48,
+    distance: "Salão Principal (0m)",
+    rating: 5.0,
+    reviewCount: 12,
     bio: "Especialista em periodização de alta intensidade e correção postural em exercícios compostos.",
-    instagram: "@rodrigo.gymflow",
+    instagram: "",
     location: "Salão Principal • Musculação & Área Funcional",
     pricing: {
       basicMonthly: 35,
@@ -280,129 +285,22 @@ const INITIAL_COACHES: CoachTrainer[] = [
       monthlyPlan: 55,
     },
     slots: [
-      { id: "s1", day: "Hoje", time: "07:00", isAvailable: false, studentName: "Lucas Mendes", studentPlan: "Mensal Pro" },
+      { id: "s1", day: "Hoje", time: "07:00", isAvailable: true },
       { id: "s2", day: "Hoje", time: "08:00", isAvailable: true },
       { id: "s3", day: "Hoje", time: "09:00", isAvailable: true },
       { id: "s4", day: "Hoje", time: "17:00", isAvailable: true },
-      { id: "s5", day: "Hoje", time: "18:00", isAvailable: false, studentName: "Carlos Silva", studentPlan: "Mensal VIP" },
+      { id: "s5", day: "Hoje", time: "18:00", isAvailable: true },
       { id: "s6", day: "Hoje", time: "19:00", isAvailable: true },
       { id: "s7", day: "Amanhã", time: "06:00", isAvailable: true },
       { id: "s8", day: "Amanhã", time: "07:00", isAvailable: true },
       { id: "s9", day: "Amanhã", time: "18:00", isAvailable: true },
-      { id: "s10", day: "Quinta", time: "08:00", isAvailable: true },
-      { id: "s11", day: "Quinta", time: "19:00", isAvailable: true },
-    ],
-  },
-  {
-    id: "coach_camila",
-    name: "Profª. Camila Martins",
-    cref: "CREF 09332-SP",
-    avatarUrl: "https://images.unsplash.com/photo-1594381898411-846e7d193883?auto=format&fit=crop&w=200&q=80",
-    phone: "5511976543210",
-    specialty: "Glúteos, Definição & Mobilidade",
-    distance: "A 250m • Unidade Jardins",
-    rating: 5.0,
-    reviewCount: 62,
-    bio: "Foco em ativação de glúteos, condicionamento metabólico e alinhamento de cintura escapular.",
-    pricing: {
-      basicMonthly: 35,
-      proMonthly: 45,
-      vipMonthly: 55,
-      dailySession: 35,
-      weeklyPlan: 45,
-      monthlyPlan: 55,
-    },
-    slots: [
-      { id: "c1", day: "Hoje", time: "08:00", isAvailable: true },
-      { id: "c2", day: "Hoje", time: "10:00", isAvailable: true },
-      { id: "c3", day: "Hoje", time: "16:00", isAvailable: true },
-      { id: "c4", day: "Amanhã", time: "07:00", isAvailable: true },
-      { id: "c5", day: "Amanhã", time: "09:00", isAvailable: true },
-    ],
-  },
-  {
-    id: "coach_lucas",
-    name: "Prof. Lucas Alencar",
-    cref: "CREF 11204-SP",
-    avatarUrl: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=200&q=80",
-    phone: "5511965432109",
-    specialty: "Powerlifting & Reabilitação",
-    distance: "A 500m • Unidade Paulista",
-    rating: 4.8,
-    reviewCount: 35,
-    bio: "Treinador de atletas de força e reabilitação de joelho e ombro com foco em longevidade.",
-    pricing: {
-      basicMonthly: 35,
-      proMonthly: 45,
-      vipMonthly: 55,
-      dailySession: 35,
-      weeklyPlan: 45,
-      monthlyPlan: 55,
-    },
-    slots: [
-      { id: "l1", day: "Hoje", time: "06:00", isAvailable: true },
-      { id: "l2", day: "Hoje", time: "14:00", isAvailable: true },
-      { id: "l3", day: "Hoje", time: "20:00", isAvailable: true },
-      { id: "l4", day: "Quinta", time: "07:00", isAvailable: true },
     ],
   },
 ];
 
-const INITIAL_BOOKINGS: BookingRequest[] = [
-  {
-    id: "book_001",
-    studentId: "student_carlos",
-    studentName: "Carlos Silva",
-    studentPhone: "5511991234567",
-    coachId: "coach_rodrigo",
-    coachName: "Prof. Rodrigo Costa",
-    coachPhone: "5511987654321",
-    slotDay: "Hoje",
-    slotTime: "18:00",
-    planType: "vip",
-    basePrice: 55,
-    extraOfferedAmount: 0,
-    totalPrice: 55,
-    status: "accepted",
-    paymentStatus: "paid",
-    attendanceStatus: "scheduled",
-    notes: "Foco em periodização de hipertrofia e biomecânica.",
-    createdAt: "Hoje às 09:15",
-  },
-];
+const INITIAL_BOOKINGS: BookingRequest[] = [];
 
-const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "notif_1",
-    targetRole: "student",
-    studentId: "student_carlos",
-    type: "booking_accepted",
-    title: "Agendamento Confirmado! 🏋️",
-    message: "Prof. Rodrigo Costa aceitou seu treino presencial para Hoje às 18:00.",
-    timestamp: "Hoje às 09:20",
-    read: false,
-  },
-  {
-    id: "notif_2",
-    targetRole: "student",
-    studentId: "student_carlos",
-    type: "payment_confirmed",
-    title: "Pagamento Concluído ✅",
-    message: "O pagamento do Plano Mensal VIP (R$ 55,00) foi confirmado pelo treinador.",
-    timestamp: "Hoje às 09:25",
-    read: false,
-  },
-  {
-    id: "notif_3",
-    targetRole: "student",
-    studentId: "student_carlos",
-    type: "training_reminder",
-    title: "Lembrete de Treino no Salão ⏰",
-    message: "Faltam poucas horas para o seu treino com o Prof. Rodrigo às 18:00. Não esqueça a toalha e garrafa!",
-    timestamp: "Hoje às 14:00",
-    read: false,
-  },
-];
+const INITIAL_NOTIFICATIONS: AppNotification[] = [];
 
 // ----------------------------------------------------------------------
 // GETTERS
@@ -440,8 +338,22 @@ export function getStoredCoaches(): CoachTrainer[] {
   }
 }
 
+// Flag de sincronização de agendamentos em memória
+let hasTriggeredBookingsSupabaseSync = false;
+
 export function getStoredBookings(): BookingRequest[] {
   if (typeof window === "undefined") return INITIAL_BOOKINGS;
+
+  if (!hasTriggeredBookingsSupabaseSync) {
+    hasTriggeredBookingsSupabaseSync = true;
+    fetchBookingsFromSupabase().then((remoteBookings) => {
+      if (remoteBookings && remoteBookings.length > 0) {
+        localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(remoteBookings));
+        window.dispatchEvent(new Event(EVENT_BOOKING));
+      }
+    }).catch(() => {});
+  }
+
   try {
     const raw = localStorage.getItem(STORAGE_BOOKINGS);
     if (!raw) {
@@ -568,6 +480,9 @@ export function requestTrainerBooking(params: {
     window.dispatchEvent(new Event(EVENT_BOOKING));
   }
 
+  // Sincroniza nova reserva com Supabase
+  saveBookingToSupabase(newBooking).catch(() => {});
+
   return newBooking;
 }
 
@@ -600,6 +515,11 @@ export function updateBookingStatus(
       title: "Horário Indisponível ⚠️",
       message: `${booking.coachName} não poderá atender no horário de ${booking.slotTime}. Por favor, selecione outro horário disponível.`,
     });
+  }
+
+  const updatedBooking = updated.find((b) => b.id === bookingId);
+  if (updatedBooking) {
+    saveBookingToSupabase(updatedBooking).catch(() => {});
   }
 
   window.dispatchEvent(new Event(EVENT_BOOKING));

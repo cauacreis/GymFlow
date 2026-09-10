@@ -76,7 +76,7 @@ interface WorkoutSheetProps {
   onOpenTimer: (defaultSeconds?: number) => void;
 }
 
-export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: WorkoutSheetProps) {
+export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutSheetProps) {
   const [workoutMode, setWorkoutMode] = useState<"gym" | "home">("gym");
   const [workoutPackage, setWorkoutPackage] = useState<StudentWorkoutPackage>(() =>
     getStudentWorkout(studentId)

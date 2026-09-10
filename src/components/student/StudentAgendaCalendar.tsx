@@ -46,58 +46,7 @@ interface CalendarDayEvent {
   rescheduleDetails?: BookingRequest["rescheduleRequest"];
 }
 
-const DEFAULT_DAYS_CALENDAR: CalendarDayEvent[] = [
-  {
-    id: "evt_1",
-    dayLabel: "Segunda",
-    dateStr: "01/Set",
-    time: "18:00",
-    status: "presente",
-    coachName: "Prof. Rodrigo Costa",
-  },
-  {
-    id: "evt_2",
-    dayLabel: "Quarta",
-    dateStr: "03/Set",
-    time: "18:00",
-    status: "presente",
-    coachName: "Prof. Rodrigo Costa",
-  },
-  {
-    id: "evt_3",
-    dayLabel: "Sexta",
-    dateStr: "05/Set",
-    time: "18:00",
-    status: "falta",
-    coachName: "Prof. Rodrigo Costa",
-  },
-  {
-    id: "evt_4",
-    dayLabel: "Segunda",
-    dateStr: "08/Set",
-    time: "18:00",
-    status: "presente",
-    coachName: "Prof. Rodrigo Costa",
-  },
-  {
-    id: "evt_5",
-    dayLabel: "Hoje",
-    dateStr: "09/Set",
-    time: "18:00",
-    status: "agendado",
-    coachName: "Prof. Rodrigo Costa",
-    coachPhone: "5511987654321",
-    bookingId: "book_001",
-  },
-  {
-    id: "evt_6",
-    dayLabel: "Sexta",
-    dateStr: "11/Set",
-    time: "18:00",
-    status: "agendado",
-    coachName: "Prof. Rodrigo Costa",
-  },
-];
+const DEFAULT_DAYS_CALENDAR: CalendarDayEvent[] = [];
 
 export function StudentAgendaCalendar({
   studentId = "student_carlos",
@@ -130,34 +79,33 @@ export function StudentAgendaCalendar({
       setStudent(st);
 
       // Sincroniza eventos da agenda com os agendamentos reais do aluno
-      const myBookings = allBookings.filter((b) => b.studentId === studentId);
+      const myBookings = allBookings.filter((b) => !studentId || b.studentId === studentId);
       if (myBookings.length > 0) {
-        const dynamicEvents: CalendarDayEvent[] = [
-          ...DEFAULT_DAYS_CALENDAR.slice(0, 4), // histórico passado
-          ...myBookings.map((b) => {
-            const hasPendingResched = b.rescheduleRequest && b.rescheduleRequest.status === "pending";
-            return {
-              id: b.id,
-              dayLabel: b.slotDay,
-              dateStr: "Hoje",
-              time: b.slotTime,
-              status: hasPendingResched
-                ? ("remanejamento_pendente" as const)
-                : b.attendanceStatus === "attended" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "presente")
-                ? ("presente" as const)
-                : b.attendanceStatus === "missed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "falta")
-                ? ("falta" as const)
-                : b.attendanceStatus === "delayed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "atraso")
-                ? ("atraso" as const)
-                : ("agendado" as const),
-              coachName: b.coachName,
-              coachPhone: b.coachPhone,
-              bookingId: b.id,
-              rescheduleDetails: b.rescheduleRequest,
-            };
-          }),
-        ];
+        const dynamicEvents: CalendarDayEvent[] = myBookings.map((b) => {
+          const hasPendingResched = b.rescheduleRequest && b.rescheduleRequest.status === "pending";
+          return {
+            id: b.id,
+            dayLabel: b.slotDay,
+            dateStr: "Hoje",
+            time: b.slotTime,
+            status: hasPendingResched
+              ? ("remanejamento_pendente" as const)
+              : b.attendanceStatus === "attended" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "presente")
+              ? ("presente" as const)
+              : b.attendanceStatus === "missed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "falta")
+              ? ("falta" as const)
+              : b.attendanceStatus === "delayed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "atraso")
+              ? ("atraso" as const)
+              : ("agendado" as const),
+            coachName: b.coachName,
+            coachPhone: b.coachPhone,
+            bookingId: b.id,
+            rescheduleDetails: b.rescheduleRequest,
+          };
+        });
         setCalendarEvents(dynamicEvents);
+      } else {
+        setCalendarEvents([]);
       }
     };
 
@@ -373,8 +321,19 @@ export function StudentAgendaCalendar({
         </div>
 
         <div className="flex flex-col gap-2">
-          {calendarEvents.map((evt) => {
-            const isAttended = evt.status === "presente";
+          {calendarEvents.length === 0 ? (
+            <div className="py-10 px-4 rounded-2xl bg-zinc-900/40 border border-white/[0.06] text-center space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto">
+                <CalendarIcon className="w-5 h-5" />
+              </div>
+              <p className="text-xs font-semibold text-zinc-300">Nenhum treino agendado ainda</p>
+              <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
+                Seus agendamentos com personal trainer e histórico de frequências no salão aparecerão aqui.
+              </p>
+            </div>
+          ) : (
+            calendarEvents.map((evt) => {
+              const isAttended = evt.status === "presente";
             const isMissed = evt.status === "falta";
             const isDelayed = evt.status === "atraso";
             const isScheduled = evt.status === "agendado";
@@ -485,7 +444,7 @@ export function StudentAgendaCalendar({
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       </div>
 

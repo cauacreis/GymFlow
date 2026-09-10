@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { registerNewUser, saveUserProfile, UserRole, UserProfile } from "@/lib/auth-store";
 import { triggerHaptic } from "@/lib/haptic";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 // Schemas Zod Estritos (Anti-Injeção e Validação de Formato)
 const loginSchema = z.object({
@@ -99,14 +100,40 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
     setIsLoading(true);
 
     try {
+      const client = getSupabase();
+
       if (mode === "login") {
         loginSchema.parse({ email, password });
-        await new Promise((resolve) => setTimeout(resolve, 600));
 
-        // Atualiza perfil logado
+        let profileName = email.split("@")[0];
+        let userRole: UserRole = "coach";
+
+        if (client) {
+          const { data, error } = await client.auth.signInWithPassword({ email, password });
+          if (error) {
+            throw new Error(error.message);
+          }
+          if (data?.user) {
+            const { data: profile } = await client
+              .from("profiles")
+              .select("*")
+              .eq("id", data.user.id)
+              .maybeSingle();
+
+            if (profile) {
+              profileName = profile.name || profileName;
+              userRole = (profile.active_role as UserRole) || userRole;
+            }
+          }
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 600));
+        }
+
+        // Atualiza perfil logado no store
         const loggedUser = saveUserProfile({
           email,
-          name: email.split("@")[0],
+          name: profileName,
+          activeRole: userRole,
         });
 
         setSuccessMessage(`Login efetuado! Entrando como ${loggedUser.activeRole === "coach" ? "Professor" : "Aluno"}...`);
@@ -122,7 +149,32 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
         }, 800);
       } else {
         signupSchema.parse({ name, email, password });
-        await new Promise((resolve) => setTimeout(resolve, 700));
+
+        let createdUserId: string | undefined;
+
+        if (client) {
+          const { data, error } = await client.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name,
+                phone,
+                role: selectedRole,
+                cref: selectedRole === "coach" ? cref.trim() || undefined : undefined,
+                specialty: selectedRole === "coach" ? specialty || "Musculação & Hipertrofia" : undefined,
+                goal: selectedRole === "student" ? goal : undefined,
+              },
+            },
+          });
+
+          if (error) {
+            throw new Error(error.message);
+          }
+          createdUserId = data?.user?.id;
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 700));
+        }
 
         // Registra novo usuário com o papel escolhido
         const newUser = registerNewUser({
@@ -134,6 +186,10 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
           specialty: selectedRole === "coach" ? specialty || "Musculação & Hipertrofia" : undefined,
           goal: selectedRole === "student" ? goal : undefined,
         });
+
+        if (createdUserId) {
+          saveUserProfile({ id: createdUserId });
+        }
 
         setSuccessMessage(
           selectedRole === "coach"
@@ -155,6 +211,8 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
     } catch (err: unknown) {
       if (err instanceof z.ZodError) {
         setErrorMessage(err.errors[0]?.message || "Dados inválidos");
+      } else if (err instanceof Error) {
+        setErrorMessage(err.message || "Erro na autenticação.");
       } else {
         setErrorMessage("E-mail ou senha incorretos.");
       }

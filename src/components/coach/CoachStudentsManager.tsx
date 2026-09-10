@@ -828,7 +828,29 @@ export function CoachStudentsManager({
 
       {/* Lista de Alunos em Cards */}
       <div className="flex flex-col gap-2.5">
-        {filteredStudents.length === 0 ? (
+        {students.length === 0 ? (
+          <div className="py-12 px-6 rounded-3xl bg-zinc-900/40 border border-white/[0.06] text-center flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <Users className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-zinc-200">Sua carteira de alunos está pronta</h4>
+              <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
+                Nenhum aluno cadastrado ainda. Cadastre seus alunos da academia para gerenciar frequências, prescrever treinos e acompanhar evolução.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                triggerHaptic("medium");
+                setIsNewStudentModalOpen(true);
+              }}
+              className="mt-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-lg shadow-amber-500/20 active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              Cadastrar Primeiro Aluno
+            </button>
+          </div>
+        ) : filteredStudents.length === 0 ? (
           <div className="p-8 rounded-3xl bg-zinc-900/40 border border-white/[0.06] text-center text-zinc-400 text-xs">
             Nenhum aluno encontrado para os critérios pesquisados.
           </div>
