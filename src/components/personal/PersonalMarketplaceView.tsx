@@ -49,6 +49,8 @@ export function PersonalMarketplaceView({
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
   const [selectedPlanType, setSelectedPlanType] = useState<"diario" | "semanal" | "mensal">("mensal");
   const [extraAmount, setExtraAmount] = useState<number>(15);
+  const [isCustomTip, setIsCustomTip] = useState<boolean>(false);
+  const [customTipInput, setCustomTipInput] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [myBookings, setMyBookings] = useState<BookingRequest[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -618,25 +620,88 @@ export function PersonalMarketplaceView({
               Alunos que oferecem valor extra têm maior prioridade de aceite em horários concorridos. O professor decidirá se aceita ou recusa.
             </p>
 
-            <div className="flex items-center gap-1.5">
-              {[0, 15, 30, 50].map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setExtraAmount(amt);
-                  }}
-                  className={`flex-1 py-1.5 rounded-xl text-[10px] font-mono font-bold transition-all ${
-                    extraAmount === amt
-                      ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20 font-black"
-                      : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.04]"
-                  }`}
-                >
-                  {amt === 0 ? "Sem gorjeta" : `+R$ ${amt}`}
-                </button>
-              ))}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[0, 15, 30, 50].map((amt) => {
+                const isSelected = !isCustomTip && extraAmount === amt;
+                return (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setIsCustomTip(false);
+                      setExtraAmount(amt);
+                    }}
+                    className={`flex-1 min-w-[62px] py-1.5 rounded-xl text-[10px] font-mono font-bold transition-all ${
+                      isSelected
+                        ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20 font-black scale-102"
+                        : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.04]"
+                    }`}
+                  >
+                    {amt === 0 ? "Sem gorjeta" : `+R$ ${amt}`}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setIsCustomTip(true);
+                  if (customTipInput) {
+                    setExtraAmount(Number(customTipInput) || 0);
+                  }
+                }}
+                className={`py-1.5 px-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 ${
+                  isCustomTip
+                    ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/20 font-black scale-102"
+                    : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.04]"
+                }`}
+              >
+                <Plus className="w-3 h-3" />
+                <span>Personalizada</span>
+              </button>
             </div>
+
+            {/* Campo de Entrada de Gorjeta Personalizada */}
+            {isCustomTip && (
+              <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
+                <div className="relative flex-1 flex items-center rounded-xl bg-zinc-950 border border-amber-500/40 px-3 py-2 shadow-inner">
+                  <span className="text-xs font-mono font-bold text-amber-400 mr-1.5">R$</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max="1000"
+                    autoFocus
+                    value={customTipInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomTipInput(val);
+                      const num = Math.min(1000, Math.max(0, Number(val) || 0));
+                      setExtraAmount(num);
+                    }}
+                    placeholder="Digite o valor extra (ex: 20)"
+                    className="w-full bg-transparent text-xs font-mono font-bold text-white placeholder:text-zinc-600 outline-none"
+                  />
+                  {customTipInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomTipInput("");
+                        setExtraAmount(0);
+                      }}
+                      className="text-[10px] text-zinc-500 hover:text-zinc-300 p-0.5"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+                <span className="text-[10px] text-amber-400 font-mono font-bold">
+                  {extraAmount > 0 ? `+R$ ${extraAmount},00` : "R$ 0"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 5. RESUMO DE INVESTIMENTO E BOTÃO DE CONFIRMAÇÃO */}
