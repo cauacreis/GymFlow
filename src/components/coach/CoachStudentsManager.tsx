@@ -1251,7 +1251,7 @@ export function CoachStudentsManager({
                           className="px-3 py-1.5 rounded-xl bg-white/[0.06] text-zinc-200 font-bold text-xs inline-flex items-center gap-1 border border-white/10 active:scale-95 transition-all"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Via ExerciseDB</span>
+                          <span>Banco de Exercícios</span>
                         </button>
                       )}
                     </div>
@@ -2050,13 +2050,13 @@ export function CoachStudentsManager({
                 })()}
               </div>
 
-              {/* Atalho para Prescrição Completa no ExerciseDB */}
+              {/* Atalho para Prescrição Completa no Catálogo */}
               {onPrescribeWorkoutForStudent && (
                 <div className="p-3 rounded-2xl bg-zinc-900/50 border border-white/[0.06] flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
                     <div>
-                      <p className="text-xs font-bold text-white">Catálogo ExerciseDB Completo</p>
+                      <p className="text-xs font-bold text-white">Biblioteca Completa de Exercícios</p>
                       <p className="text-[10px] text-zinc-400">
                         Prescrever com busca anatômica e demonstrações visuais
                       </p>
@@ -2072,7 +2072,7 @@ export function CoachStudentsManager({
                     }}
                     className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold shrink-0 transition-all active:scale-95"
                   >
-                    Abrir ExerciseDB
+                    Abrir Catálogo
                   </button>
                 </div>
               )}

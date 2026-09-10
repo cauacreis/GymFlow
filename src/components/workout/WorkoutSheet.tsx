@@ -17,10 +17,26 @@ import {
   Home,
   Sparkles,
   Zap,
+  Trash2,
+  Search,
+  X,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
-import { getStudentWorkout, subscribeToWorkoutChanges, StudentWorkoutPackage } from "@/lib/workout-store";
-import { getExerciseDetails, PREFORMED_ROUTINES, ExerciseInWorkout } from "@/lib/exercisedb";
+import {
+  getStudentWorkout,
+  subscribeToWorkoutChanges,
+  StudentWorkoutPackage,
+  addExerciseToStudentSplit,
+  removeExerciseFromStudentSplit,
+} from "@/lib/workout-store";
+import {
+  getExerciseDetails,
+  PREFORMED_ROUTINES,
+  ExerciseInWorkout,
+  getAllExercises,
+  saveCustomExercise,
+  ExerciseDBItem,
+} from "@/lib/exercisedb";
 import { ExerciseGifModal, ExerciseModalData } from "./ExerciseGifModal";
 
 export interface ExerciseSet {
@@ -44,6 +60,7 @@ export interface Exercise {
   instructions?: string[];
   tips?: string[];
   sets: ExerciseSet[];
+  isCustom?: boolean;
 }
 
 export interface WorkoutSplit {
@@ -71,7 +88,23 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
   const [selectedExerciseModal, setSelectedExerciseModal] = useState<ExerciseModalData | null>(null);
   const [isGifModalOpen, setIsGifModalOpen] = useState(false);
 
-  // Mapeia exercícios enriquecendo com o catálogo ExerciseDB
+  // Modal de Adição de Exercício (Catálogo de Academia e Personalizado)
+  const [isAddExerciseModalOpen, setIsAddExerciseModalOpen] = useState(false);
+  const [addModalTab, setAddModalTab] = useState<"catalog" | "custom">("catalog");
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogMuscleFilter, setCatalogMuscleFilter] = useState("todos");
+
+  // Inputs para criação de exercício personalizado pelo aluno
+  const [customName, setCustomName] = useState("");
+  const [customMuscle, setCustomMuscle] = useState("Peitoral");
+  const [customEquipment, setCustomEquipment] = useState("Halteres");
+  const [customSets, setCustomSets] = useState(3);
+  const [customReps, setCustomReps] = useState("10-12");
+  const [customWeight, setCustomWeight] = useState(15);
+  const [customRest, setCustomRest] = useState(60);
+  const [customNotes, setCustomNotes] = useState("");
+
+  // Mapeia exercícios enriquecendo com o catálogo
   const mapExercises = (rawExercises: ExerciseInWorkout[]): Exercise[] => {
     return rawExercises.map((ex) => {
       const details = getExerciseDetails(ex.exerciseId || ex.name);
@@ -88,6 +121,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
         mediaFrames: ex.mediaFrames || details?.mediaFrames,
         instructions: ex.instructions || details?.instructions,
         tips: ex.tips || details?.tips,
+        isCustom: ex.isCustom || ex.exerciseId?.startsWith("custom") || false,
         sets: ex.sets.map((set, idx) => ({
           setNumber: set.setNumber || idx + 1,
           reps: set.reps,
@@ -96,6 +130,90 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
         })),
       };
     });
+  };
+
+  // Remover exercício da ficha do aluno
+  const handleRemoveExercise = (exerciseId: string, exerciseName: string) => {
+    triggerHaptic("heavy");
+    if (confirm(`Deseja remover "${exerciseName}" do Treino ${selectedSplitId}?`)) {
+      removeExerciseFromStudentSplit(studentId, selectedSplitId, exerciseId);
+    }
+  };
+
+  // Adicionar exercício do catálogo oficial ao split
+  const handleAddCatalogExercise = (item: ExerciseDBItem) => {
+    triggerHaptic("medium");
+    const isBodyWeight = item.equipment === "body weight";
+    const newEx: ExerciseInWorkout = {
+      id: `ex_${Date.now()}`,
+      exerciseId: item.id,
+      name: item.name,
+      muscle: item.target,
+      equipment: item.equipment,
+      target: "3 séries × 10-12 reps",
+      restSeconds: 60,
+      notes: item.instructions?.[0] || "Execução com cadência controlada.",
+      mediaFrames: item.mediaFrames,
+      gifUrl: item.gifUrl,
+      instructions: item.instructions,
+      tips: item.tips,
+      sets: [
+        { setNumber: 1, reps: "10-12", weightKg: isBodyWeight ? 0 : 20 },
+        { setNumber: 2, reps: "10-12", weightKg: isBodyWeight ? 0 : 20 },
+        { setNumber: 3, reps: "10-12", weightKg: isBodyWeight ? 0 : 20 },
+      ],
+    };
+
+    addExerciseToStudentSplit(studentId, selectedSplitId, newEx);
+    setIsAddExerciseModalOpen(false);
+  };
+
+  // Criar e adicionar exercício personalizado ao split
+  const handleCreateCustomExercise = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customName.trim()) {
+      alert("Por favor, digite o nome do exercício!");
+      return;
+    }
+    triggerHaptic("success");
+
+    const createdItem = saveCustomExercise({
+      name: customName.trim(),
+      bodyPart: customMuscle.toLowerCase().includes("peito") ? "chest" :
+                customMuscle.toLowerCase().includes("costa") ? "back" :
+                customMuscle.toLowerCase().includes("perna") || customMuscle.toLowerCase().includes("quadr") ? "upper legs" :
+                customMuscle.toLowerCase().includes("ombro") ? "shoulders" :
+                customMuscle.toLowerCase().includes("bíceps") || customMuscle.toLowerCase().includes("tríceps") || customMuscle.toLowerCase().includes("braço") ? "upper arms" :
+                customMuscle.toLowerCase().includes("glúteo") ? "upper legs" :
+                customMuscle.toLowerCase().includes("abd") ? "waist" : "upper legs",
+      target: customMuscle,
+      equipment: customEquipment,
+      instructions: [customNotes.trim() || "Execução personalizada individualizada."],
+      difficulty: "Intermediário",
+    });
+
+    const newEx: ExerciseInWorkout = {
+      id: `ex_${Date.now()}`,
+      exerciseId: createdItem.id,
+      name: createdItem.name,
+      muscle: customMuscle,
+      equipment: customEquipment,
+      target: `${customSets} séries × ${customReps}`,
+      restSeconds: customRest,
+      notes: customNotes.trim() || undefined,
+      isCustom: true,
+      sets: Array.from({ length: customSets }).map((_, idx) => ({
+        setNumber: idx + 1,
+        reps: customReps,
+        weightKg: customWeight,
+        completed: false,
+      })),
+    };
+
+    addExerciseToStudentSplit(studentId, selectedSplitId, newEx);
+    setIsAddExerciseModalOpen(false);
+    setCustomName("");
+    setCustomNotes("");
   };
 
   // Carrega treino de acordo com o modo ("gym" ou "home")
@@ -326,7 +444,7 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
               </span>
               <h3 className="text-xs font-black text-white">Treino Funcional em Casa</h3>
               <p className="text-[10px] text-zinc-400">
-                Animações ExerciseDB passo a passo para sala ou quarto
+                Animações e guia passo a passo para sala ou quarto
               </p>
             </div>
           </div>
@@ -450,23 +568,28 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                     <h4 className="text-xs font-bold text-white leading-tight truncate">
                       {exercise.name}
                     </h4>
-                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-zinc-400">
+                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-zinc-400 flex-wrap">
                       <span className="text-emerald-400 font-medium">{exercise.muscle}</span>
                       <span>•</span>
                       <span className="truncate">{exercise.equipment}</span>
+                      {exercise.isCustom && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/25 text-[9px] font-bold">
+                          Personalizado
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Ações Rápidas: Ver GIF & Timer */}
+                {/* Ações Rápidas: Ver GIF, Timer & Remover */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => handleOpenGifModal(exercise)}
                     className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
-                    title="Ver GIF e execução"
+                    title="Ver demonstração e execução"
                   >
                     <Play className="w-3 h-3 fill-current" />
-                    <span>GIF</span>
+                    <span>Guia</span>
                   </button>
 
                   <button
@@ -477,6 +600,16 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
                     <Timer className="w-3 h-3 text-amber-400" />
                     <span>{exercise.restSeconds || 60}s</span>
                   </button>
+
+                  {workoutMode === "gym" && (
+                    <button
+                      onClick={() => handleRemoveExercise(exercise.id, exercise.name)}
+                      className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-all"
+                      title="Remover exercício da ficha"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -564,7 +697,325 @@ export function WorkoutSheet({ studentId = "student_carlos", onOpenTimer }: Work
             </div>
           );
         })}
+
+        {/* Botão Adicionar Exercício ao Treino (Modo Academia) */}
+        {workoutMode === "gym" && (
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic("light");
+              setIsAddExerciseModalOpen(true);
+            }}
+            className="w-full py-3.5 px-4 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800/90 border border-dashed border-emerald-500/30 hover:border-emerald-500/60 text-emerald-400 hover:text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-lg shadow-black/40 mt-2 group"
+          >
+            <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span>Adicionar Exercício ao Treino {currentSplit.id}</span>
+          </button>
+        )}
       </div>
+
+      {/* Modal de Adicionar Exercício (Catálogo Oficial + Criar Personalizado) */}
+      {isAddExerciseModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="w-full sm:max-w-lg bg-zinc-900 border border-white/10 rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-5 duration-200">
+            {/* Header do Modal */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <Dumbbell className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-black text-white">
+                  Adicionar ao Treino {currentSplit.id}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsAddExerciseModalOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Alternador de Abas: Catálogo vs Criar Personalizado */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-zinc-950 border border-white/[0.06] my-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setAddModalTab("catalog");
+                }}
+                className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  addModalTab === "catalog"
+                    ? "bg-emerald-500 text-zinc-950 shadow font-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Dumbbell className="w-3.5 h-3.5" />
+                <span>Banco de Exercícios</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setAddModalTab("custom");
+                }}
+                className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  addModalTab === "custom"
+                    ? "bg-emerald-500 text-zinc-950 shadow font-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Criar Personalizado</span>
+              </button>
+            </div>
+
+            {/* CONTEÚDO DA ABA 1: BANCO DE EXERCÍCIOS */}
+            {addModalTab === "catalog" && (
+              <div className="flex flex-col gap-2.5 overflow-hidden flex-1 min-h-0">
+                {/* Campo de Busca */}
+                <div className="relative shrink-0">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    placeholder="Buscar no banco (ex: Supino, Puxada, Crossover...)"
+                    className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                  />
+                </div>
+
+                {/* Filtro Muscular Rápido */}
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+                  {[
+                    { id: "todos", label: "Todos" },
+                    { id: "chest", label: "Peito" },
+                    { id: "back", label: "Costas" },
+                    { id: "upper legs", label: "Pernas / Glúteos" },
+                    { id: "shoulders", label: "Ombros" },
+                    { id: "upper arms", label: "Braços" },
+                    { id: "waist", label: "Abdômen" },
+                    { id: "cardio", label: "Cardio" },
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setCatalogMuscleFilter(filter.id);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${
+                        catalogMuscleFilter === filter.id
+                          ? "bg-emerald-500 text-zinc-950"
+                          : "bg-white/[0.04] text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Lista de Exercícios Filtrados */}
+                <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1">
+                  {getAllExercises()
+                    .filter((item) => {
+                      if (
+                        catalogMuscleFilter !== "todos" &&
+                        item.bodyPart?.toLowerCase() !== catalogMuscleFilter.toLowerCase()
+                      ) {
+                        return false;
+                      }
+                      if (catalogSearch.trim()) {
+                        const term = catalogSearch.toLowerCase().trim();
+                        return (
+                          item.name.toLowerCase().includes(term) ||
+                          item.target.toLowerCase().includes(term) ||
+                          item.equipment.toLowerCase().includes(term)
+                        );
+                      }
+                      return true;
+                    })
+                    .slice(0, 40)
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        className="p-2.5 rounded-xl bg-zinc-950 border border-white/[0.06] flex items-center justify-between gap-2 hover:border-emerald-500/30 transition-all"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {item.mediaFrames?.[0] ? (
+                            <div className="w-9 h-9 rounded-lg overflow-hidden bg-black/50 border border-white/10 shrink-0">
+                              <img
+                                src={item.mediaFrames[0]}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0 text-zinc-400">
+                              <Dumbbell className="w-4 h-4" />
+                            </div>
+                          )}
+
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-white block truncate">
+                              {item.name}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 flex items-center gap-1 mt-0.5">
+                              <span className="text-emerald-400">{item.target}</span>
+                              <span>•</span>
+                              <span>{item.equipment}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddCatalogExercise(item)}
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-black shrink-0 active:scale-95 transition-all flex items-center gap-1 shadow"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar</span>
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* CONTEÚDO DA ABA 2: CRIAR PERSONALIZADO */}
+            {addModalTab === "custom" && (
+              <form onSubmit={handleCreateCustomExercise} className="space-y-3 overflow-y-auto flex-1 pr-1">
+                <p className="text-[11px] text-zinc-400">
+                  Não encontrou o exercício ou faz uma variação específica? Preencha os dados abaixo:
+                </p>
+
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Nome do Exercício *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="Ex: Tríceps Francês na Polia com Barra W"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Grupo Muscular</label>
+                    <select
+                      value={customMuscle}
+                      onChange={(e) => setCustomMuscle(e.target.value)}
+                      className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="Peitoral">Peitoral</option>
+                      <option value="Costas / Dorsal">Costas / Dorsal</option>
+                      <option value="Quadríceps">Quadríceps</option>
+                      <option value="Posterior de Coxa">Posterior de Coxa</option>
+                      <option value="Glúteos">Glúteos</option>
+                      <option value="Ombros / Deltoides">Ombros / Deltoides</option>
+                      <option value="Bíceps">Bíceps</option>
+                      <option value="Tríceps">Tríceps</option>
+                      <option value="Panturrilhas">Panturrilhas</option>
+                      <option value="Abdômen / Core">Abdômen / Core</option>
+                      <option value="Cardio / Aeróbico">Cardio / Aeróbico</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Equipamento</label>
+                    <select
+                      value={customEquipment}
+                      onChange={(e) => setCustomEquipment(e.target.value)}
+                      className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="Halteres">Halteres</option>
+                      <option value="Barra Olímpica">Barra Olímpica</option>
+                      <option value="Polia / Cabo">Polia / Cabo</option>
+                      <option value="Máquina / Articulado">Máquina / Articulado</option>
+                      <option value="Smith Machine">Smith Machine</option>
+                      <option value="Peso do Corpo">Peso do Corpo</option>
+                      <option value="Kettlebell / Acessório">Kettlebell / Acessório</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Séries</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={customSets}
+                      onChange={(e) => setCustomSets(Number(e.target.value))}
+                      className="w-full mt-1 p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Reps</label>
+                    <input
+                      type="text"
+                      value={customReps}
+                      onChange={(e) => setCustomReps(e.target.value)}
+                      placeholder="10-12"
+                      className="w-full mt-1 p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Carga (kg)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={customWeight}
+                      onChange={(e) => setCustomWeight(Number(e.target.value))}
+                      className="w-full mt-1 p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Descanso</label>
+                    <input
+                      type="number"
+                      min={15}
+                      step={15}
+                      value={customRest}
+                      onChange={(e) => setCustomRest(Number(e.target.value))}
+                      className="w-full mt-1 p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Observações / Dica Técnica</label>
+                  <input
+                    type="text"
+                    value={customNotes}
+                    onChange={(e) => setCustomNotes(e.target.value)}
+                    placeholder="Ex: Segurar 2s no pico de contração"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddExerciseModalOpen(false)}
+                    className="w-1/3 py-2.5 rounded-xl bg-white/[0.06] text-xs font-bold text-zinc-300 active:scale-95 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-2/3 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider active:scale-95 transition-all shadow-md shadow-emerald-500/20"
+                  >
+                    Salvar e Inserir
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal de GIF & Execução */}
       <ExerciseGifModal

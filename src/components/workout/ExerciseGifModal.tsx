@@ -322,7 +322,7 @@ export function ExerciseGifModal({ exercise, isOpen, onClose }: ExerciseGifModal
         {/* Rodapé com Ação */}
         <div className="px-5 py-3 border-t border-white/[0.08] bg-zinc-900/60 flex items-center justify-between shrink-0">
           <span className="text-[10px] text-zinc-400 font-mono">
-            GymFlow • Animação ExerciseDB
+            GymFlow • Animação e Guia de Execução
           </span>
           <button
             onClick={() => {

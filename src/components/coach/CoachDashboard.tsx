@@ -23,12 +23,15 @@ import {
   Play,
   BarChart3,
   Users,
+  X,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   LOCAL_EXERCISE_DB,
   PREFORMED_ROUTINES,
   searchExercises,
+  saveCustomExercise,
+  getAllExercises,
   ExerciseDBItem,
   WorkoutSplitTemplate,
   ExerciseInWorkout,
@@ -69,11 +72,21 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
   const [selectedPreformedId, setSelectedPreformedId] = useState<string>("routine_hypertrophy_abc");
   const [customCoachNotes, setCustomCoachNotes] = useState("");
 
-  // Montador Customizado ExerciseDB
+  // Montador Customizado do Banco de Exercícios
   const [activeSplitId, setActiveSplitId] = useState<"A" | "B" | "C">("A");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBodyPart, setSelectedBodyPart] = useState<string>("todos");
-  const [searchResults, setSearchResults] = useState<ExerciseDBItem[]>(LOCAL_EXERCISE_DB);
+  const [searchResults, setSearchResults] = useState<ExerciseDBItem[]>([]);
+
+  // Modal para Criar Exercício Personalizado pelo Professor
+  const [isAddCustomModalOpen, setIsAddCustomModalOpen] = useState(false);
+  const [customExName, setCustomExName] = useState("");
+  const [customExMuscle, setCustomExMuscle] = useState("Peitoral");
+  const [customExEquipment, setCustomExEquipment] = useState("Halteres");
+  const [customExSets, setCustomExSets] = useState(3);
+  const [customExReps, setCustomExReps] = useState("10-12");
+  const [customExWeight, setCustomExWeight] = useState(20);
+  const [customExNotes, setCustomExNotes] = useState("");
 
   // Preview de Animação / GIF de Exercício
   const [previewExerciseModal, setPreviewExerciseModal] = useState<ExerciseModalData | null>(null);
@@ -211,7 +224,7 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
 
     assignWorkoutToStudent(currentStudent.id, {
       routineTitle: `Ficha Personalizada Prof. Rodrigo (${customSplits.length} Divisões)`,
-      coachNotes: customCoachNotes.trim() || `Treino individualizado montado no ExerciseDB para ${currentStudent.name}.`,
+      coachNotes: customCoachNotes.trim() || `Treino individualizado montado para ${currentStudent.name}.`,
       splits: customSplits,
       prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
     });
@@ -449,7 +462,7 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
           }`}
         >
           <Dumbbell className="w-3.5 h-3.5" />
-          <span>Criar com ExerciseDB</span>
+          <span>Banco de Exercícios</span>
         </button>
       </div>
 
@@ -562,7 +575,7 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
 
             {customSplits.find((s) => s.id === activeSplitId)?.exercises.length === 0 ? (
               <p className="text-[11px] text-zinc-500 py-3 text-center italic">
-                Nenhum exercício adicionado. Busque abaixo no ExerciseDB e adicione!
+                Nenhum exercício adicionado. Busque abaixo no banco de exercícios ou crie um personalizado!
               </p>
             ) : (
               <div className="flex flex-col gap-2">
@@ -594,17 +607,32 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
             )}
           </div>
 
-          {/* Barra de Busca e Filtros ExerciseDB */}
+          {/* Barra de Busca e Botão Personalizado */}
           <div className="flex flex-col gap-2">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar no ExerciseDB (ex: Supino, Puxada, Agachamento...)"
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar exercício (ex: Supino, Puxada, Agachamento...)"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setIsAddCustomModalOpen(true);
+                }}
+                className="px-3 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold shrink-0 flex items-center gap-1.5 active:scale-95 transition-all"
+                title="Cadastrar novo exercício personalizado"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Personalizado</span>
+              </button>
             </div>
 
             {/* Filtros de Músculo */}
@@ -808,6 +836,197 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
                   className="w-2/3 py-2.5 rounded-xl bg-emerald-500 text-zinc-950 font-black text-xs uppercase tracking-wider"
                 >
                   Cadastrar Aluno
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Adicionar Exercício Personalizado pelo Professor */}
+      {isAddCustomModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-zinc-900 border border-white/10 rounded-2xl p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Dumbbell className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-black text-white">Criar Exercício Personalizado</h3>
+              </div>
+              <button
+                onClick={() => setIsAddCustomModalOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!customExName.trim()) {
+                  alert("Por favor, digite o nome do exercício!");
+                  return;
+                }
+                triggerHaptic("success");
+
+                const createdItem = saveCustomExercise({
+                  name: customExName.trim(),
+                  bodyPart: customExMuscle.toLowerCase().includes("peito") ? "chest" :
+                            customExMuscle.toLowerCase().includes("costa") ? "back" :
+                            customExMuscle.toLowerCase().includes("perna") || customExMuscle.toLowerCase().includes("quadr") ? "upper legs" :
+                            customExMuscle.toLowerCase().includes("ombro") ? "shoulders" :
+                            customExMuscle.toLowerCase().includes("bíceps") || customExMuscle.toLowerCase().includes("tríceps") || customExMuscle.toLowerCase().includes("braço") ? "upper arms" :
+                            customExMuscle.toLowerCase().includes("glúteo") ? "upper legs" :
+                            customExMuscle.toLowerCase().includes("abd") ? "waist" : "upper legs",
+                  target: customExMuscle,
+                  equipment: customExEquipment,
+                  instructions: [customExNotes.trim() || "Execução personalizada individualizada."],
+                  difficulty: "Intermediário",
+                });
+
+                const newSplitEx: ExerciseInWorkout = {
+                  id: `ex_${Date.now()}`,
+                  exerciseId: createdItem.id,
+                  name: createdItem.name,
+                  muscle: customExMuscle,
+                  equipment: customExEquipment,
+                  target: `${customExSets} séries × ${customExReps}`,
+                  restSeconds: 60,
+                  notes: customExNotes.trim() || undefined,
+                  isCustom: true,
+                  sets: Array.from({ length: customExSets }).map((_, idx) => ({
+                    setNumber: idx + 1,
+                    reps: customExReps,
+                    weightKg: customExWeight,
+                    completed: false,
+                  })),
+                };
+
+                setCustomSplits((prev) =>
+                  prev.map((s) =>
+                    s.id === activeSplitId
+                      ? { ...s, exercises: [...s.exercises, newSplitEx] }
+                      : s
+                  )
+                );
+
+                showNotification(`Exercício "${createdItem.name}" adicionado ao Treino ${activeSplitId}!`);
+                setIsAddCustomModalOpen(false);
+                setCustomExName("");
+                setCustomExNotes("");
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">Nome do Exercício *</label>
+                <input
+                  type="text"
+                  required
+                  value={customExName}
+                  onChange={(e) => setCustomExName(e.target.value)}
+                  placeholder="Ex: Tríceps Francês na Polia com Barra W"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Grupo Muscular</label>
+                  <select
+                    value={customExMuscle}
+                    onChange={(e) => setCustomExMuscle(e.target.value)}
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                  >
+                    <option value="Peitoral">Peitoral</option>
+                    <option value="Costas / Dorsal">Costas / Dorsal</option>
+                    <option value="Quadríceps">Quadríceps</option>
+                    <option value="Posterior de Coxa">Posterior de Coxa</option>
+                    <option value="Glúteos">Glúteos</option>
+                    <option value="Ombros / Deltoides">Ombros / Deltoides</option>
+                    <option value="Bíceps">Bíceps</option>
+                    <option value="Tríceps">Tríceps</option>
+                    <option value="Panturrilhas">Panturrilhas</option>
+                    <option value="Abdômen / Core">Abdômen / Core</option>
+                    <option value="Cardio / Aeróbico">Cardio / Aeróbico</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Equipamento</label>
+                  <select
+                    value={customExEquipment}
+                    onChange={(e) => setCustomExEquipment(e.target.value)}
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                  >
+                    <option value="Halteres">Halteres</option>
+                    <option value="Barra Olímpica">Barra Olímpica</option>
+                    <option value="Polia / Cabo">Polia / Cabo</option>
+                    <option value="Máquina / Articulado">Máquina / Articulado</option>
+                    <option value="Smith Machine">Smith Machine</option>
+                    <option value="Peso do Corpo">Peso do Corpo</option>
+                    <option value="Kettlebell / Acessório">Kettlebell / Acessório</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Séries</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={customExSets}
+                    onChange={(e) => setCustomExSets(Number(e.target.value))}
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Reps</label>
+                  <input
+                    type="text"
+                    value={customExReps}
+                    onChange={(e) => setCustomExReps(e.target.value)}
+                    placeholder="10-12"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Carga (kg)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={customExWeight}
+                    onChange={(e) => setCustomExWeight(Number(e.target.value))}
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">Observações / Dica Técnica</label>
+                <input
+                  type="text"
+                  value={customExNotes}
+                  onChange={(e) => setCustomExNotes(e.target.value)}
+                  placeholder="Ex: Segurar 2s no pico de contração"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCustomModalOpen(false)}
+                  className="w-1/3 py-2.5 rounded-xl bg-white/[0.06] text-xs font-bold text-zinc-300 active:scale-95 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="w-2/3 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider active:scale-95 transition-all shadow-md shadow-emerald-500/20"
+                >
+                  Adicionar ao Treino {activeSplitId}
                 </button>
               </div>
             </form>

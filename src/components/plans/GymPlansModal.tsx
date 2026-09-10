@@ -50,7 +50,7 @@ const PLANS: PlanOption[] = [
     billingPeriod: "/mês",
     features: [
       "Acesso completo a todas as áreas GymFlow",
-      "Fichas completas com ExerciseDB (GIFs dinâmicos)",
+      "Fichas completas com animações dinâmicas e guia de execução",
       "Todas as aulas coletivas (Spinning, Funcional, Alongamento)",
       "GymBot IA ilimitado para dúvidas de treino e dieta",
     ],

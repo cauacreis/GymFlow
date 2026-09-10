@@ -72,7 +72,7 @@ export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
     price: 45,
     period: "mensal",
     frequency: "3x por semana presencial",
-    description: "Fichas completas com ExerciseDB e acompanhamento semanal",
+    description: "Fichas completas com catálogo de exercícios e acompanhamento semanal",
   },
   {
     id: "plan_vip",
@@ -576,3 +576,79 @@ export function subscribeToWorkoutChanges(callback: () => void): () => void {
     window.removeEventListener("storage", handler);
   };
 }
+
+export function addExerciseToStudentSplit(
+  studentId: string,
+  splitId: "A" | "B" | "C" | "D" | string,
+  exercise: import("./exercisedb").ExerciseInWorkout
+): void {
+  if (typeof window === "undefined") return;
+  const currentWorkout = getStudentWorkout(studentId);
+  const updatedSplits = currentWorkout.splits.map((split) => {
+    if (split.id === splitId) {
+      return {
+        ...split,
+        exercises: [...split.exercises, exercise],
+      };
+    }
+    return split;
+  });
+
+  assignWorkoutToStudent(studentId, {
+    routineTitle: currentWorkout.routineTitle,
+    coachNotes: currentWorkout.coachNotes,
+    splits: updatedSplits,
+    prescribedBy: currentWorkout.prescribedBy,
+  });
+}
+
+export function removeExerciseFromStudentSplit(
+  studentId: string,
+  splitId: "A" | "B" | "C" | "D" | string,
+  exerciseId: string
+): void {
+  if (typeof window === "undefined") return;
+  const currentWorkout = getStudentWorkout(studentId);
+  const updatedSplits = currentWorkout.splits.map((split) => {
+    if (split.id === splitId) {
+      return {
+        ...split,
+        exercises: split.exercises.filter((ex) => ex.id !== exerciseId),
+      };
+    }
+    return split;
+  });
+
+  assignWorkoutToStudent(studentId, {
+    routineTitle: currentWorkout.routineTitle,
+    coachNotes: currentWorkout.coachNotes,
+    splits: updatedSplits,
+    prescribedBy: currentWorkout.prescribedBy,
+  });
+}
+
+export function updateStudentSplitExercises(
+  studentId: string,
+  splitId: "A" | "B" | "C" | "D" | string,
+  exercises: import("./exercisedb").ExerciseInWorkout[]
+): void {
+  if (typeof window === "undefined") return;
+  const currentWorkout = getStudentWorkout(studentId);
+  const updatedSplits = currentWorkout.splits.map((split) => {
+    if (split.id === splitId) {
+      return {
+        ...split,
+        exercises,
+      };
+    }
+    return split;
+  });
+
+  assignWorkoutToStudent(studentId, {
+    routineTitle: currentWorkout.routineTitle,
+    coachNotes: currentWorkout.coachNotes,
+    splits: updatedSplits,
+    prescribedBy: currentWorkout.prescribedBy,
+  });
+}
+
