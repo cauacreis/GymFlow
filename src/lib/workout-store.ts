@@ -29,6 +29,16 @@ export interface StudentProfile {
   lastPresence?: string;
 }
 
+export interface CoachPlanOption {
+  id: string;
+  name: string;
+  price: number;
+  period?: "mensal" | "semanal" | "diario" | "trimestral" | "personalizado";
+  frequency?: string;
+  description?: string;
+  isCustom?: boolean;
+}
+
 export interface StudentWorkoutPackage {
   studentId: string;
   routineTitle: string;
@@ -40,7 +50,79 @@ export interface StudentWorkoutPackage {
 
 const STORAGE_KEY_STUDENTS = "gymflow_students_v1";
 const STORAGE_KEY_WORKOUTS = "gymflow_student_workouts_v1";
+const STORAGE_KEY_COACH_PLANS = "gymflow_coach_plans_v1";
 const EVENT_NAME = "gymflow:workout-updated";
+
+export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
+  {
+    id: "plan_basico",
+    name: "Mensal Básico",
+    price: 35,
+    period: "mensal",
+    frequency: "2x por semana presencial",
+    description: "Treino essencial e correção biomecânica",
+  },
+  {
+    id: "plan_pro",
+    name: "Mensal Pro",
+    price: 45,
+    period: "mensal",
+    frequency: "3x por semana presencial",
+    description: "Fichas completas com ExerciseDB e acompanhamento semanal",
+  },
+  {
+    id: "plan_vip",
+    name: "Mensal VIP",
+    price: 55,
+    period: "mensal",
+    frequency: "Acompanhamento livre / 5x na semana",
+    description: "Acompanhamento VIP livre e remanejamento flexível prioritário",
+  },
+];
+
+export function getStoredCoachPlans(): CoachPlanOption[] {
+  if (typeof window === "undefined") return DEFAULT_COACH_PLANS;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_COACH_PLANS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_COACH_PLANS, JSON.stringify(DEFAULT_COACH_PLANS));
+      return DEFAULT_COACH_PLANS;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return DEFAULT_COACH_PLANS;
+  }
+}
+
+export function saveCoachPlans(plans: CoachPlanOption[]): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY_COACH_PLANS, JSON.stringify(plans));
+  window.dispatchEvent(new Event(EVENT_NAME));
+}
+
+export function addCustomCoachPlan(plan: Omit<CoachPlanOption, "id">): CoachPlanOption {
+  const current = getStoredCoachPlans();
+  const newPlan: CoachPlanOption = {
+    ...plan,
+    id: `plan_${Date.now()}`,
+    isCustom: true,
+  };
+  const updated = [...current, newPlan];
+  saveCoachPlans(updated);
+  return newPlan;
+}
+
+export function updateCoachPlan(id: string, updates: Partial<CoachPlanOption>): void {
+  const current = getStoredCoachPlans();
+  const updated = current.map((p) => (p.id === id ? { ...p, ...updates } : p));
+  saveCoachPlans(updated);
+}
+
+export function deleteCoachPlan(id: string): void {
+  const current = getStoredCoachPlans();
+  const updated = current.filter((p) => p.id !== id);
+  saveCoachPlans(updated);
+}
 
 const INITIAL_STUDENTS: StudentProfile[] = [
   {

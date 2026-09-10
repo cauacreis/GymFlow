@@ -23,6 +23,8 @@ import {
   AlertCircle,
   Trash2,
   Edit3,
+  Tag,
+  RefreshCw,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -34,7 +36,13 @@ import {
   detachWorkoutFromStudent,
   subscribeToWorkoutChanges,
   StudentProfile,
+  CoachPlanOption,
+  getStoredCoachPlans,
+  saveCoachPlans,
+  DEFAULT_COACH_PLANS,
 } from "@/lib/workout-store";
+import { getStoredCoaches, updateCoachPricing } from "@/lib/booking-store";
+import { getCurrentUser, saveUserProfile } from "@/lib/auth-store";
 
 interface CoachStudentsManagerProps {
   onPrescribeWorkoutForStudent?: (studentId: string) => void;
@@ -47,6 +55,21 @@ export function CoachStudentsManager({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"todos" | "ativo" | "inativo" | "pendente">("todos");
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
+
+  // Planos oferecidos pelo professor
+  const [coachPlans, setCoachPlans] = useState<CoachPlanOption[]>([]);
+  const [editingPlans, setEditingPlans] = useState<CoachPlanOption[]>([]);
+  const [isManagePlansModalOpen, setIsManagePlansModalOpen] = useState(false);
+
+  // Alterar plano de aluno individual
+  const [isEditStudentPlanModalOpen, setIsEditStudentPlanModalOpen] = useState(false);
+  const [selectedStudentNewPlan, setSelectedStudentNewPlan] = useState("");
+
+  // Formulário para novo plano personalizado
+  const [newPlanName, setNewPlanName] = useState("");
+  const [newPlanPrice, setNewPlanPrice] = useState("");
+  const [newPlanFrequency, setNewPlanFrequency] = useState("3x por semana presencial");
+  const [newPlanDescription, setNewPlanDescription] = useState("");
 
   // Modal Novo Aluno (Online ou Offline)
   const [isNewStudentModalOpen, setIsNewStudentModalOpen] = useState(false);
@@ -65,6 +88,17 @@ export function CoachStudentsManager({
   useEffect(() => {
     const load = () => {
       setStudents(getStoredStudents());
+      const loadedPlans = getStoredCoachPlans();
+      setCoachPlans(loadedPlans);
+      if (loadedPlans.length > 0) {
+        setNewStudentPlan((prev) => {
+          if (!prev || prev === "Mensal Pro (R$ 45/mês)") {
+            const defaultPro = loadedPlans.find((p) => p.id === "plan_pro") || loadedPlans[0];
+            return `${defaultPro.name} (R$ ${defaultPro.price}/mês)`;
+          }
+          return prev;
+        });
+      }
     };
     load();
     const unsub = subscribeToWorkoutChanges(load);
@@ -113,6 +147,112 @@ export function CoachStudentsManager({
     setNewStudentEmail("");
     setNewStudentEmergency("");
     showToast(`Aluno "${created.name}" cadastrado com sucesso!`);
+  };
+
+  // Abrir modal de gestão de planos
+  const handleOpenManagePlans = () => {
+    triggerHaptic("light");
+    setEditingPlans(JSON.parse(JSON.stringify(coachPlans)));
+    setIsManagePlansModalOpen(true);
+  };
+
+  // Atualizar campo de um plano em edição
+  const handleUpdateEditingPlanField = (
+    id: string,
+    field: keyof CoachPlanOption,
+    value: any
+  ) => {
+    setEditingPlans((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
+  };
+
+  // Adicionar plano personalizado
+  const handleAddCustomPlanToEditing = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPlanName.trim()) return;
+    const priceNum = parseFloat(newPlanPrice) || 40;
+    const newPlan: CoachPlanOption = {
+      id: `plan_${Date.now()}`,
+      name: newPlanName.trim(),
+      price: priceNum,
+      period: "personalizado",
+      frequency: newPlanFrequency.trim() || "Presencial",
+      description: newPlanDescription.trim() || "Plano personalizado com o professor",
+      isCustom: true,
+    };
+    setEditingPlans((prev) => [...prev, newPlan]);
+    setNewPlanName("");
+    setNewPlanPrice("");
+    setNewPlanFrequency("3x por semana presencial");
+    setNewPlanDescription("");
+    triggerHaptic("success");
+    showToast(`Plano "${newPlan.name}" adicionado à tabela!`);
+  };
+
+  // Remover plano personalizado
+  const handleDeletePlanFromEditing = (id: string) => {
+    triggerHaptic("warning");
+    setEditingPlans((prev) => prev.filter((p) => p.id !== id));
+    showToast("Plano removido da lista.");
+  };
+
+  // Restaurar padrões
+  const handleResetToDefaults = () => {
+    triggerHaptic("warning");
+    setEditingPlans(JSON.parse(JSON.stringify(DEFAULT_COACH_PLANS)));
+    showToast("Planos restaurados para o padrão oficial (R$ 35, 45 e 55).");
+  };
+
+  // Salvar tabela de planos
+  const handleSaveAllPlans = () => {
+    triggerHaptic("success");
+    saveCoachPlans(editingPlans);
+    setCoachPlans(editingPlans);
+
+    // Sincronizar preços no booking-store e auth-store
+    const basic = editingPlans.find((p) => p.id === "plan_basico")?.price ?? 35;
+    const pro = editingPlans.find((p) => p.id === "plan_pro")?.price ?? 45;
+    const vip = editingPlans.find((p) => p.id === "plan_vip")?.price ?? 55;
+
+    const coaches = getStoredCoaches();
+    if (coaches.length > 0) {
+      updateCoachPricing(coaches[0].id, {
+        basicMonthly: basic,
+        proMonthly: pro,
+        vipMonthly: vip,
+        dailySession: basic,
+        weeklyPlan: pro,
+        monthlyPlan: vip,
+      });
+    }
+
+    const currentUser = getCurrentUser();
+    saveUserProfile({
+      pricing: {
+        basicMonthly: basic,
+        proMonthly: pro,
+        vipMonthly: vip,
+        dailySession: basic,
+        weeklyPlan: pro,
+        monthlyPlan: vip,
+      },
+    });
+
+    setIsManagePlansModalOpen(false);
+    showToast("Tabela de planos atualizada e sincronizada com sucesso! ✨");
+  };
+
+  // Atualizar plano de aluno específico
+  const handleConfirmUpdateStudentPlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent || !selectedStudentNewPlan.trim()) return;
+    triggerHaptic("success");
+    updateStudentProfile(selectedStudent.id, { plan: selectedStudentNewPlan.trim() });
+    setSelectedStudent((prev) => (prev ? { ...prev, plan: selectedStudentNewPlan.trim() } : null));
+    setStudents(getStoredStudents());
+    setIsEditStudentPlanModalOpen(false);
+    showToast(`Plano do aluno atualizado para "${selectedStudentNewPlan}"!`);
   };
 
   // Registrar presença
@@ -213,16 +353,27 @@ export function CoachStudentsManager({
             </p>
           </div>
 
-          <button
-            onClick={() => {
-              triggerHaptic("medium");
-              setIsNewStudentModalOpen(true);
-            }}
-            className="px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/20 active:scale-95 transition-all shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Novo Aluno</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
+            <button
+              onClick={handleOpenManagePlans}
+              className="px-3 py-2 rounded-2xl bg-white/[0.05] hover:bg-white/[0.08] text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              title="Configurar os planos que você oferece aos alunos"
+            >
+              <Tag className="w-3.5 h-3.5 text-amber-400" />
+              <span>Planos Oferecidos ({coachPlans.length})</span>
+            </button>
+
+            <button
+              onClick={() => {
+                triggerHaptic("medium");
+                setIsNewStudentModalOpen(true);
+              }}
+              className="px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/20 active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Novo Aluno</span>
+            </button>
+          </div>
         </div>
 
         {/* 3 Micro KPIs da Carteira */}
@@ -488,6 +639,41 @@ export function CoachStudentsManager({
                 </div>
               </div>
 
+              {/* Plano Contratado do Aluno */}
+              <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.08] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                    <Tag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">
+                      Plano Contratado
+                    </span>
+                    <span className="text-xs font-black text-amber-300 mt-0.5 block">
+                      {selectedStudent.plan || "Acompanhamento Livre"}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    setSelectedStudentNewPlan(
+                      selectedStudent.plan ||
+                        (coachPlans.length > 0
+                          ? `${coachPlans[0].name} (R$ ${coachPlans[0].price}/mês)`
+                          : "Mensal Pro (R$ 45/mês)")
+                    );
+                    setIsEditStudentPlanModalOpen(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Alterar Plano</span>
+                </button>
+              </div>
+
               {/* Status da Ficha Técnica (Opcional!) */}
               <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.08] space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -687,17 +873,30 @@ export function CoachStudentsManager({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase">
-                    Plano Contratado
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase">
+                      Plano Contratado
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleOpenManagePlans}
+                      className="text-[10px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors"
+                      title="Editar tabela de planos que você oferece"
+                    >
+                      <Edit3 className="w-2.5 h-2.5" />
+                      <span>Editar Planos</span>
+                    </button>
+                  </div>
                   <select
                     value={newStudentPlan}
                     onChange={(e) => setNewStudentPlan(e.target.value)}
-                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   >
-                    <option value="Mensal Básico (R$ 35/mês)">Mensal Básico (R$ 35/mês)</option>
-                    <option value="Mensal Pro (R$ 45/mês)">Mensal Pro (R$ 45/mês)</option>
-                    <option value="Mensal VIP (R$ 55/mês)">Mensal VIP (R$ 55/mês)</option>
+                    {coachPlans.map((plan) => (
+                      <option key={plan.id} value={`${plan.name} (R$ ${plan.price}/mês)`}>
+                        {plan.name} — R$ {plan.price}/mês {plan.frequency ? `• ${plan.frequency}` : ""}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -728,6 +927,329 @@ export function CoachStudentsManager({
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 font-black text-xs uppercase tracking-wider"
                 >
                   Cadastrar no CRM
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: GERENCIAR PLANOS OFERECIDOS PELO PROFESSOR */}
+      {isManagePlansModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => setIsManagePlansModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-zinc-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-white/[0.08] bg-zinc-900/60 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white">
+                    Tabela de Planos do Treinador
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Personalize valores e planos que você pode oferecer no cadastro de alunos e no salão
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsManagePlansModalOpen(false)}
+                className="p-2 rounded-xl text-zinc-400 hover:text-white bg-white/[0.04]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Corpo Rolável */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-5 no-scrollbar flex-1">
+              {/* Lista de Planos Atuais */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" /> Planos Ativos ({editingPlans.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetToDefaults}
+                    className="text-[10px] font-bold text-zinc-400 hover:text-zinc-200 flex items-center gap-1 transition-colors"
+                    title="Restaurar valores oficiais (R$ 35, 45 e 55)"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Restaurar Padrão</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {editingPlans.map((plan) => (
+                    <div
+                      key={plan.id}
+                      className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.08] hover:border-amber-500/30 transition-all space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <input
+                            type="text"
+                            value={plan.name}
+                            onChange={(e) =>
+                              handleUpdateEditingPlanField(plan.id, "name", e.target.value)
+                            }
+                            placeholder="Nome do Plano"
+                            className="bg-transparent font-bold text-white text-xs border-b border-transparent hover:border-white/20 focus:border-amber-500 focus:outline-none px-1 py-0.5 w-full max-w-[200px]"
+                          />
+                          <span
+                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                              plan.isCustom
+                                ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                                : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                            }`}
+                          >
+                            {plan.isCustom ? "Personalizado" : "Plano Oficial"}
+                          </span>
+                        </div>
+
+                        {plan.isCustom && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePlanFromEditing(plan.id)}
+                            className="p-1 text-zinc-500 hover:text-rose-400 transition-colors"
+                            title="Remover plano personalizado"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-0.5">
+                            Valor Mensal (R$)
+                          </label>
+                          <div className="relative flex items-center">
+                            <span className="absolute left-2.5 text-xs text-zinc-400 font-bold">
+                              R$
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={plan.price}
+                              onChange={(e) =>
+                                handleUpdateEditingPlanField(
+                                  plan.id,
+                                  "price",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-amber-500/50"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-0.5">
+                            Frequência Presencial
+                          </label>
+                          <input
+                            type="text"
+                            value={plan.frequency || ""}
+                            onChange={(e) =>
+                              handleUpdateEditingPlanField(plan.id, "frequency", e.target.value)
+                            }
+                            placeholder="Ex: 2x por semana presencial"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-0.5">
+                          Descrição / Benefícios
+                        </label>
+                        <input
+                          type="text"
+                          value={plan.description || ""}
+                          onChange={(e) =>
+                            handleUpdateEditingPlanField(plan.id, "description", e.target.value)
+                          }
+                          placeholder="Ex: Acompanhamento postural e ficha no app..."
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-zinc-300 focus:outline-none focus:border-amber-500/50"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Formulário: Adicionar Novo Plano Personalizado */}
+              <div className="p-4 rounded-2xl bg-amber-500/[0.04] border border-amber-500/25 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  <h4 className="text-xs font-black text-white">
+                    Adicionar Novo Plano Personalizado
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-0.5">
+                      Nome do Plano *
+                    </label>
+                    <input
+                      type="text"
+                      value={newPlanName}
+                      onChange={(e) => setNewPlanName(e.target.value)}
+                      placeholder="Ex: Trimestral Personal VIP"
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-0.5">
+                      Valor (R$) *
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-2.5 text-xs text-zinc-400 font-bold">R$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newPlanPrice}
+                        onChange={(e) => setNewPlanPrice(e.target.value)}
+                        placeholder="Ex: 90"
+                        className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-0.5">
+                      Frequência
+                    </label>
+                    <input
+                      type="text"
+                      value={newPlanFrequency}
+                      onChange={(e) => setNewPlanFrequency(e.target.value)}
+                      placeholder="Ex: 4x por semana presencial"
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-zinc-400 block mb-0.5">
+                      Descrição Opcional
+                    </label>
+                    <input
+                      type="text"
+                      value={newPlanDescription}
+                      onChange={(e) => setNewPlanDescription(e.target.value)}
+                      placeholder="Ex: Acompanhamento de alta intensidade"
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddCustomPlanToEditing}
+                  disabled={!newPlanName.trim()}
+                  className="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/35 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Adicionar Plano à Grade</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Rodapé Fixo */}
+            <div className="p-4 border-t border-white/[0.08] bg-zinc-900/80 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsManagePlansModalOpen(false)}
+                className="px-3.5 py-2 rounded-xl bg-white/[0.06] text-xs font-bold text-zinc-300 hover:text-white transition-colors"
+              >
+                Descartar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveAllPlans}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 transition-all"
+              >
+                Salvar Tabela de Planos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ALTERAR PLANO DO ALUNO */}
+      {isEditStudentPlanModalOpen && selectedStudent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => setIsEditStudentPlanModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-sm bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-zinc-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-white/[0.08] bg-zinc-900/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black text-white">Alterar Plano</h3>
+                  <p className="text-[10px] text-zinc-400">{selectedStudent.name}</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsEditStudentPlanModalOpen(false)}
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white bg-white/[0.04]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmUpdateStudentPlan} className="p-4 space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">
+                  Selecione o Novo Plano
+                </label>
+                <select
+                  value={selectedStudentNewPlan}
+                  onChange={(e) => setSelectedStudentNewPlan(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                >
+                  {coachPlans.map((plan) => (
+                    <option key={plan.id} value={`${plan.name} (R$ ${plan.price}/mês)`}>
+                      {plan.name} — R$ {plan.price}/mês {plan.frequency ? `• ${plan.frequency}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditStudentPlanModalOpen(false)}
+                  className="px-3 py-2 rounded-xl bg-white/[0.06] text-xs font-bold text-zinc-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 font-black text-xs uppercase tracking-wider"
+                >
+                  Atualizar Plano
                 </button>
               </div>
             </form>
