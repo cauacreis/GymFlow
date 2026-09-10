@@ -19,7 +19,7 @@ export interface TrainerSlot {
 export interface CoachTrainer {
   id: string;
   name: string;
-  cref: string;
+  cref?: string;
   avatarUrl: string;
   phone: string;
   specialty: string;

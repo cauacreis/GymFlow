@@ -147,7 +147,7 @@ export function registerNewUser(data: {
     enabledRoles: ["student", "coach"],
     matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
     goal: data.goal || "Hipertrofia",
-    cref: data.cref || (data.role === "coach" ? "09124-SP" : undefined),
+    cref: data.cref?.trim() || undefined,
     specialty: data.specialty || (data.role === "coach" ? "Musculação & Hipertrofia" : undefined),
     bio: data.role === "coach" ? "Treinador especialista em performance e técnica perfeita." : undefined,
     hourlyRate: data.role === "coach" ? 70 : undefined,

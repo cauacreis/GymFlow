@@ -130,7 +130,7 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
           email,
           role: selectedRole,
           phone,
-          cref: selectedRole === "coach" ? cref || "08412-SP" : undefined,
+          cref: selectedRole === "coach" ? cref.trim() || undefined : undefined,
           specialty: selectedRole === "coach" ? specialty || "Musculação & Hipertrofia" : undefined,
           goal: selectedRole === "student" ? goal : undefined,
         });
@@ -332,14 +332,17 @@ export function AuthModal({ isOpen, onClose, onSuccessLogin }: AuthModalProps) {
               {selectedRole === "coach" && (
                 <div className="grid grid-cols-2 gap-2">
                   <LabelInputContainer>
-                    <label className="text-[11px] font-semibold text-zinc-300">Registro CREF</label>
+                    <label className="text-[11px] font-semibold text-zinc-300 flex items-center justify-between">
+                      <span>Registro CREF</span>
+                      <span className="text-[10px] text-zinc-500 font-normal">(Opcional)</span>
+                    </label>
                     <div className="relative flex items-center rounded-xl bg-zinc-900/70 border border-white/[0.08]">
                       <input
                         type="text"
                         value={cref}
                         onChange={(e) => setCref(e.target.value)}
-                        placeholder="Ex: 08412-SP"
-                        className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none"
+                        placeholder="Ex: 08412-SP (opcional)"
+                        className="w-full bg-transparent px-3 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none font-mono"
                       />
                     </div>
                   </LabelInputContainer>

@@ -41,6 +41,7 @@ import {
   StudentProfile,
   getStudentWorkout,
 } from "@/lib/workout-store";
+import { getCurrentUser, subscribeToAuthChanges, UserProfile } from "@/lib/auth-store";
 
 import { CoachAgendaManager } from "./CoachAgendaManager";
 import { CoachStudentsManager } from "./CoachStudentsManager";
@@ -104,10 +105,14 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
   ]);
 
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
+  const [coachUser, setCoachUser] = useState<UserProfile>(getCurrentUser());
 
-  // Carrega alunos
+  // Carrega alunos e perfil do treinador
   useEffect(() => {
     setStudents(getStoredStudents());
+    setCoachUser(getCurrentUser());
+    const unsubscribe = subscribeToAuthChanges((u) => setCoachUser(u));
+    return () => unsubscribe();
   }, []);
 
   // Atualiza busca ExerciseDB
@@ -255,12 +260,14 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h2 className="text-sm font-black text-white">Prof. Rodrigo Costa</h2>
-                <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  CREF 08412-SP
-                </span>
+                <h2 className="text-sm font-black text-white">{coachUser.name || "Prof. Rodrigo Costa"}</h2>
+                {coachUser.cref && (
+                  <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    {coachUser.cref.startsWith("CREF") ? coachUser.cref : `CREF ${coachUser.cref}`}
+                  </span>
+                )}
               </div>
-              <p className="text-[10px] text-zinc-400">Personal Trainer & Fisiologia do Exercício</p>
+              <p className="text-[10px] text-zinc-400">{coachUser.specialty || "Personal Trainer & Fisiologia do Exercício"}</p>
             </div>
           </div>
 

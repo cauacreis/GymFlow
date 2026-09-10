@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { coachAnalyticsData } from "@/lib/analytics-data";
 import { triggerHaptic } from "@/lib/haptic";
+import { getCurrentUser } from "@/lib/auth-store";
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const HOURS = ["06:00", "07:00", "08:00", "09:00", "17:00", "18:00", "19:00", "20:00"];
@@ -68,7 +69,7 @@ export function CoachAnalyticsDashboard() {
         <div className="flex items-start justify-between">
           <div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" /> Performance do Treinador • CREF Ativo
+              <ShieldCheck className="w-3.5 h-3.5" /> Performance do Treinador {getCurrentUser().cref ? `• CREF ${getCurrentUser().cref}` : "• Painel de Gestão"}
             </span>
             <h2 className="text-lg font-black text-white mt-1">Analytics do Professor</h2>
             <p className="text-xs text-zinc-400 mt-0.5">

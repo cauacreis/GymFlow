@@ -312,7 +312,11 @@ export function PersonalMarketplaceView({
               <span className="text-[10px] uppercase font-bold text-zinc-400">Agenda Presencial</span>
               <h3 className="text-xs font-black text-white">{currentCoach.name}</h3>
             </div>
-            <span className="text-[10px] font-mono text-emerald-400 font-bold">{currentCoach.cref}</span>
+            {currentCoach.cref && (
+              <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                {currentCoach.cref.startsWith("CREF") ? currentCoach.cref : `CREF ${currentCoach.cref}`}
+              </span>
+            )}
           </div>
 
           {/* Seletor de Dias */}

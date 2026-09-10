@@ -52,7 +52,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
   const [email, setEmail] = useState(profile.email);
   const [phone, setPhone] = useState(profile.phone || "");
   const [goal, setGoal] = useState<UserProfile["goal"]>(profile.goal || "Hipertrofia");
-  const [cref, setCref] = useState(profile.cref || "08412-SP");
+  const [cref, setCref] = useState(profile.cref || "");
   const [specialty, setSpecialty] = useState(profile.specialty || "Hipertrofia & Biomecânica");
   const [bio, setBio] = useState(profile.bio || "");
   const [instagram, setInstagram] = useState(profile.instagram || "@rodrigo.gymflow");
@@ -75,7 +75,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
       setEmail(current.email);
       setPhone(current.phone || "");
       setGoal(current.goal || "Hipertrofia");
-      setCref(current.cref || "08412-SP");
+      setCref(current.cref || "");
       setSpecialty(current.specialty || "Hipertrofia & Biomecânica");
       setBio(current.bio || "");
       setInstagram(current.instagram || "@rodrigo.gymflow");
@@ -118,7 +118,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
       activeRole,
       avatarUrl,
       goal,
-      cref,
+      cref: cref.trim() || undefined,
       specialty,
       bio,
       instagram,
@@ -130,7 +130,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
     if (isCoach) {
       updateCoachPublicProfile("coach_rodrigo", {
         name,
-        cref,
+        cref: cref.trim() || undefined,
         specialty,
         bio,
         phone,
@@ -332,12 +332,15 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Registro CREF</label>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center justify-between">
+                    <span>Registro CREF</span>
+                    <span className="text-[9px] text-zinc-500 font-normal lowercase">(opcional)</span>
+                  </label>
                   <input
                     type="text"
                     value={cref}
                     onChange={(e) => setCref(e.target.value)}
-                    placeholder="Ex: 08412-SP"
+                    placeholder="Ex: 08412-SP (opcional)"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50 font-mono"
                   />
                 </div>

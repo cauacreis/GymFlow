@@ -156,7 +156,9 @@ export default function GymFlowApp() {
               </div>
               <p className="text-[10px] text-zinc-400 truncate">
                 {isCoach
-                  ? `CREF ${userProfile.cref || "08412-SP"} • ${userProfile.specialty || "Musculação"}`
+                  ? userProfile.cref
+                    ? `CREF ${userProfile.cref} • ${userProfile.specialty || "Musculação"}`
+                    : (userProfile.specialty || "Treinador Personal")
                   : `Meta: ${userProfile.goal || "Hipertrofia"}`}
               </p>
             </div>
