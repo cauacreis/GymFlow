@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import {
   Calendar,
@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Search,
   Filter,
+  CalendarDays,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -28,9 +29,9 @@ import {
   subscribeToBookings,
   CoachTrainer,
   BookingRequest,
-  getScheduleWeekTabs,
-  matchesScheduleDay,
+  getCoachSlotsForDate,
 } from "@/lib/booking-store";
+import { BookingCalendarModal } from "./BookingCalendarModal";
 
 interface PersonalMarketplaceViewProps {
   studentName?: string;
@@ -41,13 +42,12 @@ export function PersonalMarketplaceView({
   studentName = "Carlos Silva",
   studentPhone = "5511991234567",
 }: PersonalMarketplaceViewProps) {
-  const scheduleTabs = getScheduleWeekTabs();
-
   const [coaches, setCoaches] = useState<CoachTrainer[]>([]);
   const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_rodrigo");
-  const [selectedDay, setSelectedDay] = useState<string>("Hoje");
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
-  const [selectedPlanType, setSelectedPlanType] = useState<"basico" | "pro" | "vip" | "diario" | "semanal" | "mensal">("pro");
+  const [selectedPlanType, setSelectedPlanType] = useState<"diario" | "semanal" | "mensal">("mensal");
   const [extraAmount, setExtraAmount] = useState<number>(15);
   const [searchQuery, setSearchQuery] = useState("");
   const [myBookings, setMyBookings] = useState<BookingRequest[]>([]);
@@ -73,19 +73,80 @@ export function PersonalMarketplaceView({
       c.distance.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Slots do dia selecionado
-  const daySlots = (currentCoach?.slots || []).filter((s) => matchesScheduleDay(s.day, selectedDay));
+  const isContract = selectedPlanType === "semanal" || selectedPlanType === "mensal";
 
-  // Preço base do plano selecionado (Mensal 35 / 45 / 55)
+  // Slots do dia selecionado no calendário
+  const daySlots = useMemo(() => {
+    return getCoachSlotsForDate(currentCoach, selectedDate);
+  }, [currentCoach, selectedDate]);
+
+  // Preço base do plano selecionado (Diária 35 / Semanal 45 / Mensal 55)
   const basePrice = currentCoach
-    ? selectedPlanType === "basico" || selectedPlanType === "diario"
-      ? (currentCoach.pricing.basicMonthly ?? currentCoach.pricing.dailySession ?? 35)
-      : selectedPlanType === "pro" || selectedPlanType === "semanal"
-      ? (currentCoach.pricing.proMonthly ?? currentCoach.pricing.weeklyPlan ?? 45)
-      : (currentCoach.pricing.vipMonthly ?? currentCoach.pricing.monthlyPlan ?? 55)
+    ? selectedPlanType === "diario"
+      ? (currentCoach.pricing.dailySession ?? currentCoach.pricing.basicMonthly ?? 35)
+      : selectedPlanType === "semanal"
+      ? (currentCoach.pricing.weeklyPlan ?? currentCoach.pricing.proMonthly ?? 45)
+      : (currentCoach.pricing.monthlyPlan ?? currentCoach.pricing.vipMonthly ?? 55)
     : 0;
 
   const totalPrice = basePrice + Math.max(0, extraAmount);
+
+  // Próximos 7 dias para seleção rápida
+  const upcomingWeekDays = useMemo(() => {
+    const list = [];
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    const shortDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const short = shortDays[d.getDay()];
+
+      list.push({
+        date: d,
+        key: `quick_${d.toISOString().slice(0, 10)}`,
+        shortName: i === 0 ? "Hoje" : i === 1 ? "Amanhã" : short,
+        dayNum: d.getDate(),
+        fullDateStr: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+      });
+    }
+    return list;
+  }, []);
+
+  const isDateSelected = (targetDate: Date) => {
+    return (
+      targetDate.getDate() === selectedDate.getDate() &&
+      targetDate.getMonth() === selectedDate.getMonth() &&
+      targetDate.getFullYear() === selectedDate.getFullYear()
+    );
+  };
+
+  const dayOfWeekNames = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+  const selectedDayOfWeekName = dayOfWeekNames[selectedDate.getDay()];
+  const selectedDateFormatted = selectedDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  const validUntilFormatted = useMemo(() => {
+    const end = new Date(selectedDate);
+    if (selectedPlanType === "semanal") {
+      end.setDate(end.getDate() + 7);
+    } else {
+      end.setDate(end.getDate() + 30);
+    }
+    return end.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }, [selectedDate, selectedPlanType]);
+
+  const selectedDateLabel = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sel = new Date(selectedDate);
+    sel.setHours(0, 0, 0, 0);
+
+    const diff = Math.round((sel.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return `Hoje (${selectedDayOfWeekName}), ${selectedDateFormatted}`;
+    if (diff === 1) return `Amanhã (${selectedDayOfWeekName}), ${selectedDateFormatted}`;
+    return `${selectedDayOfWeekName}, ${selectedDateFormatted}`;
+  }, [selectedDate, selectedDayOfWeekName, selectedDateFormatted]);
 
   // Enviar Solicitação de Agendamento
   const handleConfirmBooking = () => {
@@ -94,17 +155,23 @@ export function PersonalMarketplaceView({
       return;
     }
 
+    const slotDayString = isContract
+      ? `${selectedDayOfWeekName}, ${selectedDateFormatted} (Início)`
+      : `${selectedDayOfWeekName}, ${selectedDateFormatted}`;
+
     triggerHaptic("heavy");
     requestTrainerBooking({
       studentId: "student_carlos",
       studentName,
       studentPhone,
       coachId: currentCoach.id,
-      slotDay: selectedDay,
+      slotDay: slotDayString,
       slotTime: selectedTimeSlot,
       planType: selectedPlanType,
       extraOfferedAmount: extraAmount,
-      notes: "Treino presencial agendado pelo app GymFlow.",
+      notes: isContract
+        ? `Início da assinatura em ${selectedDateFormatted} às ${selectedTimeSlot}. Válido até ${validUntilFormatted}.`
+        : `Sessão presencial agendada para ${selectedDateFormatted} às ${selectedTimeSlot}.`,
     });
 
     setShowSuccessModal(true);
@@ -304,12 +371,13 @@ export function PersonalMarketplaceView({
         </div>
       </div>
 
-      {/* Grade de Horários Estilo Barbearia para o Personal Selecionado */}
+      {/* Grade de Horários & Agendamento com o Personal Selecionado */}
       {currentCoach && (
-        <div className="rounded-3xl p-4 bg-zinc-900 border border-white/[0.08] flex flex-col gap-3 shadow-xl">
+        <div className="rounded-3xl p-4 bg-zinc-900 border border-white/[0.08] flex flex-col gap-3.5 shadow-xl">
+          {/* Cabeçalho do Personal */}
           <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
             <div>
-              <span className="text-[10px] uppercase font-bold text-zinc-400">Agenda Presencial</span>
+              <span className="text-[10px] uppercase font-bold text-zinc-400">Agenda & Contratação</span>
               <h3 className="text-xs font-black text-white">{currentCoach.name}</h3>
             </div>
             {currentCoach.cref && (
@@ -319,37 +387,190 @@ export function PersonalMarketplaceView({
             )}
           </div>
 
-          {/* Seletor de Dias */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {scheduleTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  triggerHaptic("light");
-                  setSelectedDay(tab.id);
-                  setSelectedTimeSlot("");
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                  selectedDay === tab.id
-                    ? "bg-emerald-500 text-zinc-950 shadow-md font-black"
-                    : "bg-white/[0.04] text-zinc-400 hover:text-white"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* 1. SELEÇÃO DA MODALIDADE DO PLANO */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">1. Modalidade do Plano:</span>
+              <span className="text-[9px] text-emerald-400 font-bold">
+                {selectedPlanType === "diario"
+                  ? "Sessão Avulsa"
+                  : selectedPlanType === "semanal"
+                  ? "Plano Semanal (3x)"
+                  : "Plano Mensal VIP"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                {
+                  id: "diario" as const,
+                  title: "Diária Avulsa",
+                  subtitle: "1 treino presencial",
+                  price: currentCoach.pricing.basicMonthly ?? currentCoach.pricing.dailySession ?? 35,
+                  period: "/treino",
+                },
+                {
+                  id: "semanal" as const,
+                  title: "Semanal (3x)",
+                  subtitle: "3x por semana",
+                  badge: "Flexível",
+                  price: currentCoach.pricing.proMonthly ?? currentCoach.pricing.weeklyPlan ?? 45,
+                  period: "/sem",
+                },
+                {
+                  id: "mensal" as const,
+                  title: "Mensal VIP",
+                  subtitle: "Acompanhamento mês",
+                  badge: "Mais Escolhido",
+                  price: currentCoach.pricing.vipMonthly ?? currentCoach.pricing.monthlyPlan ?? 55,
+                  period: "/mês",
+                },
+              ].map((plan) => {
+                const isSelected = selectedPlanType === plan.id;
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("selection");
+                      setSelectedPlanType(plan.id);
+                      setSelectedTimeSlot("");
+                    }}
+                    className={`relative p-2.5 rounded-xl border flex flex-col items-center text-center transition-all ${
+                      isSelected
+                        ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-md shadow-emerald-500/10 scale-102"
+                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/20"
+                    }`}
+                  >
+                    {plan.badge && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[7px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 px-1.5 py-0.2 rounded-full whitespace-nowrap shadow">
+                        {plan.badge}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-black text-white truncate">{plan.title}</span>
+                    <span className="text-[8px] text-zinc-400 leading-tight mt-0.5">{plan.subtitle}</span>
+                    <span className="text-xs font-mono font-black text-emerald-400 mt-1">
+                      R$ {plan.price}{plan.period}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Slots de Horários Livres */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase">
-              Horários no Salão ({selectedDay}):
-            </span>
+          {/* 2. SELEÇÃO DE DATA & CALENDÁRIO */}
+          <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.06]">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-300 uppercase flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                {isContract ? "2. Data de Início do Plano:" : "2. Data do Treino Presencial:"}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setIsCalendarOpen(true);
+                }}
+                className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-xl border border-emerald-500/30 flex items-center gap-1 transition-all active:scale-95"
+                title="Abrir calendário mensal"
+              >
+                <CalendarDays className="w-3 h-3" />
+                <span>Abrir Calendário</span>
+              </button>
+            </div>
+
+            {/* Banner de Data Ativa e Validade */}
+            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <span className="text-[9px] uppercase font-bold text-zinc-400 block">
+                  {isContract ? "O plano começará no dia:" : "Dia selecionado para o treino:"}
+                </span>
+                <span className="text-xs font-black text-white truncate block mt-0.5">
+                  {selectedDateLabel}
+                </span>
+                <span className="text-[10px] text-emerald-400 font-medium block mt-0.5">
+                  {isContract
+                    ? selectedPlanType === "semanal"
+                      ? `Período: ${selectedDateFormatted} até ${validUntilFormatted} (7 dias)`
+                      : `Período: ${selectedDateFormatted} até ${validUntilFormatted} (30 dias)`
+                    : `Sessão única no salão com ${currentCoach.name}`}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setIsCalendarOpen(true);
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-[10px] font-bold text-zinc-200 border border-white/[0.08] shrink-0 ml-2 active:scale-95 transition-all"
+              >
+                Trocar no Calendário
+              </button>
+            </div>
+
+            {/* Barra Horizontal de Dias da Semana */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              {upcomingWeekDays.map((dayItem) => {
+                const isSelected = isDateSelected(dayItem.date);
+                return (
+                  <button
+                    key={dayItem.key}
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setSelectedDate(dayItem.date);
+                      setSelectedTimeSlot("");
+                    }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex flex-col items-center min-w-[62px] ${
+                      isSelected
+                        ? "bg-emerald-500 text-zinc-950 shadow-md font-black scale-102"
+                        : "bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.04]"
+                    }`}
+                  >
+                    <span className="text-[9px] uppercase opacity-80">{dayItem.shortName}</span>
+                    <span className="text-xs font-mono font-bold mt-0.5">{dayItem.dayNum}</span>
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setIsCalendarOpen(true);
+                }}
+                className="px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex flex-col items-center justify-center min-w-[62px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95"
+                title="Escolher no calendário mensal"
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span className="text-[9px] uppercase font-bold mt-0.5">+ Dias</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. HORÁRIOS DISPONÍVEIS NO SALÃO PARA AQUELE DIA */}
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-white/[0.06]">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">
+                {isContract
+                  ? `3. Horário da 1ª Sessão (${selectedDayOfWeekName}):`
+                  : `3. Horários no Salão (${selectedDayOfWeekName}):`}
+              </span>
+              {selectedTimeSlot && (
+                <span className="text-[10px] font-mono font-bold text-emerald-400">
+                  Horário: {selectedTimeSlot} ✓
+                </span>
+              )}
+            </div>
 
             {daySlots.length === 0 ? (
-              <p className="text-xs text-zinc-500 italic py-2">
-                Nenhum horário livre cadastrado para {selectedDay}. Escolha outro dia acima.
-              </p>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
+                <p className="text-xs text-zinc-400 italic">
+                  Nenhum horário aberto para {selectedDayOfWeekName}. Toque em outro dia ou abra o calendário.
+                </p>
+              </div>
             ) : (
               <div className="grid grid-cols-4 gap-1.5">
                 {daySlots.map((slot) => {
@@ -357,6 +578,7 @@ export function PersonalMarketplaceView({
                   return (
                     <button
                       key={slot.id}
+                      type="button"
                       disabled={!slot.isAvailable}
                       onClick={() => {
                         triggerHaptic("selection");
@@ -381,67 +603,7 @@ export function PersonalMarketplaceView({
             )}
           </div>
 
-          {/* Seletor de Planos Presenciais (Mensal 35 / 45 / 55) */}
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-white/[0.06]">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">Modalidade do Plano Mensal:</span>
-              <span className="text-[9px] text-emerald-400 font-bold">Mensalidades Recorrentes</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              {[
-                {
-                  id: "basico",
-                  title: "Básico",
-                  subtitle: "2x por semana",
-                  price: currentCoach.pricing.basicMonthly ?? currentCoach.pricing.dailySession ?? 35,
-                },
-                {
-                  id: "pro",
-                  title: "Pro",
-                  subtitle: "3x por semana",
-                  badge: "Mais Escolhido",
-                  price: currentCoach.pricing.proMonthly ?? currentCoach.pricing.weeklyPlan ?? 45,
-                },
-                {
-                  id: "vip",
-                  title: "VIP",
-                  subtitle: "Livre / Ilimitado",
-                  badge: "Completo",
-                  price: currentCoach.pricing.vipMonthly ?? currentCoach.pricing.monthlyPlan ?? 55,
-                },
-              ].map((plan) => {
-                const isSelected = selectedPlanType === plan.id;
-                return (
-                  <button
-                    key={plan.id}
-                    onClick={() => {
-                      triggerHaptic("selection");
-                      setSelectedPlanType(plan.id as any);
-                    }}
-                    className={`relative p-2.5 rounded-xl border flex flex-col items-center text-center transition-all ${
-                      isSelected
-                        ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-md shadow-emerald-500/10"
-                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/20"
-                    }`}
-                  >
-                    {plan.badge && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[7px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 px-1.5 py-0.2 rounded-full whitespace-nowrap shadow">
-                        {plan.badge}
-                      </span>
-                    )}
-                    <span className="text-[11px] font-black text-white truncate">{plan.title}</span>
-                    <span className="text-[9px] text-zinc-400">{plan.subtitle}</span>
-                    <span className="text-xs font-mono font-black text-emerald-400 mt-1">
-                      R$ {plan.price}/mês
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Oferta de Valor Adicional / Gorjeta (O aluno pode pagar mais se quiser) */}
+          {/* 4. OFERTA DE GORJETA / VALOR EXTRA (OPCIONAL) */}
           <div className="p-3 rounded-2xl bg-white/[0.02] border border-amber-500/20 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-zinc-300 flex items-center gap-1">
@@ -460,6 +622,7 @@ export function PersonalMarketplaceView({
               {[0, 15, 30, 50].map((amt) => (
                 <button
                   key={amt}
+                  type="button"
                   onClick={() => {
                     triggerHaptic("light");
                     setExtraAmount(amt);
@@ -476,15 +639,19 @@ export function PersonalMarketplaceView({
             </div>
           </div>
 
-          {/* Resumo de Investimento e Botão de Confirmação */}
+          {/* 5. RESUMO DE INVESTIMENTO E BOTÃO DE CONFIRMAÇÃO */}
           <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
             <div>
-              <span className="text-[9px] uppercase font-bold text-zinc-400">Total Mensal ao Personal:</span>
+              <span className="text-[9px] uppercase font-bold text-zinc-400">
+                {isContract ? (selectedPlanType === "semanal" ? "Total Semanal:" : "Total Mensal:") : "Total da Sessão:"}
+              </span>
               <div className="flex items-baseline gap-1">
                 <span className="text-base font-mono font-black text-emerald-400">
                   R$ {totalPrice.toFixed(2)}
                 </span>
-                <span className="text-[10px] text-zinc-400 font-mono">/mês</span>
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  {isContract ? (selectedPlanType === "semanal" ? "/sem" : "/mês") : "/treino"}
+                </span>
                 {extraAmount > 0 && (
                   <span className="text-[9px] text-zinc-400 line-through ml-1">
                     (Base R$ {basePrice})
@@ -494,6 +661,7 @@ export function PersonalMarketplaceView({
             </div>
 
             <button
+              type="button"
               onClick={handleConfirmBooking}
               className="py-3 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-98 transition-all flex items-center gap-1.5"
             >
@@ -504,22 +672,60 @@ export function PersonalMarketplaceView({
         </div>
       )}
 
+      {/* Modal de Calendário Completo para Escolha de Data */}
+      <BookingCalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        selectedDate={selectedDate}
+        onSelectDate={(newDate) => {
+          setSelectedDate(newDate);
+          setSelectedTimeSlot("");
+        }}
+        planType={selectedPlanType}
+        coachName={currentCoach?.name || "Personal"}
+      />
+
       {/* Modal de Confirmação de Envio */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-xs bg-zinc-900 border border-white/[0.12] rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-zinc-900 border border-white/[0.12] rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
             <h3 className="text-base font-black text-white">Solicitação Enviada com Sucesso!</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              O <b>{currentCoach.name}</b> recebeu seu pedido de treino para <b>{selectedDay}</b>. Assim que ele aceitar, você receberá uma notificação e o botão direto do WhatsApp para combinar os detalhes!
+            <div className="text-xs text-zinc-300 space-y-1.5 bg-white/[0.03] p-3.5 rounded-2xl border border-white/[0.06] w-full text-left">
+              <p><b>Personal:</b> {currentCoach.name}</p>
+              <p>
+                <b>Plano:</b>{" "}
+                {selectedPlanType === "diario"
+                  ? "Diária Avulsa (R$ 35)"
+                  : selectedPlanType === "semanal"
+                  ? "Semanal 3x (R$ 45/sem)"
+                  : "Mensal VIP (R$ 55/mês)"}
+              </p>
+              <p>
+                <b>{isContract ? "Data de Início:" : "Data do Treino:"}</b>{" "}
+                {selectedDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })} ({selectedDayOfWeekName}) às {selectedTimeSlot}
+              </p>
+              {isContract && (
+                <p className="text-[10px] text-emerald-400 font-medium">
+                  Validade da assinatura: até {validUntilFormatted}
+                </p>
+              )}
+              <p>
+                <b>Total a Pagar:</b> R$ {totalPrice.toFixed(2)}{" "}
+                {extraAmount > 0 ? `(com +R$ ${extraAmount} extra)` : ""}
+              </p>
+            </div>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              O <b>{currentCoach.name}</b> foi notificado da sua solicitação. Assim que ele aceitar, você poderá conversar diretamente pelo WhatsApp!
             </p>
 
             <button
+              type="button"
               onClick={() => setShowSuccessModal(false)}
-              className="w-full py-2.5 rounded-xl bg-emerald-500 text-zinc-950 font-bold text-xs uppercase tracking-wider mt-2"
+              className="w-full py-2.5 rounded-xl bg-emerald-500 text-zinc-950 font-black text-xs uppercase tracking-wider mt-1 active:scale-95 transition-all"
             >
               Entendido
             </button>

@@ -195,6 +195,53 @@ export function matchesScheduleDay(slotDay: string, targetDay: string): boolean 
   return false;
 }
 
+/**
+ * Retorna os horários no salão para um treinador em uma data específica do calendário.
+ * Se o treinador não possuir slots personalizados para aquele dia da semana,
+ * gera a grade padrão da academia para permitir o agendamento fluido em qualquer data futura.
+ */
+export function getCoachSlotsForDate(coach: CoachTrainer | undefined, targetDate: Date): TrainerSlot[] {
+  if (!coach) return [];
+
+  const shortDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const fullDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  const dayIndex = targetDate.getDay();
+  const dayFull = fullDays[dayIndex];
+  const dayShort = shortDays[dayIndex];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const targetMidnight = new Date(targetDate);
+  targetMidnight.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((targetMidnight.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const targetDayIdentifier = diffDays === 0 ? "Hoje" : diffDays === 1 ? "Amanhã" : dayFull;
+
+  const existing = (coach.slots || []).filter(
+    (s) =>
+      matchesScheduleDay(s.day, targetDayIdentifier) ||
+      matchesScheduleDay(s.day, dayFull) ||
+      matchesScheduleDay(s.day, dayShort)
+  );
+
+  if (existing.length > 0) {
+    return existing;
+  }
+
+  if (dayIndex === 0) {
+    return []; // Fechado aos domingos
+  }
+
+  // Horários padrão de atendimento
+  const defaultTimes = ["07:00", "08:00", "10:00", "16:00", "18:00", "19:00"];
+  return defaultTimes.map((time, idx) => ({
+    id: `slot_${coach.id}_${dayShort}_${time.replace(":", "")}`,
+    day: targetDayIdentifier,
+    time,
+    isAvailable: idx !== 4, // 18:00 ocupado para realismo
+  }));
+}
+
 const STORAGE_COACHES = "gymflow_coaches_v3";
 const STORAGE_BOOKINGS = "gymflow_bookings_v2";
 const STORAGE_NOTIFICATIONS = "gymflow_notifications_v1";
