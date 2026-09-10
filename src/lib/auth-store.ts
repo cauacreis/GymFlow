@@ -70,7 +70,7 @@ export function getCurrentUser(): UserProfile {
       localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(DEFAULT_USER));
       return DEFAULT_USER;
     }
-    const parsed: UserProfile = JSON.parse(raw);
+    const parsed: UserProfile = { ...DEFAULT_USER, ...JSON.parse(raw) };
     // Normalização defensiva de preços
     if (parsed.pricing) {
       const basic = parsed.pricing.basicMonthly && parsed.pricing.basicMonthly <= 60 ? parsed.pricing.basicMonthly : 35;

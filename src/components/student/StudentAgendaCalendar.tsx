@@ -27,7 +27,7 @@ import {
   BookingRequest,
   getRescheduleDayOptions,
 } from "@/lib/booking-store";
-import { getStoredStudents, StudentProfile } from "@/lib/workout-store";
+import { getStoredStudents, StudentProfile, subscribeToWorkoutChanges } from "@/lib/workout-store";
 
 interface StudentAgendaCalendarProps {
   studentId?: string;
@@ -39,7 +39,7 @@ interface CalendarDayEvent {
   dayLabel: string;
   dateStr: string;
   time: string;
-  status: "presente" | "falta" | "agendado" | "remanejamento_pendente";
+  status: "presente" | "falta" | "atraso" | "agendado" | "remanejamento_pendente";
   coachName: string;
   coachPhone?: string;
   bookingId?: string;
@@ -143,10 +143,12 @@ export function StudentAgendaCalendar({
               time: b.slotTime,
               status: hasPendingResched
                 ? ("remanejamento_pendente" as const)
-                : b.attendanceStatus === "attended"
+                : b.attendanceStatus === "attended" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "presente")
                 ? ("presente" as const)
-                : b.attendanceStatus === "missed"
+                : b.attendanceStatus === "missed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "falta")
                 ? ("falta" as const)
+                : b.attendanceStatus === "delayed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "atraso")
+                ? ("atraso" as const)
                 : ("agendado" as const),
               coachName: b.coachName,
               coachPhone: b.coachPhone,
@@ -160,8 +162,12 @@ export function StudentAgendaCalendar({
     };
 
     load();
-    const unsub = subscribeToBookings(load);
-    return () => unsub();
+    const unsubBookings = subscribeToBookings(load);
+    const unsubWorkouts = subscribeToWorkoutChanges(load);
+    return () => {
+      unsubBookings();
+      unsubWorkouts();
+    };
   }, [studentId]);
 
   const showToast = (msg: string) => {
@@ -370,6 +376,7 @@ export function StudentAgendaCalendar({
           {calendarEvents.map((evt) => {
             const isAttended = evt.status === "presente";
             const isMissed = evt.status === "falta";
+            const isDelayed = evt.status === "atraso";
             const isScheduled = evt.status === "agendado";
             const isReschedPending = evt.status === "remanejamento_pendente";
 
@@ -381,6 +388,8 @@ export function StudentAgendaCalendar({
                     ? "bg-emerald-950/20 border-emerald-500/20"
                     : isMissed
                     ? "bg-rose-950/20 border-rose-500/20"
+                    : isDelayed
+                    ? "bg-amber-950/25 border-amber-500/30"
                     : isReschedPending
                     ? "bg-amber-950/25 border-amber-500/30"
                     : "bg-zinc-900/60 border-white/[0.06]"
@@ -395,6 +404,8 @@ export function StudentAgendaCalendar({
                           ? "bg-emerald-500/20 text-emerald-400"
                           : isMissed
                           ? "bg-rose-500/20 text-rose-400"
+                          : isDelayed
+                          ? "bg-amber-500/20 text-amber-400"
                           : isReschedPending
                           ? "bg-amber-500/20 text-amber-400"
                           : "bg-white/[0.06] text-white"
@@ -404,6 +415,8 @@ export function StudentAgendaCalendar({
                         <CheckCircle2 className="w-5 h-5" />
                       ) : isMissed ? (
                         <XCircle className="w-5 h-5" />
+                      ) : isDelayed ? (
+                        <AlertCircle className="w-5 h-5" />
                       ) : isReschedPending ? (
                         <ArrowRightLeft className="w-5 h-5" />
                       ) : (
@@ -419,18 +432,22 @@ export function StudentAgendaCalendar({
                         <span
                           className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
                             isAttended
-                              ? "bg-emerald-500/20 text-emerald-300"
+                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                               : isMissed
-                              ? "bg-rose-500/20 text-rose-300"
+                              ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                              : isDelayed
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                               : isReschedPending
-                              ? "bg-amber-500/20 text-amber-300"
-                              : "bg-white/[0.08] text-zinc-300"
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              : "bg-white/[0.08] text-zinc-300 border border-white/10"
                           }`}
                         >
                           {isAttended
                             ? "Presente"
                             : isMissed
                             ? "Falta"
+                            : isDelayed
+                            ? "Atraso Registrado"
                             : isReschedPending
                             ? "Em Análise"
                             : "Agendado"}

@@ -75,9 +75,11 @@ export default function GymFlowApp() {
       }
     };
 
+    handleAuthChange(getCurrentUser());
+
     const unsubAuth = subscribeToAuthChanges(handleAuthChange);
     return () => unsubAuth();
-  }, [currentTab]);
+  }, []);
 
   // Sincronização de Notificações
   useEffect(() => {

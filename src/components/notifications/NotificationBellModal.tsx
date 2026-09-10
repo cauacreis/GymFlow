@@ -60,6 +60,10 @@ export function NotificationBellModal({
         return <AlertTriangle className="w-4 h-4 text-rose-400" />;
       case "missed_class":
         return <XCircle className="w-4 h-4 text-rose-400" />;
+      case "delay_warning":
+        return <AlertTriangle className="w-4 h-4 text-amber-400" />;
+      case "workout_updated":
+        return <Sparkles className="w-4 h-4 text-emerald-400" />;
       case "rescheduled":
         return <RotateCcw className="w-4 h-4 text-blue-400" />;
       default:

@@ -25,6 +25,10 @@ import {
   Edit3,
   Tag,
   RefreshCw,
+  Check,
+  AlertTriangle,
+  Play,
+  Flame,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -35,14 +39,18 @@ import {
   recordStudentAttendance,
   detachWorkoutFromStudent,
   subscribeToWorkoutChanges,
+  getStudentWorkout,
+  assignWorkoutToStudent,
   StudentProfile,
   CoachPlanOption,
   getStoredCoachPlans,
   saveCoachPlans,
   DEFAULT_COACH_PLANS,
+  StudentWorkoutPackage,
 } from "@/lib/workout-store";
-import { getStoredCoaches, updateCoachPricing } from "@/lib/booking-store";
+import { getStoredBookings, getStoredCoaches, updateCoachPricing } from "@/lib/booking-store";
 import { getCurrentUser, saveUserProfile } from "@/lib/auth-store";
+import { ExerciseInWorkout, WorkoutSplitTemplate } from "@/lib/exercisedb";
 
 interface CoachStudentsManagerProps {
   onPrescribeWorkoutForStudent?: (studentId: string) => void;
@@ -64,6 +72,21 @@ export function CoachStudentsManager({
   // Alterar plano de aluno individual
   const [isEditStudentPlanModalOpen, setIsEditStudentPlanModalOpen] = useState(false);
   const [selectedStudentNewPlan, setSelectedStudentNewPlan] = useState("");
+
+  // Modal de Edição de Treino do Aluno
+  const [isEditWorkoutModalOpen, setIsEditWorkoutModalOpen] = useState(false);
+  const [editingWorkoutStudent, setEditingWorkoutStudent] = useState<StudentProfile | null>(null);
+  const [editingWorkoutData, setEditingWorkoutData] = useState<StudentWorkoutPackage | null>(null);
+  const [editingActiveSplitIndex, setEditingActiveSplitIndex] = useState(0);
+
+  // Seletor rápido de atraso (minutos)
+  const [delaySelectorStudentId, setDelaySelectorStudentId] = useState<string | null>(null);
+
+  // Adicionar exercício rápido ao split
+  const [newExerciseName, setNewExerciseName] = useState("");
+  const [newExerciseSets, setNewExerciseSets] = useState("4");
+  const [newExerciseReps, setNewExerciseReps] = useState("10-12");
+  const [newExerciseMuscle, setNewExerciseMuscle] = useState("Peito");
 
   // Formulário para novo plano personalizado
   const [newPlanName, setNewPlanName] = useState("");
@@ -255,36 +278,118 @@ export function CoachStudentsManager({
     showToast(`Plano do aluno atualizado para "${selectedStudentNewPlan}"!`);
   };
 
-  // Registrar presença
-  const handleAddPresence = (studentId: string) => {
-    triggerHaptic("medium");
-    recordStudentAttendance(studentId, "presence");
-    setStudents(getStoredStudents());
+  // Registrar frequência (Presença, Falta ou Atraso) com sincronização imediata
+  const handleRecordAttendance = (
+    studentId: string,
+    type: "presence" | "absence" | "delay",
+    delayMinutes: number = 15
+  ) => {
+    triggerHaptic(type === "presence" ? "success" : type === "delay" ? "medium" : "warning");
+    recordStudentAttendance(studentId, type, delayMinutes);
+    const updated = getStoredStudents();
+    setStudents(updated);
     if (selectedStudent && selectedStudent.id === studentId) {
-      setSelectedStudent((prev) =>
-        prev
-          ? {
-              ...prev,
-              monthlyPresence: (prev.monthlyPresence || 0) + 1,
-              totalClasses: (prev.totalClasses || 0) + 1,
-            }
-          : null
-      );
+      const match = updated.find((s) => s.id === studentId);
+      if (match) setSelectedStudent(match);
     }
-    showToast("Presença confirmada no salão! 🔥");
+    setDelaySelectorStudentId(null);
+
+    const student = updated.find((s) => s.id === studentId);
+    const studentName = student?.name || "Aluno";
+    if (type === "presence") {
+      showToast(`✓ Presença de ${studentName} confirmada! Aluno notificado 🔥`);
+    } else if (type === "absence") {
+      showToast(`✕ Falta de ${studentName} registrada no sistema.`);
+    } else {
+      showToast(`⚠️ Atraso (${delayMinutes}m) registrado para ${studentName}! Aluno notificado.`);
+    }
   };
 
-  // Registrar falta
-  const handleAddAbsence = (studentId: string) => {
-    triggerHaptic("warning");
-    recordStudentAttendance(studentId, "absence");
+  const handleAddPresence = (studentId: string) => handleRecordAttendance(studentId, "presence");
+  const handleAddAbsence = (studentId: string) => handleRecordAttendance(studentId, "absence");
+  const handleAddDelay = (studentId: string, minutes: number = 15) => handleRecordAttendance(studentId, "delay", minutes);
+
+  // Adicionar aluno à grade de hoje (Quinta-feira)
+  const handleAddStudentToToday = (studentId: string, time: string = "18:00") => {
+    triggerHaptic("light");
+    updateStudentProfile(studentId, {
+      scheduledTimeToday: time,
+      todayAttendanceStatus: "agendado",
+    });
     setStudents(getStoredStudents());
-    if (selectedStudent && selectedStudent.id === studentId) {
-      setSelectedStudent((prev) =>
-        prev ? { ...prev, monthlyAbsences: (prev.monthlyAbsences || 0) + 1 } : null
-      );
+    showToast("Aluno agendado para a grade de hoje!");
+  };
+
+  // Abrir editor de treino do aluno
+  const handleOpenEditWorkout = (student: StudentProfile) => {
+    triggerHaptic("light");
+    setEditingWorkoutStudent(student);
+    const pkg = getStudentWorkout(student.id);
+    setEditingWorkoutData(JSON.parse(JSON.stringify(pkg)));
+    setEditingActiveSplitIndex(0);
+    setIsEditWorkoutModalOpen(true);
+  };
+
+  // Salvar edições do treino e sincronizar com o aluno
+  const handleSaveWorkoutEdit = () => {
+    if (!editingWorkoutStudent || !editingWorkoutData) return;
+    triggerHaptic("success");
+    assignWorkoutToStudent(editingWorkoutStudent.id, {
+      routineTitle: editingWorkoutData.routineTitle,
+      coachNotes: editingWorkoutData.coachNotes,
+      splits: editingWorkoutData.splits,
+      prescribedBy: editingWorkoutData.prescribedBy,
+    });
+    const updated = getStoredStudents();
+    setStudents(updated);
+    if (selectedStudent && selectedStudent.id === editingWorkoutStudent.id) {
+      const match = updated.find((s) => s.id === editingWorkoutStudent.id);
+      if (match) setSelectedStudent(match);
     }
-    showToast("Falta registrada para o aluno.");
+    setIsEditWorkoutModalOpen(false);
+    showToast(`Treino de ${editingWorkoutStudent.name} atualizado e sincronizado no celular do aluno! ✨`);
+  };
+
+  // Adicionar exercício ao split em edição
+  const handleAddExerciseToSplit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExerciseName.trim() || !editingWorkoutData) return;
+    const setsCount = parseInt(newExerciseSets) || 3;
+    const newEx: ExerciseInWorkout = {
+      id: `ex_${Date.now()}`,
+      exerciseId: `custom_${Date.now()}`,
+      name: newExerciseName.trim(),
+      muscle: newExerciseMuscle,
+      equipment: "Livre / Halter",
+      target: newExerciseMuscle,
+      restSeconds: 60,
+      sets: Array.from({ length: setsCount }, (_, i) => ({
+        setNumber: i + 1,
+        reps: newExerciseReps.trim() || "10-12",
+        weightKg: 20,
+      })),
+    };
+    const updatedSplits = [...editingWorkoutData.splits];
+    if (updatedSplits[editingActiveSplitIndex]) {
+      updatedSplits[editingActiveSplitIndex].exercises.push(newEx);
+      setEditingWorkoutData({ ...editingWorkoutData, splits: updatedSplits });
+    }
+    setNewExerciseName("");
+    triggerHaptic("light");
+    showToast(`Exercício "${newEx.name}" adicionado ao treino!`);
+  };
+
+  // Remover exercício do split em edição
+  const handleRemoveExerciseFromSplit = (splitIdx: number, exerciseId: string) => {
+    if (!editingWorkoutData) return;
+    triggerHaptic("warning");
+    const updatedSplits = [...editingWorkoutData.splits];
+    if (updatedSplits[splitIdx]) {
+      updatedSplits[splitIdx].exercises = updatedSplits[splitIdx].exercises.filter(
+        (ex) => ex.id !== exerciseId
+      );
+      setEditingWorkoutData({ ...editingWorkoutData, splits: updatedSplits });
+    }
   };
 
   // Desvincular ficha
@@ -400,6 +505,320 @@ export function CoachStudentsManager({
           </div>
         </div>
       </div>
+
+      {/* SEÇÃO PRINCIPAL: ALUNOS AGENDADOS PARA HOJE */}
+      {(() => {
+        const todayDateStr = new Date().toLocaleDateString("pt-BR", {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        });
+        const formattedToday = todayDateStr.charAt(0).toUpperCase() + todayDateStr.slice(1);
+        const bookings = getStoredBookings();
+
+        // Alunos agendados para hoje (ou com status de presença/falta/atraso registrado hoje)
+        const todayStudents = students.filter((s) => {
+          if (s.scheduledTimeToday) return true;
+          if (s.todayAttendanceStatus && s.todayAttendanceStatus !== "agendado") return true;
+          if (s.lastPresence && s.lastPresence.toLowerCase().includes("hoje")) return true;
+          return bookings.some(
+            (b) => b.studentId === s.id && (b.slotDay === "Hoje" || b.slotDay?.toLowerCase().includes("hoje"))
+          );
+        });
+
+        const getStudentTimeToday = (s: StudentProfile) => {
+          if (s.scheduledTimeToday) return s.scheduledTimeToday;
+          const matchBooking = bookings.find(
+            (b) => b.studentId === s.id && (b.slotDay === "Hoje" || b.slotDay?.toLowerCase().includes("hoje"))
+          );
+          if (matchBooking) return matchBooking.slotTime;
+          if (s.id === "student_carlos") return "18:00";
+          if (s.id === "student_lucas") return "07:00";
+          if (s.id === "student_beatriz") return "19:30";
+          return "Hoje";
+        };
+
+        return (
+          <div className="rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-zinc-900/90 via-zinc-900 to-zinc-950 border border-amber-500/30 shadow-2xl relative overflow-hidden space-y-3.5">
+            <div className="absolute -top-12 -left-12 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Cabeçalho da Seção de Hoje */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div>
+                <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" /> Grade de Hoje • {formattedToday}
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white mt-0.5 flex items-center gap-2">
+                  <span>⚡ Alunos do Dia</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-mono font-bold border border-amber-500/30">
+                    {todayStudents.length} {todayStudents.length === 1 ? "aluno" : "alunos"}
+                  </span>
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Marque presença, falta ou atraso com 1 toque e edite os treinos com sincronização instantânea no aluno.
+                </p>
+              </div>
+
+              {/* Seletor rápido para agendar aluno offline ou livre para hoje */}
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleAddStudentToToday(e.target.value, "18:00");
+                      e.target.value = "";
+                    }
+                  }}
+                  className="py-1.5 px-2.5 rounded-xl bg-zinc-950 border border-white/10 text-xs text-zinc-300 focus:outline-none focus:border-amber-500/50 transition-colors cursor-pointer"
+                >
+                  <option value="" disabled>
+                    + Agendar Aluno para Hoje...
+                  </option>
+                  {students
+                    .filter((st) => !todayStudents.some((ts) => ts.id === st.id))
+                    .map((st) => (
+                      <option key={st.id} value={st.id} className="bg-zinc-950 text-white">
+                        {st.name} ({st.plan || "Presencial"})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Cards dos Alunos de Hoje */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {todayStudents.length === 0 ? (
+                <div className="col-span-full p-6 rounded-2xl bg-zinc-950/60 border border-white/[0.06] text-center text-xs text-zinc-400">
+                  Nenhum aluno agendado para hoje ainda. Selecione um aluno acima para agendar!
+                </div>
+              ) : (
+                todayStudents.map((student) => {
+                  const timeToday = getStudentTimeToday(student);
+                  const isPresent = student.todayAttendanceStatus === "presente";
+                  const isAbsent = student.todayAttendanceStatus === "falta";
+                  const isDelayed = student.todayAttendanceStatus === "atraso";
+
+                  return (
+                    <div
+                      key={student.id}
+                      className={`p-3.5 rounded-2xl border transition-all relative flex flex-col justify-between gap-3 shadow-md ${
+                        isPresent
+                          ? "bg-emerald-950/20 border-emerald-500/35 hover:border-emerald-500/50"
+                          : isAbsent
+                          ? "bg-rose-950/20 border-rose-500/35 hover:border-rose-500/50"
+                          : isDelayed
+                          ? "bg-amber-950/25 border-amber-500/40 hover:border-amber-500/60"
+                          : "bg-zinc-950/80 border-white/[0.08] hover:border-amber-500/30"
+                      }`}
+                    >
+                      {/* Topo: Avatar + Info + Horário + Status */}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div
+                          className="flex items-center gap-2.5 min-w-0 cursor-pointer"
+                          onClick={() => {
+                            triggerHaptic("selection");
+                            setSelectedStudent(student);
+                          }}
+                        >
+                          <div className="relative w-11 h-11 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0">
+                            {student.avatarUrl ? (
+                              <img
+                                src={student.avatarUrl}
+                                alt={student.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-sm font-black text-amber-400">
+                                {student.name.charAt(0)}
+                              </div>
+                            )}
+                            {student.isOfflineStudent && (
+                              <span
+                                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-zinc-950"
+                                title="Presencial Offline"
+                              />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-xs sm:text-sm font-black text-white truncate hover:text-amber-300 transition-colors">
+                                {student.name}
+                              </h4>
+                              {student.isOfflineStudent && (
+                                <span className="text-[8px] font-mono uppercase px-1 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                                  Presencial
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                              {student.plan || "Mensal VIP"} • {student.goal}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Horário & Badge de Status Atual de Hoje */}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-white/[0.06] text-white border border-white/10 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-400" />
+                            <span>{timeToday}</span>
+                          </span>
+
+                          <span
+                            className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                              isPresent
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                : isAbsent
+                                ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                                : isDelayed
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                : "bg-white/[0.05] text-zinc-400 border-white/10"
+                            }`}
+                          >
+                            {isPresent
+                              ? "✓ Presente"
+                              : isAbsent
+                              ? "✕ Falta"
+                              : isDelayed
+                              ? `⚠️ Atraso (${student.delayMinutes || 15}m)`
+                              : "⏳ Agendado"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Meio: Ficha de Treino Ativa */}
+                      <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {student.hasWorkoutSheet ? (
+                            <span className="text-emerald-400 font-bold flex items-center gap-1 truncate">
+                              <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate">{student.currentRoutineTitle}</span>
+                            </span>
+                          ) : (
+                            <span className="text-zinc-500 italic flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-400/70 shrink-0" /> Presencial Livre (Ficha Opcional)
+                            </span>
+                          )}
+                        </div>
+
+                        {student.phone && (
+                          <a
+                            href={getWhatsAppLink(student.phone, student.name)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-emerald-400 hover:text-emerald-300 font-bold text-[10px] flex items-center gap-1 shrink-0 ml-2"
+                          >
+                            <MessageCircle className="w-3 h-3" />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Base: AÇÕES DIRETAS (Presença, Falta, Atraso e Editar Treino) */}
+                      <div className="pt-1 flex items-center justify-between gap-1.5 flex-wrap">
+                        {/* 3 Botões de Frequência */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRecordAttendance(student.id, "presence");
+                            }}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all active:scale-95 ${
+                              isPresent
+                                ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/30"
+                                : "bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300"
+                            }`}
+                            title="Confirmar presença do aluno no treino de hoje"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Presença</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRecordAttendance(student.id, "absence");
+                            }}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all active:scale-95 ${
+                              isAbsent
+                                ? "bg-rose-500 text-white shadow-md shadow-rose-500/30"
+                                : "bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300"
+                            }`}
+                            title="Registrar falta do aluno no treino de hoje"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Falta</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDelaySelectorStudentId(
+                                delaySelectorStudentId === student.id ? null : student.id
+                              );
+                            }}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition-all active:scale-95 ${
+                              isDelayed
+                                ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/30"
+                                : "bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300"
+                            }`}
+                            title="Registrar atraso do aluno com notificação"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Atraso</span>
+                          </button>
+                        </div>
+
+                        {/* Botão de Edição de Treino */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditWorkout(student);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-amber-300 flex items-center gap-1 transition-all active:scale-95"
+                          title="Editar a rotina de treinos deste aluno e sincronizar no app dele"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Editar Treino</span>
+                        </button>
+                      </div>
+
+                      {/* Mini Seletor de Minutos de Atraso */}
+                      {delaySelectorStudentId === student.id && (
+                        <div
+                          className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 flex items-center justify-between gap-2 animate-in fade-in"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="text-[10px] font-bold text-amber-300">
+                            Selecionar minutos de atraso:
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {[10, 15, 20, 30].map((mins) => (
+                              <button
+                                key={mins}
+                                type="button"
+                                onClick={() => handleRecordAttendance(student.id, "delay", mins)}
+                                className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-200 hover:text-zinc-950 text-[10px] font-mono font-black transition-all active:scale-95"
+                              >
+                                {mins}m
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Barra de Pesquisa e Filtros */}
       <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -525,8 +944,8 @@ export function CoachStudentsManager({
                 </div>
 
                 {/* Linha Inferior: Status da Ficha & Ações Rápidas */}
-                <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-zinc-400">
-                  <div className="flex items-center gap-1.5">
+                <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[10px] text-zinc-400">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {student.hasWorkoutSheet ? (
                       <span className="text-emerald-400 font-bold flex items-center gap-1">
                         <Dumbbell className="w-3 h-3" /> Ficha Ativa: {student.currentRoutineTitle}
@@ -537,20 +956,88 @@ export function CoachStudentsManager({
                         Opcional)
                       </span>
                     )}
+
+                    {student.todayAttendanceStatus && (
+                      <span
+                        className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded border ${
+                          student.todayAttendanceStatus === "presente"
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                            : student.todayAttendanceStatus === "falta"
+                            ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                            : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                        }`}
+                      >
+                        Hoje: {student.todayAttendanceStatus}
+                      </span>
+                    )}
                   </div>
 
-                  {student.phone && (
-                    <a
-                      href={getWhatsAppLink(student.phone, student.name)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline"
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRecordAttendance(student.id, "presence");
+                      }}
+                      className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                      title="Marcar presença no treino de hoje"
                     >
-                      <MessageCircle className="w-3 h-3" />
-                      <span>WhatsApp</span>
-                    </a>
-                  )}
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Presença</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRecordAttendance(student.id, "absence");
+                      }}
+                      className="px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                      title="Marcar falta no treino de hoje"
+                    >
+                      <XCircle className="w-3 h-3" />
+                      <span>Falta</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRecordAttendance(student.id, "delay", 15);
+                      }}
+                      className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                      title="Marcar atraso no treino de hoje"
+                    >
+                      <Clock className="w-3 h-3" />
+                      <span>Atraso</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditWorkout(student);
+                      }}
+                      className="px-2 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-amber-300 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                      title="Editar ficha e treino deste aluno"
+                    >
+                      <Edit3 className="w-3 h-3 text-amber-400" />
+                      <span>Editar Treino</span>
+                    </button>
+
+                    {student.phone && (
+                      <a
+                        href={getWhatsAppLink(student.phone, student.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline ml-1"
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -620,7 +1107,7 @@ export function CoachStudentsManager({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     onClick={() => handleAddPresence(selectedStudent.id)}
                     className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-black flex items-center gap-1 transition-all active:scale-95"
@@ -635,6 +1122,14 @@ export function CoachStudentsManager({
                   >
                     <XCircle className="w-3.5 h-3.5 text-rose-400" />
                     <span>+ Falta</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleAddDelay(selectedStudent.id, 15)}
+                    className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-black flex items-center gap-1 transition-all active:scale-95"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>+ Atraso</span>
                   </button>
                 </div>
               </div>
@@ -710,25 +1205,56 @@ export function CoachStudentsManager({
                         "{selectedStudent.notesFromCoach}"
                       </p>
                     )}
+
+                    <div className="pt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = selectedStudent;
+                          setSelectedStudent(null);
+                          handleOpenEditWorkout(current);
+                        }}
+                        className="flex-1 py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md shadow-amber-500/20"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Editar Ficha & Exercícios</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] text-center space-y-2">
+                  <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] text-center space-y-2.5">
                     <p className="text-xs text-zinc-400">
                       Este aluno está em <strong>acompanhamento presencial livre</strong> (sem ficha
                       obrigatória).
                     </p>
-                    {onPrescribeWorkoutForStudent && (
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       <button
+                        type="button"
                         onClick={() => {
+                          const current = selectedStudent;
                           setSelectedStudent(null);
-                          onPrescribeWorkoutForStudent(selectedStudent.id);
+                          handleOpenEditWorkout(current);
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs inline-flex items-center gap-1 active:scale-95 transition-all"
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs inline-flex items-center gap-1 active:scale-95 transition-all shadow-md shadow-amber-500/20"
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Montar ou Atribuir Ficha</span>
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Montar Ficha Agora</span>
                       </button>
-                    )}
+
+                      {onPrescribeWorkoutForStudent && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStudent(null);
+                            onPrescribeWorkoutForStudent(selectedStudent.id);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-white/[0.06] text-zinc-200 font-bold text-xs inline-flex items-center gap-1 border border-white/10 active:scale-95 transition-all"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Via ExerciseDB</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1253,6 +1779,324 @@ export function CoachStudentsManager({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDITAR FICHA DE TREINO DO ALUNO COM SINCRONIZAÇÃO */}
+      {isEditWorkoutModalOpen && editingWorkoutStudent && editingWorkoutData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => setIsEditWorkoutModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-xl max-h-[90vh] flex flex-col bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-zinc-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header do Modal */}
+            <div className="p-4 sm:p-5 border-b border-white/[0.08] bg-zinc-900/60 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                  <Dumbbell className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-white">Editar Ficha de Treino</h3>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Sincronização Ativa
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Aluno: <span className="text-white font-bold">{editingWorkoutStudent.name}</span> • {editingWorkoutStudent.matricula}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsEditWorkoutModalOpen(false)}
+                className="p-2 rounded-xl text-zinc-400 hover:text-white bg-white/[0.04] active:scale-95 transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Conteúdo com Scroll */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 no-scrollbar">
+              {/* Nome do Protocolo / Rotina */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">
+                  Nome do Protocolo / Ficha
+                </label>
+                <input
+                  type="text"
+                  value={editingWorkoutData.routineTitle}
+                  onChange={(e) =>
+                    setEditingWorkoutData({ ...editingWorkoutData, routineTitle: e.target.value })
+                  }
+                  placeholder="Ex: Hipertrofia Clássica ABC"
+                  className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs font-bold text-white focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+
+              {/* Recado do Treinador */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">
+                  Orientações do Treinador (Visível no celular do aluno)
+                </label>
+                <textarea
+                  rows={2}
+                  value={editingWorkoutData.coachNotes || ""}
+                  onChange={(e) =>
+                    setEditingWorkoutData({ ...editingWorkoutData, coachNotes: e.target.value })
+                  }
+                  placeholder="Ex: Foco especial na fase excêntrica e cadência controlada em todos os compostos."
+                  className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+
+              {/* Divisões de Treino (Splits A, B, C...) */}
+              <div className="space-y-3 pt-1 border-t border-white/[0.06]">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase block">
+                    Divisões de Treino (Splits)
+                  </label>
+                  <span className="text-[10px] text-zinc-500">
+                    {editingWorkoutData.splits.length} divisões cadastradas
+                  </span>
+                </div>
+
+                {/* Abas dos Splits */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {editingWorkoutData.splits.map((split, sIdx) => (
+                    <button
+                      key={split.id || sIdx}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        setEditingActiveSplitIndex(sIdx);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                        editingActiveSplitIndex === sIdx
+                          ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
+                          : "bg-white/[0.04] text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      <span>Treino {split.id}</span>
+                      <span
+                        className={`text-[9px] font-mono px-1 py-0.2 rounded-full ${
+                          editingActiveSplitIndex === sIdx
+                            ? "bg-zinc-950 text-amber-300"
+                            : "bg-white/10 text-zinc-400"
+                        }`}
+                      >
+                        {split.exercises.length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Conteúdo do Split Ativo */}
+                {(() => {
+                  const activeSplit = editingWorkoutData.splits[editingActiveSplitIndex];
+                  if (!activeSplit) return null;
+
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/[0.08] space-y-3">
+                      {/* Editor de Nome do Split e Minutos */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-2">
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">
+                            Foco do Split
+                          </label>
+                          <input
+                            type="text"
+                            value={activeSplit.title}
+                            onChange={(e) => {
+                              const updated = [...editingWorkoutData.splits];
+                              updated[editingActiveSplitIndex].title = e.target.value;
+                              setEditingWorkoutData({ ...editingWorkoutData, splits: updated });
+                            }}
+                            className="w-full p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs font-bold text-white focus:outline-none focus:border-amber-500/50"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">
+                            Tempo Est.
+                          </label>
+                          <input
+                            type="number"
+                            value={activeSplit.estimatedMinutes}
+                            onChange={(e) => {
+                              const updated = [...editingWorkoutData.splits];
+                              updated[editingActiveSplitIndex].estimatedMinutes =
+                                parseInt(e.target.value) || 45;
+                              setEditingWorkoutData({ ...editingWorkoutData, splits: updated });
+                            }}
+                            className="w-full p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs font-mono font-bold text-white focus:outline-none focus:border-amber-500/50"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Lista de Exercícios no Split */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase block">
+                          Exercícios deste Split ({activeSplit.exercises.length})
+                        </span>
+
+                        {activeSplit.exercises.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-zinc-500 bg-zinc-950/50 rounded-xl border border-white/[0.04]">
+                            Nenhum exercício neste split ainda. Adicione abaixo!
+                          </div>
+                        ) : (
+                          activeSplit.exercises.map((ex, exIdx) => (
+                            <div
+                              key={ex.id || exIdx}
+                              className="p-2.5 rounded-xl bg-zinc-950 border border-white/[0.06] flex items-center justify-between gap-2"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-5 h-5 rounded-lg bg-white/[0.06] text-amber-400 text-[10px] font-mono font-black flex items-center justify-center shrink-0">
+                                  {exIdx + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <h5 className="text-xs font-bold text-white truncate">{ex.name}</h5>
+                                  <span className="text-[9px] text-zinc-400 block truncate">
+                                    {ex.muscle} • {ex.sets.length} séries × {ex.sets[0]?.reps || "10-12"} reps • {ex.restSeconds}s descanso
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRemoveExerciseFromSplit(editingActiveSplitIndex, ex.id)
+                                }
+                                className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+                                title="Remover exercício"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Adicionar Exercício Rápido ao Split */}
+                      <form
+                        onSubmit={handleAddExerciseToSplit}
+                        className="p-3 rounded-xl bg-white/[0.02] border border-dashed border-white/[0.1] space-y-2.5"
+                      >
+                        <span className="text-[9px] font-bold uppercase text-amber-400 flex items-center gap-1">
+                          <Plus className="w-3 h-3" /> Adicionar Exercício ao Treino {activeSplit.id}
+                        </span>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={newExerciseName}
+                            onChange={(e) => setNewExerciseName(e.target.value)}
+                            placeholder="Nome (ex: Supino Inclinado c/ Halteres)"
+                            className="p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50"
+                          />
+
+                          <select
+                            value={newExerciseMuscle}
+                            onChange={(e) => setNewExerciseMuscle(e.target.value)}
+                            className="p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                          >
+                            <option value="Peito">Peitoral</option>
+                            <option value="Costas">Costas / Dorsal</option>
+                            <option value="Pernas">Pernas / Quadríceps</option>
+                            <option value="Glúteos">Glúteos</option>
+                            <option value="Ombros">Ombros / Deltoides</option>
+                            <option value="Braços">Braços (Bíceps / Tríceps)</option>
+                            <option value="Abdômen">Abdômen / Core</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              min={1}
+                              max={10}
+                              value={newExerciseSets}
+                              onChange={(e) => setNewExerciseSets(e.target.value)}
+                              placeholder="Séries"
+                              className="w-16 p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono focus:outline-none focus:border-amber-500/50"
+                            />
+                            <span className="text-[10px] text-zinc-500">séries ×</span>
+                            <input
+                              type="text"
+                              value={newExerciseReps}
+                              onChange={(e) => setNewExerciseReps(e.target.value)}
+                              placeholder="10-12"
+                              className="w-20 p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono focus:outline-none focus:border-amber-500/50"
+                            />
+                            <span className="text-[10px] text-zinc-500">reps</span>
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs shrink-0 active:scale-95 transition-all"
+                          >
+                            + Inserir
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Atalho para Prescrição Completa no ExerciseDB */}
+              {onPrescribeWorkoutForStudent && (
+                <div className="p-3 rounded-2xl bg-zinc-900/50 border border-white/[0.06] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-white">Catálogo ExerciseDB Completo</p>
+                      <p className="text-[10px] text-zinc-400">
+                        Prescrever com busca anatômica e demonstrações visuais
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const stId = editingWorkoutStudent.id;
+                      setIsEditWorkoutModalOpen(false);
+                      onPrescribeWorkoutForStudent(stId);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold shrink-0 transition-all active:scale-95"
+                  >
+                    Abrir ExerciseDB
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer de Ações */}
+            <div className="p-4 border-t border-white/[0.08] bg-zinc-900/60 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditWorkoutModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-bold text-zinc-300 active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveWorkoutEdit}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Salvar & Sincronizar com Aluno</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

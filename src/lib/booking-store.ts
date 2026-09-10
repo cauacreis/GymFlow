@@ -66,7 +66,7 @@ export interface BookingRequest {
   totalPrice: number;
   status: "pending" | "accepted" | "rejected" | "completed";
   paymentStatus: "pending" | "paid" | "overdue";
-  attendanceStatus: "scheduled" | "attended" | "missed" | "rescheduled";
+  attendanceStatus: "scheduled" | "attended" | "missed" | "delayed" | "rescheduled";
   notes?: string;
   createdAt: string;
   rescheduleRequest?: RescheduleProposal;
@@ -77,7 +77,15 @@ export interface AppNotification {
   targetRole: "student" | "coach";
   studentId?: string;
   coachId?: string;
-  type: "training_reminder" | "payment_confirmed" | "payment_overdue" | "missed_class" | "booking_accepted" | "rescheduled";
+  type:
+    | "training_reminder"
+    | "payment_confirmed"
+    | "payment_overdue"
+    | "missed_class"
+    | "booking_accepted"
+    | "rescheduled"
+    | "delay_warning"
+    | "workout_updated";
   title: string;
   message: string;
   timestamp: string;
@@ -632,7 +640,8 @@ export function updatePaymentStatus(
 
 export function updateAttendanceStatus(
   bookingId: string,
-  attendanceStatus: "attended" | "missed" | "rescheduled"
+  attendanceStatus: "attended" | "missed" | "delayed" | "rescheduled",
+  delayMinutes: number = 15
 ): void {
   if (typeof window === "undefined") return;
   const bookings = getStoredBookings();
@@ -657,6 +666,14 @@ export function updateAttendanceStatus(
       type: "missed_class",
       title: "Falta Registrada no Treino ❌",
       message: `${booking.coachName} registrou ausência no horário das ${booking.slotTime}. Lembre-se de avisar com antecedência caso não possa comparecer.`,
+    });
+  } else if (attendanceStatus === "delayed") {
+    addNotification({
+      targetRole: "student",
+      studentId: booking.studentId,
+      type: "delay_warning",
+      title: "Aviso de Atraso Registrado ⚠️",
+      message: `${booking.coachName} registrou atraso de ${delayMinutes} min no seu treino das ${booking.slotTime}. Acelere para aproveitar o tempo no salão!`,
     });
   } else if (attendanceStatus === "rescheduled") {
     addNotification({

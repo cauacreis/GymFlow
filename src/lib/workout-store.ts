@@ -21,12 +21,16 @@ export interface StudentProfile {
   status?: "ativo" | "inativo" | "pendente";
   monthlyPresence?: number;
   monthlyAbsences?: number;
+  monthlyDelays?: number;
   totalClasses?: number;
   hasWorkoutSheet?: boolean;
   isOfflineStudent?: boolean;
   emergencyContact?: string;
   age?: number;
   lastPresence?: string;
+  todayAttendanceStatus?: "presente" | "falta" | "atraso" | "agendado";
+  delayMinutes?: number;
+  scheduledTimeToday?: string;
 }
 
 export interface CoachPlanOption {
@@ -136,11 +140,14 @@ const INITIAL_STUDENTS: StudentProfile[] = [
     status: "ativo",
     monthlyPresence: 16,
     monthlyAbsences: 1,
+    monthlyDelays: 0,
     totalClasses: 48,
-    lastPresence: "Hoje às 07:00",
+    lastPresence: "Ontem às 18:00",
     age: 29,
     hasWorkoutSheet: true,
     isOfflineStudent: false,
+    scheduledTimeToday: "18:00",
+    todayAttendanceStatus: "agendado",
     avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
     currentRoutineTitle: "Hipertrofia Clássica ABC (Push / Pull / Legs)",
     prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
@@ -159,11 +166,14 @@ const INITIAL_STUDENTS: StudentProfile[] = [
     status: "ativo",
     monthlyPresence: 12,
     monthlyAbsences: 0,
+    monthlyDelays: 0,
     totalClasses: 36,
     lastPresence: "Ontem às 18:00",
     age: 26,
     hasWorkoutSheet: true,
     isOfflineStudent: false,
+    scheduledTimeToday: "19:30",
+    todayAttendanceStatus: "agendado",
     avatarUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80",
     currentRoutineTitle: "Foco Glúteos & Coxas (Especial Feminino)",
     prescribedBy: "Profª. Camila Martins (CREF 09332-SP)",
@@ -182,11 +192,14 @@ const INITIAL_STUDENTS: StudentProfile[] = [
     status: "ativo",
     monthlyPresence: 18,
     monthlyAbsences: 2,
+    monthlyDelays: 1,
     totalClasses: 52,
     lastPresence: "Hoje às 07:00",
     age: 31,
     hasWorkoutSheet: true,
     isOfflineStudent: false,
+    scheduledTimeToday: "07:00",
+    todayAttendanceStatus: "presente",
     avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
     currentRoutineTitle: "Força Bruta 5×5 (Compostos Básicos)",
     prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
@@ -298,7 +311,8 @@ export function deleteStudent(studentId: string): void {
 
 export function recordStudentAttendance(
   studentId: string,
-  type: "presence" | "absence"
+  type: "presence" | "absence" | "delay",
+  delayMinutes: number = 15
 ): void {
   if (typeof window === "undefined") return;
   const students = getStoredStudents();
@@ -307,14 +321,26 @@ export function recordStudentAttendance(
       if (type === "presence") {
         return {
           ...s,
+          todayAttendanceStatus: "presente" as const,
           monthlyPresence: (s.monthlyPresence || 0) + 1,
           totalClasses: (s.totalClasses || 0) + 1,
           lastPresence: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+          delayMinutes: undefined,
+        };
+      } else if (type === "absence") {
+        return {
+          ...s,
+          todayAttendanceStatus: "falta" as const,
+          monthlyAbsences: (s.monthlyAbsences || 0) + 1,
+          delayMinutes: undefined,
         };
       } else {
         return {
           ...s,
-          monthlyAbsences: (s.monthlyAbsences || 0) + 1,
+          todayAttendanceStatus: "atraso" as const,
+          monthlyDelays: (s.monthlyDelays || 0) + 1,
+          delayMinutes,
+          lastPresence: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (${delayMinutes}m atraso)`,
         };
       }
     }
@@ -322,6 +348,69 @@ export function recordStudentAttendance(
   });
   localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
+
+  // 1. Sincroniza com o booking-store se houver reserva ativa
+  try {
+    const rawBookings = localStorage.getItem("gymflow_bookings_v2");
+    if (rawBookings) {
+      const bookingsList: any[] = JSON.parse(rawBookings);
+      let changedBooking = false;
+      const updatedBookings = bookingsList.map((b) => {
+        if (b.studentId === studentId && (b.slotDay === "Hoje" || b.slotDay?.toLowerCase().includes("hoje"))) {
+          changedBooking = true;
+          return {
+            ...b,
+            attendanceStatus: type === "presence" ? "attended" : type === "absence" ? "missed" : "delayed",
+          };
+        }
+        return b;
+      });
+      if (changedBooking) {
+        localStorage.setItem("gymflow_bookings_v2", JSON.stringify(updatedBookings));
+        window.dispatchEvent(new Event("gymflow:booking-updated"));
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar reserva:", err);
+  }
+
+  // 2. Envia notificação instantânea para o aluno no aplicativo
+  try {
+    const targetStudent = updated.find((st) => st.id === studentId);
+    const studentName = targetStudent?.name || "Aluno";
+    const rawNotifs = localStorage.getItem("gymflow_notifications_v1");
+    const notifsList: any[] = rawNotifs ? JSON.parse(rawNotifs) : [];
+
+    let notifTitle = "Presença Confirmada! 🔥";
+    let notifMsg = `Seu treinador confirmou sua presença no treino de hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Bom treino!`;
+    let notifType = "training_reminder";
+
+    if (type === "absence") {
+      notifTitle = "Falta Registrada ❌";
+      notifMsg = `Seu treinador registrou ausência no treino de hoje. Acesse sua agenda caso precise remanejar.`;
+      notifType = "missed_class";
+    } else if (type === "delay") {
+      notifTitle = "Aviso de Atraso ⚠️";
+      notifMsg = `Seu treinador registrou atraso de ${delayMinutes} min no treino de hoje. Chegue o quanto antes para aproveitar a sessão!`;
+      notifType = "delay_warning";
+    }
+
+    notifsList.unshift({
+      id: `notif_${Date.now()}`,
+      targetRole: "student",
+      studentId,
+      type: notifType,
+      title: notifTitle,
+      message: notifMsg,
+      timestamp: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      read: false,
+    });
+
+    localStorage.setItem("gymflow_notifications_v1", JSON.stringify(notifsList));
+    window.dispatchEvent(new Event("gymflow:notifications-updated"));
+  } catch (err) {
+    console.error("Erro ao enviar notificação de presença:", err);
+  }
 }
 
 export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
@@ -421,6 +510,26 @@ export function assignWorkoutToStudent(
       return st;
     });
     localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updatedStudents));
+
+    // Notifica o aluno instantaneamente no aplicativo
+    try {
+      const rawNotifs = localStorage.getItem("gymflow_notifications_v1");
+      const notifsList: any[] = rawNotifs ? JSON.parse(rawNotifs) : [];
+      notifsList.unshift({
+        id: `notif_${Date.now()}`,
+        targetRole: "student",
+        studentId,
+        type: "workout_updated",
+        title: "Ficha de Treino Atualizada! 📋",
+        message: `${workoutPackage.prescribedBy} atualizou sua ficha de treino: "${data.routineTitle}". Abra a aba Treino para conferir!`,
+        timestamp: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        read: false,
+      });
+      localStorage.setItem("gymflow_notifications_v1", JSON.stringify(notifsList));
+      window.dispatchEvent(new Event("gymflow:notifications-updated"));
+    } catch (notifErr) {
+      console.error("Erro ao enviar notificação de treino:", notifErr);
+    }
 
     // Dispara evento para reatividade instantânea
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { studentId } }));
