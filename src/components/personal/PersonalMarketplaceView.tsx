@@ -28,6 +28,8 @@ import {
   subscribeToBookings,
   CoachTrainer,
   BookingRequest,
+  getScheduleWeekTabs,
+  matchesScheduleDay,
 } from "@/lib/booking-store";
 
 interface PersonalMarketplaceViewProps {
@@ -39,6 +41,8 @@ export function PersonalMarketplaceView({
   studentName = "Carlos Silva",
   studentPhone = "5511991234567",
 }: PersonalMarketplaceViewProps) {
+  const scheduleTabs = getScheduleWeekTabs();
+
   const [coaches, setCoaches] = useState<CoachTrainer[]>([]);
   const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_rodrigo");
   const [selectedDay, setSelectedDay] = useState<string>("Hoje");
@@ -70,7 +74,7 @@ export function PersonalMarketplaceView({
   );
 
   // Slots do dia selecionado
-  const daySlots = (currentCoach?.slots || []).filter((s) => s.day === selectedDay);
+  const daySlots = (currentCoach?.slots || []).filter((s) => matchesScheduleDay(s.day, selectedDay));
 
   // Preço base do plano selecionado (Mensal 35 / 45 / 55)
   const basePrice = currentCoach
@@ -313,21 +317,21 @@ export function PersonalMarketplaceView({
 
           {/* Seletor de Dias */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {(["Hoje", "Amanhã", "Quinta", "Sexta", "Sábado"] as const).map((day) => (
+            {scheduleTabs.map((tab) => (
               <button
-                key={day}
+                key={tab.id}
                 onClick={() => {
                   triggerHaptic("light");
-                  setSelectedDay(day);
+                  setSelectedDay(tab.id);
                   setSelectedTimeSlot("");
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  selectedDay === day
-                    ? "bg-emerald-500 text-zinc-950 shadow-md"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  selectedDay === tab.id
+                    ? "bg-emerald-500 text-zinc-950 shadow-md font-black"
                     : "bg-white/[0.04] text-zinc-400 hover:text-white"
                 }`}
               >
-                {day}
+                {tab.label}
               </button>
             ))}
           </div>

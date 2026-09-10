@@ -39,6 +39,9 @@ import {
   CoachTrainer,
   BookingRequest,
   TrainerSlot,
+  getRescheduleDayOptions,
+  getScheduleWeekTabs,
+  matchesScheduleDay,
 } from "@/lib/booking-store";
 import { getStoredStudents, StudentProfile } from "@/lib/workout-store";
 
@@ -47,6 +50,9 @@ interface CoachAgendaManagerProps {
 }
 
 export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaManagerProps) {
+  const rescheduleDayOptions = getRescheduleDayOptions();
+  const scheduleTabs = getScheduleWeekTabs();
+
   const [coaches, setCoaches] = useState<CoachTrainer[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -65,7 +71,9 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
 
   // Modal de Proposta de Remanejamento pelo Professor
   const [rescheduleModalBooking, setRescheduleModalBooking] = useState<BookingRequest | null>(null);
-  const [rescheduleDay, setRescheduleDay] = useState("Amanhã");
+  const [rescheduleDay, setRescheduleDay] = useState(
+    rescheduleDayOptions[1]?.value || rescheduleDayOptions[0]?.value || "Amanhã"
+  );
   const [rescheduleTime, setRescheduleTime] = useState("18:00");
   const [rescheduleReason, setRescheduleReason] = useState("");
 
@@ -605,20 +613,20 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
 
           {/* Seletor de Dia para Edição de Slots */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {(["Hoje", "Amanhã", "Quinta", "Sexta", "Sábado"] as const).map((day) => (
+            {scheduleTabs.map((tab) => (
               <button
-                key={day}
+                key={tab.id}
                 onClick={() => {
                   triggerHaptic("light");
-                  setSelectedDay(day);
+                  setSelectedDay(tab.id);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  selectedDay === day
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  selectedDay === tab.id
                     ? "bg-amber-500 text-zinc-950 shadow-md font-black"
                     : "bg-white/[0.04] text-zinc-400 hover:text-white"
                 }`}
               >
-                {day}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -631,7 +639,7 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {currentCoach.slots
-                .filter((s) => s.day === selectedDay)
+                .filter((s) => matchesScheduleDay(s.day, selectedDay))
                 .map((slot) => {
                   const isOccupied = !slot.isAvailable || !!slot.studentName;
 
@@ -826,19 +834,19 @@ export function CoachAgendaManager({ coachId = "coach_rodrigo" }: CoachAgendaMan
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Novo Dia</label>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Novo Dia Sugerido</label>
                   <select
                     value={rescheduleDay}
                     onChange={(e) => setRescheduleDay(e.target.value)}
-                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   >
-                    <option value="Hoje">Hoje</option>
-                    <option value="Amanhã">Amanhã</option>
-                    <option value="Quinta">Quinta</option>
-                    <option value="Sexta">Sexta</option>
-                    <option value="Sábado">Sábado</option>
+                    {rescheduleDayOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

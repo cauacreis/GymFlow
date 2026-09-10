@@ -85,6 +85,116 @@ export interface AppNotification {
   actionUrl?: string;
 }
 
+export interface RescheduleDayOption {
+  value: string;
+  label: string;
+  isToday?: boolean;
+  isTomorrow?: boolean;
+}
+
+export interface ScheduleWeekTab {
+  id: string;
+  label: string;
+  fullDate: string;
+}
+
+/**
+ * Retorna as opções dinâmicas e inteligentes para remanejamento de horário.
+ * Respeita rigorosamente o dia atual (ex: se hoje é Quinta, lista Quinta como Hoje, Sexta como Amanhã, etc.)
+ */
+export function getRescheduleDayOptions(): RescheduleDayOption[] {
+  const weekDays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+  const now = new Date();
+  const options: RescheduleDayOption[] = [];
+
+  for (let i = 0; i < 9; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+
+    if (d.getDay() === 0) continue; // Academia fechada aos domingos
+
+    const dayName = weekDays[d.getDay()];
+    const dateFormatted = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+
+    let label = "";
+    if (i === 0) {
+      label = `Hoje (${dayName.replace("-feira", "")}, ${dateFormatted})`;
+    } else if (i === 1) {
+      label = `Amanhã (${dayName.replace("-feira", "")}, ${dateFormatted})`;
+    } else {
+      label = `${dayName} (${dateFormatted})`;
+    }
+
+    options.push({
+      value: label,
+      label,
+      isToday: i === 0,
+      isTomorrow: i === 1,
+    });
+  }
+
+  return options;
+}
+
+/**
+ * Retorna as abas dinâmicas da semana para a grade de atendimento (Seg a Sáb)
+ * Ajustadas para o dia atual sem duplicidades
+ */
+export function getScheduleWeekTabs(): ScheduleWeekTab[] {
+  const shortDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const fullDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  const now = new Date();
+  const tabs: ScheduleWeekTab[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+
+    if (d.getDay() === 0) continue; // Não exibe domingo na grade
+
+    const dayShort = shortDays[d.getDay()];
+    const dayFull = fullDays[d.getDay()];
+    const dateFormatted = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+
+    if (i === 0) {
+      tabs.push({ id: "Hoje", label: `Hoje (${dayShort})`, fullDate: dateFormatted });
+    } else if (i === 1) {
+      tabs.push({ id: "Amanhã", label: `Amanhã (${dayShort})`, fullDate: dateFormatted });
+    } else {
+      tabs.push({ id: dayFull, label: `${dayFull} (${dateFormatted})`, fullDate: dateFormatted });
+    }
+  }
+
+  return tabs;
+}
+
+/**
+ * Verifica se um slot de treino corresponde ao dia selecionado,
+ * com tolerância inteligente (ex: slots salvos como 'Quinta' ou 'Hoje' coincidem quando hoje é quinta)
+ */
+export function matchesScheduleDay(slotDay: string, targetDay: string): boolean {
+  if (slotDay === targetDay) return true;
+
+  const now = new Date();
+  const currentDayOfWeekIndex = now.getDay();
+  const fullDays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  const todayName = fullDays[currentDayOfWeekIndex];
+  const tomorrowName = fullDays[(currentDayOfWeekIndex + 1) % 7];
+
+  // Se o usuário selecionou "Hoje" e hoje é Quinta, aceita slots cadastrados como "Quinta" ou "Hoje"
+  if (targetDay === "Hoje" && (slotDay === "Hoje" || slotDay === todayName)) return true;
+  if (slotDay === "Hoje" && targetDay === todayName) return true;
+
+  // Se o usuário selecionou "Amanhã" e amanhã é Sexta, aceita slots cadastrados como "Sexta" ou "Amanhã"
+  if (targetDay === "Amanhã" && (slotDay === "Amanhã" || slotDay === tomorrowName)) return true;
+  if (slotDay === "Amanhã" && targetDay === tomorrowName) return true;
+
+  // Se tem prefixo compatível
+  if (slotDay.startsWith(targetDay) || targetDay.startsWith(slotDay)) return true;
+
+  return false;
+}
+
 const STORAGE_COACHES = "gymflow_coaches_v3";
 const STORAGE_BOOKINGS = "gymflow_bookings_v2";
 const STORAGE_NOTIFICATIONS = "gymflow_notifications_v1";

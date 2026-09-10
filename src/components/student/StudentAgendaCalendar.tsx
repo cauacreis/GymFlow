@@ -25,6 +25,7 @@ import {
   respondToReschedule,
   subscribeToBookings,
   BookingRequest,
+  getRescheduleDayOptions,
 } from "@/lib/booking-store";
 import { getStoredStudents, StudentProfile } from "@/lib/workout-store";
 
@@ -102,6 +103,8 @@ export function StudentAgendaCalendar({
   studentId = "student_carlos",
   onNavigateToWorkout,
 }: StudentAgendaCalendarProps) {
+  const rescheduleDayOptions = getRescheduleDayOptions();
+
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarDayEvent[]>(DEFAULT_DAYS_CALENDAR);
@@ -109,7 +112,9 @@ export function StudentAgendaCalendar({
   // Modal de Solicitação de Remanejamento
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [selectedBookingForReschedule, setSelectedBookingForReschedule] = useState<BookingRequest | null>(null);
-  const [proposedDay, setProposedDay] = useState("Amanhã");
+  const [proposedDay, setProposedDay] = useState(
+    rescheduleDayOptions[1]?.value || rescheduleDayOptions[0]?.value || "Amanhã"
+  );
   const [proposedTime, setProposedTime] = useState("19:00");
   const [rescheduleReason, setRescheduleReason] = useState("");
 
@@ -515,13 +520,13 @@ export function StudentAgendaCalendar({
                   <select
                     value={proposedDay}
                     onChange={(e) => setProposedDay(e.target.value)}
-                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   >
-                    <option value="Hoje">Hoje</option>
-                    <option value="Amanhã">Amanhã</option>
-                    <option value="Quinta">Quinta</option>
-                    <option value="Sexta">Sexta</option>
-                    <option value="Sábado">Sábado</option>
+                    {rescheduleDayOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
