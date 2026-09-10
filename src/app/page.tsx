@@ -132,7 +132,7 @@ export default function GymFlowApp() {
       />
 
       {/* Container Principal */}
-      <main className="w-full flex-1 flex flex-col px-3.5 pt-2 pb-20 max-w-md mx-auto">
+      <main className="w-full flex-1 flex flex-col px-3.5 pt-2 pb-20 max-w-md md:max-w-4xl lg:max-w-7xl mx-auto transition-all duration-200">
 
         {/* ------------------------------------------------------------- */}
         {/* VISÃO DO PROFESSOR (COACH) */}

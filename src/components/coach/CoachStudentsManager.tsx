@@ -441,41 +441,43 @@ export function CoachStudentsManager({
         </div>
       )}
 
-      {/* Header Minimalista do Módulo de Alunos */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div>
-          <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-            <span>Alunos do Treinador</span>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08]">
+      {/* Header do Módulo de Alunos */}
+      <div className="flex flex-col gap-2 pb-1">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-base sm:text-lg font-black text-white whitespace-nowrap">
+              Alunos do Treinador
+            </h2>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08] whitespace-nowrap shrink-0">
               {students.length} cadastrados • {students.filter((s) => (s.status || "ativo") === "ativo").length} ativos
             </span>
-          </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Gerencie frequência, presenças, planos e fichas técnicas com sincronização instantânea.
-          </p>
-        </div>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleOpenManagePlans}
-            className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
-            title="Configurar tabela de planos do personal"
-          >
-            <Tag className="w-3.5 h-3.5 text-amber-400" />
-            <span>Planos ({coachPlans.length})</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleOpenManagePlans}
+              className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all whitespace-nowrap"
+              title="Configurar tabela de planos do personal"
+            >
+              <Tag className="w-3.5 h-3.5 text-amber-400" />
+              <span>Planos ({coachPlans.length})</span>
+            </button>
 
-          <button
-            onClick={() => {
-              triggerHaptic("medium");
-              setIsNewStudentModalOpen(true);
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Novo Aluno</span>
-          </button>
+            <button
+              onClick={() => {
+                triggerHaptic("medium");
+                setIsNewStudentModalOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Novo Aluno</span>
+            </button>
+          </div>
         </div>
+        <p className="text-xs text-zinc-400">
+          Gerencie frequência, presenças, planos e fichas técnicas com sincronização instantânea.
+        </p>
       </div>
 
       {/* SEÇÃO PRINCIPAL: ALUNOS AGENDADOS PARA HOJE */}
@@ -515,47 +517,51 @@ export function CoachStudentsManager({
             <div className="absolute -top-12 -left-12 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
             {/* Cabeçalho da Seção de Hoje */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div>
-                <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Grade de Hoje • {formattedToday}
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 flex items-center gap-1.5 truncate">
+                  <Clock className="w-3.5 h-3.5 shrink-0" /> Grade de Hoje • {formattedToday}
                 </span>
-                <h3 className="text-base sm:text-lg font-black text-white mt-0.5 flex items-center gap-2">
-                  <span>⚡ Alunos do Dia</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-mono font-bold border border-amber-500/30">
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h3 className="text-base sm:text-lg font-black text-white whitespace-nowrap">
+                    ⚡ Alunos do Dia
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-mono font-bold border border-amber-500/30 whitespace-nowrap shrink-0">
                     {todayStudents.length} {todayStudents.length === 1 ? "aluno" : "alunos"}
                   </span>
-                </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Marque presença, falta ou atraso com 1 toque e edite os treinos com sincronização instantânea no aluno.
-                </p>
+                </div>
               </div>
 
               {/* Seletor rápido para agendar aluno offline ou livre para hoje */}
-              <div className="flex items-center gap-2 shrink-0">
-                <select
-                  defaultValue=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAddStudentToToday(e.target.value, "18:00");
-                      e.target.value = "";
-                    }
-                  }}
-                  className="py-1.5 px-2.5 rounded-xl bg-zinc-950 border border-white/10 text-xs text-zinc-300 focus:outline-none focus:border-amber-500/50 transition-colors cursor-pointer"
-                >
-                  <option value="" disabled>
-                    + Agendar Aluno para Hoje...
-                  </option>
-                  {students
-                    .filter((st) => !todayStudents.some((ts) => ts.id === st.id))
-                    .map((st) => (
-                      <option key={st.id} value={st.id} className="bg-zinc-950 text-white">
-                        {st.name} ({st.plan || "Presencial"})
-                      </option>
-                    ))}
-                </select>
-              </div>
+              {students.length > 0 && (
+                <div className="shrink-0">
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleAddStudentToToday(e.target.value, "18:00");
+                        e.target.value = "";
+                      }
+                    }}
+                    className="py-1.5 px-2 rounded-xl bg-zinc-950 border border-white/10 text-xs text-zinc-300 focus:outline-none focus:border-amber-500/50 transition-colors cursor-pointer max-w-[160px] truncate"
+                  >
+                    <option value="" disabled>
+                      + Agendar p/ Hoje...
+                    </option>
+                    {students
+                      .filter((st) => !todayStudents.some((ts) => ts.id === st.id))
+                      .map((st) => (
+                        <option key={st.id} value={st.id} className="bg-zinc-950 text-white">
+                          {st.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
             </div>
+            <p className="text-xs text-zinc-400">
+              Marque presença, falta ou atraso com 1 toque e edite os treinos com sincronização instantânea no aluno.
+            </p>
 
             {/* Cards dos Alunos de Hoje */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">

@@ -253,7 +253,7 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
   };
 
   return (
-    <div className="flex flex-col gap-4 text-left w-full max-w-md mx-auto pb-10">
+    <div className="flex flex-col gap-4 text-left w-full max-w-md md:max-w-5xl lg:max-w-7xl mx-auto pb-10 transition-all duration-200">
       {/* Toast de Notificação */}
       {notificationMsg && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm p-3.5 rounded-2xl bg-emerald-500 text-zinc-950 font-bold text-xs shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-4 duration-200">
