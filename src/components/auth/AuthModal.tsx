@@ -38,6 +38,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fetchProfileFromSupabase } from "@/lib/supabase-service";
 import { updateCoachPublicProfile } from "@/lib/booking-store";
 import { saveNewStudent } from "@/lib/workout-store";
+import { canRegisterAccountOnDevice, registerDeviceAccount } from "@/lib/device-lockout";
 
 // ============================================================================
 // SCHEMAS ZOD ESTREITOS (ANTI-INJEÇÃO & SEGURANÇA)
@@ -452,6 +453,12 @@ export function AuthModal({
           termsAccepted,
         });
 
+        // 🛡️ Proteção Anti-Abuso: Impede mais de uma conta por dispositivo e e-mail duplicado
+        const deviceCheck = await canRegisterAccountOnDevice(email.trim());
+        if (!deviceCheck.allowed) {
+          throw new Error(deviceCheck.reason || "Criação de conta bloqueada para este dispositivo.");
+        }
+
         let createdUserId: string | undefined;
         let requiresEmailConfirmation = false;
 
@@ -500,6 +507,14 @@ export function AuthModal({
           specialty: selectedRole === "coach" ? specialty.trim() || "Musculação & Hipertrofia" : undefined,
           bio: selectedRole === "coach" ? bio.trim() || undefined : undefined,
           goal: selectedRole === "student" ? goal : undefined,
+        });
+
+        // 🛡️ Vincula formalmente a conta criada a este dispositivo físico
+        await registerDeviceAccount({
+          email: newUser.email,
+          userId: newUser.id,
+          trialUsed: false,
+          plan: "pending_choice",
         });
 
         // Sincroniza com as coleções correspondentes do app

@@ -19,6 +19,8 @@ import { CoachAnalyticsDashboard } from "@/components/analytics/CoachAnalyticsDa
 import { StudentAnalyticsDashboard } from "@/components/analytics/StudentAnalyticsDashboard";
 import { StudentAgendaCalendar } from "@/components/student/StudentAgendaCalendar";
 import { StudentReminderBanner } from "@/components/student/StudentReminderBanner";
+import { AuthGateView } from "@/components/auth/AuthGateView";
+import { SubscriptionOnboardingModal } from "@/components/subscription/SubscriptionOnboardingModal";
 import {
   getCurrentUser,
   switchUserRole,
@@ -26,6 +28,8 @@ import {
   initAuthSession,
   UserProfile,
   UserRole,
+  isUserAuthenticated,
+  hasActiveAccess,
 } from "@/lib/auth-store";
 
 import {
@@ -152,6 +156,38 @@ export default function GymFlowApp() {
   };
 
   const isCoach = viewMode === "coach";
+
+  // ---------------------------------------------------------------------------
+  // 1. PORTÃO DE ENTRADA OBRIGATÓRIO (AUTH-WALL):
+  // O usuário não tem opção de navegar sem login/cadastro.
+  // ---------------------------------------------------------------------------
+  if (!isUserAuthenticated()) {
+    return (
+      <AuthGateView
+        onAuthenticated={(user) => {
+          setUserProfile(user);
+        }}
+      />
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. ONBOARDING DE ASSINATURA PÓS-CADASTRO:
+  // Alunos sem plano ativo ou sem trial devem selecionar uma opção para continuar.
+  // ---------------------------------------------------------------------------
+  if (!hasActiveAccess(userProfile)) {
+    return (
+      <div className="w-full min-h-screen bg-[#070709] text-white flex flex-col justify-center items-center p-4">
+        <SubscriptionOnboardingModal
+          isOpen={true}
+          user={userProfile}
+          onSuccess={() => {
+            setUserProfile(getCurrentUser());
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-screen bg-[#070709] text-white flex flex-col justify-between relative selection:bg-emerald-500/30 selection:text-emerald-300">

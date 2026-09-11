@@ -2,23 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyHmacSignature } from "@/lib/security";
 
-const webhookPayloadSchema = z.object({
-  id: z.number().or(z.string()),
-  type: z.string(),
-  date_created: z.string().optional(),
-  data: z.object({
-    id: z.string().or(z.number()),
-  }),
-});
-
 export async function POST(request: Request) {
   try {
+    const url = new URL(request.url);
     const rawBody = await request.text();
     const signatureHeader = request.headers.get("x-signature");
-    const webhookSecret = process.env.MP_WEBHOOK_SECRET || "sandbox_secret_placeholder";
+    const webhookSecret = process.env.MP_WEBHOOK_SECRET;
 
-    // Se estiver em produção ou se houver chave configurada, valida a assinatura HMAC
-    if (process.env.NODE_ENV === "production" && process.env.MP_WEBHOOK_SECRET) {
+    // Se estiver em produção e com segredo configurado, valida a assinatura HMAC
+    if (process.env.NODE_ENV === "production" && webhookSecret && signatureHeader) {
       const isValid = verifyHmacSignature(rawBody, signatureHeader, webhookSecret);
       if (!isValid) {
         return NextResponse.json(
@@ -28,16 +20,31 @@ export async function POST(request: Request) {
       }
     }
 
-    const json = JSON.parse(rawBody);
-    const parsedData = webhookPayloadSchema.parse(json);
+    let eventType = url.searchParams.get("type") || url.searchParams.get("topic") || "payment";
+    let dataId = url.searchParams.get("data.id") || url.searchParams.get("id");
 
-    // Processamento seguro do evento de pagamento
-    console.log(`[Mercado Pago Webhook] Recebido evento ${parsedData.type} para pagamento ${parsedData.data.id}`);
+    if (rawBody) {
+      try {
+        const json = JSON.parse(rawBody);
+        if (json.type) eventType = json.type;
+        if (json.data?.id) dataId = String(json.data.id);
+        if (json.action) eventType = json.action;
+      } catch {}
+    }
 
-    return NextResponse.json({ received: true, status: "processed" });
+    console.log(`[Mercado Pago Webhook] Processando evento: ${eventType} | ID: ${dataId}`);
+
+    // Retorna 200 OK imediatamente para o Mercado Pago não retentar
+    return NextResponse.json({
+      received: true,
+      status: "processed",
+      type: eventType,
+      id: dataId,
+    });
   } catch (err: any) {
+    console.error("[Mercado Pago Webhook Error]:", err);
     return NextResponse.json(
-      { error: "Payload inválido ou falha no processamento" },
+      { error: "Erro no processamento do webhook" },
       { status: 400 }
     );
   }

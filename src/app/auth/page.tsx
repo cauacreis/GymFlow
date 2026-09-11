@@ -36,6 +36,7 @@ import { getSupabase } from "@/lib/supabase";
 import { fetchProfileFromSupabase } from "@/lib/supabase-service";
 import { updateCoachPublicProfile } from "@/lib/booking-store";
 import { saveNewStudent } from "@/lib/workout-store";
+import { canRegisterAccountOnDevice, registerDeviceAccount } from "@/lib/device-lockout";
 
 // ============================================================================
 // SCHEMAS DE VALIDAÇÃO ZOD
@@ -382,6 +383,12 @@ function AuthPageContent() {
           termsAccepted,
         });
 
+        // 🛡️ Proteção Anti-Abuso: Impede mais de uma conta por dispositivo físico e e-mail duplicado
+        const deviceCheck = await canRegisterAccountOnDevice(email.trim());
+        if (!deviceCheck.allowed) {
+          throw new Error(deviceCheck.reason || "Criação de conta bloqueada para este dispositivo.");
+        }
+
         let createdUserId: string | undefined;
         let requiresConfirmation = false;
 
@@ -428,6 +435,14 @@ function AuthPageContent() {
           specialty: selectedRole === "coach" ? specialty.trim() || "Musculação & Hipertrofia" : undefined,
           bio: selectedRole === "coach" ? bio.trim() || undefined : undefined,
           goal: selectedRole === "student" ? goal : undefined,
+        });
+
+        // 🛡️ Vincula formalmente a nova conta a este dispositivo físico
+        await registerDeviceAccount({
+          email: newUser.email,
+          userId: newUser.id,
+          trialUsed: false,
+          plan: "pending_choice",
         });
 
         if (selectedRole === "coach") {

@@ -38,7 +38,14 @@ export interface UserProfile {
     weeklyPlan?: number;
     monthlyPlan?: number;
   };
+  // Gestão de Assinatura & Acesso Paywall
+  subscriptionStatus?: "trial" | "active" | "past_due" | "expired" | "pending_choice";
+  subscriptionPlan?: "trial_7d" | "monthly_recurring" | "monthly_pix" | "annual_pro";
+  trialEndsAt?: string; // Data ISO do fim dos 7 dias grátis
+  subscriptionEndsAt?: string; // Data ISO do fim da assinatura paga
+  deviceFingerprint?: string;
 }
+
 
 import { saveProfileToSupabase, fetchProfileFromSupabase } from "./supabase-service";
 import { getSupabase } from "./supabase";
@@ -79,8 +86,74 @@ const DEFAULT_USER: UserProfile = {
 };
 
 export function isUserAuthenticated(): boolean {
-  const user = getCurrentUser();
-  return Boolean(user && user.email && user.id !== "user_me");
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_AUTH);
+    if (!raw) return false;
+    const user = JSON.parse(raw);
+    return Boolean(
+      user &&
+      user.email &&
+      user.email.includes("@") &&
+      user.id &&
+      user.id !== "user_me"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Valida se o usuário tem direito de acesso ao aplicativo:
+ * 1. Treinadores com conta cadastrada têm acesso total
+ * 2. Alunos com plano 'active' ou trial de 7 dias válido têm acesso
+ * 3. Alunos recém-cadastrados ou com trial expirado devem escolher/renovar assinatura
+ */
+export function hasActiveAccess(user?: UserProfile): boolean {
+  const u = user || getCurrentUser();
+  if (!isUserAuthenticated()) return false;
+  if (u.activeRole === "coach") return true;
+
+  const status = u.subscriptionStatus;
+  if (!status || status === "pending_choice") return false;
+  if (status === "active") return true;
+  if (status === "trial") {
+    if (!u.trialEndsAt) return true;
+    return new Date(u.trialEndsAt).getTime() > Date.now();
+  }
+  return false;
+}
+
+export function activateTrialForUser(days: number = 7): UserProfile {
+  const u = getCurrentUser();
+  const trialEndDate = new Date();
+  trialEndDate.setDate(trialEndDate.getDate() + days);
+
+  const updated: UserProfile = {
+    ...u,
+    subscriptionStatus: "trial",
+    subscriptionPlan: "trial_7d",
+    trialEndsAt: trialEndDate.toISOString(),
+  };
+
+  saveUserProfile(updated);
+  return updated;
+}
+
+export function activatePaidPlanForUser(planId: string, isRecurring: boolean = false): UserProfile {
+  const u = getCurrentUser();
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + 1);
+
+  const updated: UserProfile = {
+    ...u,
+    subscriptionStatus: "active",
+    subscriptionPlan: isRecurring ? "monthly_recurring" : "monthly_pix",
+    subscriptionEndsAt: endDate.toISOString(),
+  };
+
+  saveUserProfile(updated);
+  return updated;
 }
 
 export function getCurrentUser(): UserProfile {
@@ -185,6 +258,8 @@ export function registerNewUser(data: {
     specialty: data.specialty || (data.role === "coach" ? "Musculação & Hipertrofia" : undefined),
     bio: data.bio || (data.role === "coach" ? "Treinador especialista em performance e técnica perfeita." : undefined),
     hourlyRate: data.hourlyRate || (data.role === "coach" ? 70 : undefined),
+    // Status de Assinatura: Alunos novos caem em pending_choice para escolher o plano/trial
+    subscriptionStatus: data.role === "coach" ? "active" : "pending_choice",
   };
 
   if (typeof window !== "undefined") {
