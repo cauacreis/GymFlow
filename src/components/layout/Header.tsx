@@ -14,7 +14,14 @@ interface HeaderProps {
   onOpenAuth: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationsCount?: number;
-  user: { name: string; email: string; activeRole?: "student" | "coach"; avatarUrl?: string } | null;
+  user: {
+    name: string;
+    email: string;
+    activeRole?: "student" | "coach";
+    avatarUrl?: string;
+    planTier?: "basico" | "pro" | "vip";
+    subscriptionStatus?: string;
+  } | null;
 }
 
 export function Header({
@@ -87,16 +94,19 @@ export function Header({
             </button>
           )}
 
-          {/* Botão de Planos VIP */}
+          {/* Indicador e Botão de Planos */}
           <button
             onClick={() => {
               triggerHaptic("selection");
               onOpenPlans();
             }}
-            className="w-7 h-7 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] flex items-center justify-center text-emerald-400 hover:text-emerald-300 transition-colors"
-            title="Ver Planos"
+            className="h-7 px-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+            title="Ver Planos e Assinatura"
           >
             <Sparkles className="w-3.5 h-3.5" />
+            <span className="uppercase text-[10px] tracking-wider hidden xs:inline">
+              {isCoach ? "Planos" : user?.subscriptionStatus === "trial" ? "Trial" : user?.planTier || "Pro"}
+            </span>
           </button>
 
           {/* Botão de Login / Cadastro para Visitantes */}

@@ -1,8 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { CalendarDays, Clock, Users, Flame, CheckCircle2, Award, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  Users,
+  Flame,
+  CheckCircle2,
+  Award,
+  Sparkles,
+  Lock,
+} from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { canAccessFeature } from "@/lib/subscription-features";
+import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
 
 export interface GymClass {
   id: string;
@@ -86,9 +97,16 @@ const INITIAL_CLASSES: GymClass[] = [
   },
 ];
 
-export function GymClassesView() {
+interface GymClassesViewProps {
+  onOpenPlans?: () => void;
+}
+
+export function GymClassesView({ onOpenPlans }: GymClassesViewProps) {
   const [classes, setClasses] = useState<GymClass[]>(INITIAL_CLASSES);
   const [selectedCategory, setSelectedCategory] = useState<string>("Todas");
+  const [isGateOpen, setIsGateOpen] = useState(false);
+
+  const access = canAccessFeature("collective_classes");
 
   const categories = ["Todas", "Cardio", "Lutas", "Força", "Mobilidade"];
 
@@ -98,6 +116,13 @@ export function GymClassesView() {
       : classes.filter((c) => c.category === selectedCategory);
 
   const handleToggleBooking = (id: string) => {
+    // Se o usuário não tiver plano compatível (ex: Básico ou Expirado), aciona o portão de upgrade
+    if (!access.allowed) {
+      triggerHaptic("warning");
+      setIsGateOpen(true);
+      return;
+    }
+
     triggerHaptic("medium");
     setClasses((prev) =>
       prev.map((item) => {
@@ -114,6 +139,35 @@ export function GymClassesView() {
 
   return (
     <div className="flex flex-col gap-4 text-left w-full">
+      {/* Banner Informativo de Plano se o usuário estiver no Básico */}
+      {!access.allowed && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-zinc-900 to-zinc-950 border border-purple-500/30 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">
+                Aulas Coletivas: Exclusivas Planos Pro & VIP
+              </p>
+              <p className="text-[11px] text-zinc-400">
+                Seu plano atual não inclui reservas de aulas coletivas.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              triggerHaptic("selection");
+              if (onOpenPlans) onOpenPlans();
+              else setIsGateOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-black text-xs shrink-0 active:scale-95 transition-all shadow-md shadow-purple-500/20"
+          >
+            Fazer Upgrade
+          </button>
+        </div>
+      )}
+
       {/* Header com Filtros de Categoria */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
         {categories.map((cat) => (
@@ -161,9 +215,17 @@ export function GymClassesView() {
                   </div>
                 </div>
 
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-zinc-300">
-                  {item.category}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {!access.allowed && (
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" />
+                      <span>Pro</span>
+                    </span>
+                  )}
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-white/[0.06] text-zinc-300">
+                    {item.category}
+                  </span>
+                </div>
               </div>
 
               {/* Descrição */}
@@ -190,25 +252,50 @@ export function GymClassesView() {
                   </span>
                 </div>
 
-                {/* Botão de Reserva */}
+                {/* Botão de Reserva com Gating */}
                 <button
-                  disabled={isFull}
+                  disabled={isFull && !item.isBooked}
                   onClick={() => handleToggleBooking(item.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                    item.isBooked
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 ${
+                    !access.allowed
+                      ? "bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30"
+                      : item.isBooked
                       ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30"
                       : isFull
                       ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                       : "bg-emerald-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:shadow-[0_0_18px_rgba(16,185,129,0.45)]"
                   }`}
                 >
-                  {item.isBooked ? "Inscrito ✓" : isFull ? "Lotada" : "Reservar"}
+                  {!access.allowed ? (
+                    <>
+                      <Lock className="w-3 h-3" />
+                      <span>Liberar no Pro</span>
+                    </>
+                  ) : item.isBooked ? (
+                    "Inscrito ✓"
+                  ) : isFull ? (
+                    "Lotada"
+                  ) : (
+                    "Reservar"
+                  )}
                 </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Modal de Bloqueio & Upgrade */}
+      <FeatureGateModal
+        isOpen={isGateOpen}
+        onClose={() => setIsGateOpen(false)}
+        feature="collective_classes"
+        requiredPlan="pro"
+        onOpenPlans={() => {
+          setIsGateOpen(false);
+          if (onOpenPlans) onOpenPlans();
+        }}
+      />
     </div>
   );
 }

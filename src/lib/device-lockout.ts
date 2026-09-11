@@ -79,7 +79,7 @@ export async function canRegisterAccountOnDevice(
     return {
       allowed: false,
       reason: `Este dispositivo já possui uma conta cadastrada (${maskedEmail}). Por políticas de segurança e prevenção de fraudes, permitimos apenas 1 conta por aparelho.`,
-      registeredEmail: existingDeviceRecord.registeredEmail,
+      registeredEmail: maskedEmail,
     };
   }
 
@@ -94,10 +94,12 @@ export async function canRegisterAccountOnDevice(
         .maybeSingle();
 
       if (!error && data && data.registered_email) {
+        const parts = data.registered_email.split("@");
+        const masked = `${parts[0].slice(0, 2)}***@${parts[1] || ""}`;
         return {
           allowed: false,
           reason: `Este dispositivo já está vinculado a outra conta. Faça login para continuar.`,
-          registeredEmail: data.registered_email,
+          registeredEmail: masked,
         };
       }
     } catch {

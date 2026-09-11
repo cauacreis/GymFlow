@@ -30,6 +30,7 @@ import {
   UserRole,
   isUserAuthenticated,
   hasActiveAccess,
+  activatePaidPlanForUser,
 } from "@/lib/auth-store";
 
 import {
@@ -71,6 +72,7 @@ export default function GymFlowApp() {
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [isGymBotOpen, setIsGymBotOpen] = useState(false);
+  const [paymentToast, setPaymentToast] = useState<{ message: string; type: "success" | "info" | "warning" } | null>(null);
 
   // Inicialização e Sincronização Contínua com Supabase Auth
   useEffect(() => {
@@ -101,6 +103,68 @@ export default function GymFlowApp() {
       unsubSession();
       window.removeEventListener("gymflow:password-recovery", handlePasswordRecovery);
     };
+  }, []);
+
+  // Processamento e Sanitização de Retorno do Mercado Pago (Checkout Pro & Assinaturas)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const status = params.get("status") || params.get("collection_status");
+    const subscription = params.get("subscription");
+    const plan = params.get("plan") || "pro";
+    const paymentId = params.get("payment_id") || params.get("id");
+
+    const isApproved =
+      payment === "approved" ||
+      payment === "success" ||
+      payment === "simulated" ||
+      status === "approved" ||
+      subscription === "active" ||
+      subscription === "simulated";
+
+    if (isApproved) {
+      const user = getCurrentUser();
+      const planTier = plan === "vip" ? "vip" : plan === "basico" ? "basico" : "pro";
+      const isRecurring = subscription === "active" || subscription === "simulated" || plan === "monthly_recurring";
+
+      activatePaidPlanForUser(plan, isRecurring, planTier);
+      setUserProfile(getCurrentUser());
+      triggerHaptic("success");
+
+      setPaymentToast({
+        message: `Pagamento confirmado com sucesso via Mercado Pago! Seu plano ${planTier.toUpperCase()} está 100% ativo.`,
+        type: "success",
+      });
+
+      // Sincroniza em segundo plano com a API de auditoria se houver ID de pagamento
+      if (paymentId && user.id && user.id !== "user_me") {
+        fetch(`/api/payment/check?id=${paymentId}&userId=${user.id}`).catch(() => {});
+      }
+
+      // Higieniza os parâmetros da URL sem recarregar a página
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      const timer = setTimeout(() => setPaymentToast(null), 6000);
+      return () => clearTimeout(timer);
+    } else if (payment === "pending") {
+      setPaymentToast({
+        message: "Pagamento recebido e em análise pelo Mercado Pago. Seu acesso será liberado assim que for compensado.",
+        type: "info",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      const timer = setTimeout(() => setPaymentToast(null), 6000);
+      return () => clearTimeout(timer);
+    } else if (payment === "failure" || status === "rejected") {
+      setPaymentToast({
+        message: "O pagamento não foi aprovado pelo Mercado Pago. Tente novamente com outro cartão ou via PIX.",
+        type: "warning",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      const timer = setTimeout(() => setPaymentToast(null), 6000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Sincronização reativa com Auth Store
@@ -206,6 +270,28 @@ export default function GymFlowApp() {
         onOpenAuth={() => setIsAuthOpen(true)}
       />
 
+      {/* Toast Notificação de Retorno de Pagamento Mercado Pago */}
+      {paymentToast && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] p-3.5 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl border animate-in slide-in-from-top-4 duration-300 ${
+            paymentToast.type === "success"
+              ? "bg-emerald-950/90 border-emerald-500/40 text-emerald-200"
+              : paymentToast.type === "info"
+              ? "bg-sky-950/90 border-sky-500/40 text-sky-200"
+              : "bg-amber-950/90 border-amber-500/40 text-amber-200"
+          }`}
+        >
+          <Sparkles className="w-5 h-5 shrink-0 text-emerald-400" />
+          <p className="text-xs font-semibold leading-snug flex-1">{paymentToast.message}</p>
+          <button
+            onClick={() => setPaymentToast(null)}
+            className="text-white/60 hover:text-white p-1 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Container Principal */}
       <main className="w-full flex-1 flex flex-col px-3.5 pt-2 pb-20 max-w-md md:max-w-4xl lg:max-w-7xl mx-auto transition-all duration-200">
 
@@ -240,6 +326,7 @@ export default function GymFlowApp() {
                     setTimerSeconds(seconds || 60);
                     setIsTimerOpen(true);
                   }}
+                  onOpenPlans={() => setIsPlansOpen(true)}
                 />
               </div>
             )}
@@ -262,6 +349,7 @@ export default function GymFlowApp() {
                   studentId={userProfile.id}
                   studentName={userProfile.name}
                   studentPhone={userProfile.phone || ""}
+                  onOpenPlans={() => setIsPlansOpen(true)}
                 />
               </div>
             )}
@@ -280,7 +368,7 @@ export default function GymFlowApp() {
                     Reservas Abertas
                   </span>
                 </div>
-                <GymClassesView />
+                <GymClassesView onOpenPlans={() => setIsPlansOpen(true)} />
               </div>
             )}
 
@@ -288,7 +376,7 @@ export default function GymFlowApp() {
             {currentTab === "evolucao" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <GymBadgesStreak />
-                <StudentAnalyticsDashboard />
+                <StudentAnalyticsDashboard onOpenPlans={() => setIsPlansOpen(true)} />
               </div>
             )}
           </div>
@@ -354,7 +442,10 @@ export default function GymFlowApp() {
       {/* Modais Utilitários */}
       <GymPlansModal
         isOpen={isPlansOpen}
-        onClose={() => setIsPlansOpen(false)}
+        onClose={() => {
+          setIsPlansOpen(false);
+          setUserProfile(getCurrentUser());
+        }}
       />
 
       <RestTimerModal
@@ -366,6 +457,7 @@ export default function GymFlowApp() {
       <GymBotAIModal
         isOpen={isGymBotOpen}
         onClose={() => setIsGymBotOpen(false)}
+        onOpenPlans={() => setIsPlansOpen(true)}
       />
     </div>
   );

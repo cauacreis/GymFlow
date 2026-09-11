@@ -51,42 +51,99 @@ export function checkRateLimit(
   };
 }
 
+export interface VerifyMpWebhookParams {
+  signatureHeader: string | null;
+  xRequestId?: string | null;
+  dataId?: string | null;
+  rawBody: string;
+  secret: string;
+}
+
 /**
- * Validação de assinatura HMAC SHA-256 para Webhooks (Mercado Pago / Provedores)
+ * Validação de webhook do Mercado Pago com suporte ao manifesto oficial:
+ * id:[data.id_url];request-id:[x-request-id_header];ts:[ts_from_x_signature];
+ * E fallback seguro para validação direta de payload.
+ */
+export function verifyMercadoPagoWebhook({
+  signatureHeader,
+  xRequestId,
+  dataId,
+  rawBody,
+  secret,
+}: VerifyMpWebhookParams): boolean {
+  if (!signatureHeader || !secret) return false;
+
+  try {
+    let hashToVerify = signatureHeader;
+    let ts = "";
+
+    if (signatureHeader.includes("v1=")) {
+      const parts = signatureHeader.split(",");
+      const v1Part = parts.find((p) => p.trim().startsWith("v1="));
+      const tsPart = parts.find((p) => p.trim().startsWith("ts="));
+      if (v1Part) hashToVerify = v1Part.split("=")[1].trim();
+      if (tsPart) ts = tsPart.split("=")[1].trim();
+    }
+
+    // Hash SHA-256 em hex deve conter exatamente 64 caracteres (32 bytes)
+    if (!hashToVerify || hashToVerify.length !== 64 || !/^[0-9a-f]{64}$/i.test(hashToVerify)) {
+      return false;
+    }
+
+    const verifyBuffer = Buffer.from(hashToVerify, "hex");
+
+    // 1. Tenta validar via manifesto oficial do Mercado Pago
+    if (ts && (dataId || xRequestId)) {
+      const manifest = `id:${dataId || ""};request-id:${xRequestId || ""};ts:${ts};`;
+      const expectedManifestHash = crypto
+        .createHmac("sha256", secret)
+        .update(manifest)
+        .digest("hex");
+      const manifestBuffer = Buffer.from(expectedManifestHash, "hex");
+
+      if (
+        verifyBuffer.length === manifestBuffer.length &&
+        crypto.timingSafeEqual(verifyBuffer, manifestBuffer)
+      ) {
+        return true;
+      }
+    }
+
+    // 2. Tenta validar via payload bruto (rawBody)
+    if (rawBody) {
+      const expectedPayloadHash = crypto
+        .createHmac("sha256", secret)
+        .update(rawBody)
+        .digest("hex");
+      const payloadBuffer = Buffer.from(expectedPayloadHash, "hex");
+
+      if (
+        verifyBuffer.length === payloadBuffer.length &&
+        crypto.timingSafeEqual(verifyBuffer, payloadBuffer)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validação genérica de assinatura HMAC SHA-256 para Webhooks (Timing-Safe)
  */
 export function verifyHmacSignature(
   payload: string,
   signatureHeader: string | null,
   secret: string
 ): boolean {
-  if (!signatureHeader || !secret) {
-    return false;
-  }
-
-  try {
-    // Mercado Pago pode enviar: ts=...,v1=...
-    let hashToVerify = signatureHeader;
-    if (signatureHeader.includes("v1=")) {
-      const parts = signatureHeader.split(",");
-      const v1Part = parts.find((p) => p.trim().startsWith("v1="));
-      if (v1Part) {
-        hashToVerify = v1Part.split("=")[1].trim();
-      }
-    }
-
-    const expectedHash = crypto
-      .createHmac("sha256", secret)
-      .update(payload)
-      .digest("hex");
-
-    // Comparação de tempo constante para prevenir timing attacks
-    return crypto.timingSafeEqual(
-      Buffer.from(hashToVerify, "hex"),
-      Buffer.from(expectedHash, "hex")
-    );
-  } catch (err) {
-    return false;
-  }
+  return verifyMercadoPagoWebhook({
+    signatureHeader,
+    rawBody: payload,
+    secret,
+  });
 }
 
 /**

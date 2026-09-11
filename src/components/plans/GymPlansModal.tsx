@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Check,
   Zap,
@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { activatePaidPlanForUser, getCurrentUser } from "@/lib/auth-store";
 
 export interface PlanOption {
   id: string;
@@ -82,6 +83,44 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [copiedPix, setCopiedPix] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pixData, setPixData] = useState<{ id?: string; qrCode: string; qrCodeBase64?: string } | null>(null);
+  const [pixStatusMessage, setPixStatusMessage] = useState<string | null>(null);
+  const [isMpConfigured, setIsMpConfigured] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch("/api/payment/status")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.mercadopago?.configured) {
+            setIsMpConfigured(true);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  // Polling automático da compensação do PIX a cada 4 segundos
+  useEffect(() => {
+    if (!isOpen || checkoutStep !== "payment" || paymentMethod !== "pix" || !pixData?.id) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const user = getCurrentUser();
+        const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${user.id}`);
+        const data = await res.json();
+        if (data.success && data.status === "approved") {
+          activatePaidPlanForUser(selectedPlanId, false, selectedPlanId as any);
+          setCheckoutStep("success");
+          triggerHaptic("success");
+        }
+      } catch {}
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, checkoutStep, paymentMethod, pixData?.id, selectedPlanId]);
 
   if (!isOpen) return null;
 
@@ -92,26 +131,118 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
     setSelectedPlanId(planId);
   };
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     triggerHaptic("medium");
     setCheckoutStep("payment");
+    setPixStatusMessage(null);
+
+    // Gera cobrança PIX no backend do Mercado Pago
+    try {
+      const user = getCurrentUser();
+      const res = await fetch("/api/payment/mercadopago/pix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: currentPlan.id,
+          description: `GymFlow — ${currentPlan.name}`,
+          payerEmail: user.email || "aluno@gymflow.com",
+          payerName: user.name || "Aluno GymFlow",
+          userId: user.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.pix) {
+        setPixData({
+          id: data.pix.id ? String(data.pix.id) : undefined,
+          qrCode: data.pix.qr_code,
+          qrCodeBase64: data.pix.qr_code_base64,
+        });
+      }
+    } catch (e) {
+      console.warn("PIX local fallback:", e);
+    }
   };
 
   const handleCopyPix = () => {
     triggerHaptic("success");
-    navigator.clipboard.writeText("00020126580014BR.GOV.BCB.PIX0136gymflow-sandbox-mp-checkout@gymflow.app5204000053039865405139.905802BR5915GYMFLOW BRASIL6009SAO PAULO62070503***6304D2E5");
+    const code =
+      pixData?.qrCode ||
+      "00020126580014BR.GOV.BCB.PIX0136gymflow-sandbox-mp-checkout@gymflow.app5204000053039865405139.905802BR5915GYMFLOW BRASIL6009SAO PAULO62070503***6304D2E5";
+    navigator.clipboard.writeText(code);
     setCopiedPix(true);
     setTimeout(() => setCopiedPix(false), 2500);
   };
 
-  const handleSimulatePaymentApproval = () => {
+  const handleVerifyPayment = async () => {
     triggerHaptic("heavy");
     setIsProcessing(true);
-    setTimeout(() => {
+    setPixStatusMessage(null);
+
+    try {
+      const user = getCurrentUser();
+
+      // Fluxo Cartão de Crédito: Checkout Pro oficial do Mercado Pago
+      if (paymentMethod === "card") {
+        const res = await fetch("/api/payment/mercadopago/preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            planId: currentPlan.id,
+            title: `GymFlow — ${currentPlan.name}`,
+            payerEmail: user.email || "aluno@gymflow.com",
+            payerName: user.name || "Aluno GymFlow",
+            userId: user.id,
+          }),
+        });
+        const data = await res.json();
+        if (data.initPoint && !data.isSimulated) {
+          // Redireciona para o checkout oficial do Mercado Pago
+          window.location.href = data.initPoint;
+          return;
+        }
+
+        // Em modo simulado (sem credenciais), ativa diretamente
+        activatePaidPlanForUser(currentPlan.id, true, currentPlan.id as any);
+        setCheckoutStep("success");
+        triggerHaptic("success");
+        return;
+      }
+
+      // Fluxo PIX: Consulta se já foi compensado no Mercado Pago
+      if (pixData?.id) {
+        const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${user.id}`);
+        const data = await res.json();
+
+        if (data.success && data.status === "approved") {
+          activatePaidPlanForUser(currentPlan.id, false, currentPlan.id as any);
+          setCheckoutStep("success");
+          triggerHaptic("success");
+          return;
+        }
+
+        if (data.status === "pending" || data.status === "in_process") {
+          setPixStatusMessage(
+            "Pagamento ainda não detectado pelo banco. Se já pagou, aguarde 10 a 30 segundos pela compensação do PIX e clique novamente."
+          );
+          triggerHaptic("warning");
+          return;
+        }
+      }
+
+      // Fallback para modo simulação quando não há credenciais no .env
+      if (!isMpConfigured) {
+        activatePaidPlanForUser(currentPlan.id, false, currentPlan.id as any);
+        setCheckoutStep("success");
+        triggerHaptic("success");
+        return;
+      }
+
+      setPixStatusMessage("Aguardando confirmação bancária. Copie o código PIX e pague no app do seu banco.");
+    } catch {
+      setPixStatusMessage("Erro ao verificar pagamento. Tente novamente em instantes.");
+    } finally {
       setIsProcessing(false);
-      setCheckoutStep("success");
-      triggerHaptic("success");
-    }, 1600);
+    }
   };
 
   return (
@@ -125,7 +256,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
             </div>
             <div>
               <h2 className="text-sm font-black text-white uppercase tracking-wider">Planos de Acesso</h2>
-              <p className="text-[10px] text-zinc-400">Checkout Mercado Pago Sandbox</p>
+              <p className="text-[10px] text-zinc-400">Checkout Mercado Pago Oficial</p>
             </div>
           </div>
           <button
@@ -254,16 +385,29 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
               {paymentMethod === "pix" && (
                 <div className="p-4 rounded-2xl bg-zinc-900 border border-white/[0.08] flex flex-col items-center text-center gap-3">
                   <div className="p-3 bg-white rounded-xl shadow-lg">
-                    {/* Simulated Pix QR Code */}
-                    <div className="w-36 h-36 border-2 border-dashed border-zinc-300 flex flex-col items-center justify-center p-2">
-                      <QrCode className="w-24 h-24 text-zinc-900" />
-                      <span className="text-[9px] font-mono font-bold text-zinc-700 mt-1">PIX MERCADO PAGO</span>
-                    </div>
+                    {pixData?.qrCodeBase64 ? (
+                      <img
+                        src={`data:image/png;base64,${pixData.qrCodeBase64}`}
+                        alt="PIX QR Code"
+                        className="w-36 h-36 object-contain"
+                      />
+                    ) : (
+                      <div className="w-36 h-36 border-2 border-dashed border-zinc-300 flex flex-col items-center justify-center p-2">
+                        <QrCode className="w-24 h-24 text-zinc-900" />
+                        <span className="text-[9px] font-mono font-bold text-zinc-700 mt-1">PIX MERCADO PAGO</span>
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-[11px] text-zinc-400">
                     Abra o app do seu banco, escolha <b>Pagar com PIX</b> e aponte a câmera ou use o código Copia e Cola.
                   </p>
+
+                  {pixStatusMessage && (
+                    <div className="w-full p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] text-left">
+                      {pixStatusMessage}
+                    </div>
+                  )}
 
                   <button
                     onClick={handleCopyPix}
@@ -287,32 +431,31 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
               {/* Bloco Cartão */}
               {paymentMethod === "card" && (
                 <div className="p-4 rounded-2xl bg-zinc-900 border border-white/[0.08] flex flex-col gap-3 text-left">
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase">Número do Cartão (Sandbox)</label>
-                    <input
-                      type="text"
-                      defaultValue="4242 •••• •••• 4242"
-                      className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Validade</label>
-                      <input
-                        type="text"
-                        defaultValue="12/28"
-                        className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-white"
-                      />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                      <CreditCard className="w-4 h-4" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase">CVV</label>
-                      <input
-                        type="text"
-                        defaultValue="123"
-                        className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-white"
-                      />
+                      <h4 className="text-xs font-bold text-white">Checkout Seguro Mercado Pago</h4>
+                      <p className="text-[10px] text-zinc-400">Cartão de Crédito em até 12x ou Débito</p>
                     </div>
                   </div>
+
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Você será redirecionado para a tela oficial e criptografada do Mercado Pago para efetuar o pagamento com proteção total contra fraudes.
+                  </p>
+
+                  <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-zinc-400 flex items-center justify-between">
+                    <span>Plano selecionado:</span>
+                    <span className="font-bold text-white">{currentPlan.name} — R$ {currentPlan.price}{currentPlan.billingPeriod}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Status de Ambiente */}
+              {!isMpConfigured && (
+                <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-zinc-400 text-center">
+                  ⚙️ Ambiente de Simulação Local (Chaves MP não configuradas no .env.local)
                 </div>
               )}
 
@@ -325,16 +468,21 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                   Voltar
                 </button>
                 <button
-                  onClick={handleSimulatePaymentApproval}
+                  onClick={handleVerifyPayment}
                   disabled={isProcessing}
                   className="w-2/3 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs tracking-wide shadow-lg shadow-emerald-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
                 >
                   {isProcessing ? (
                     <Clock className="w-4 h-4 animate-spin" />
+                  ) : paymentMethod === "card" ? (
+                    <>
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Ir para Checkout Seguro</span>
+                    </>
                   ) : (
                     <>
                       <ShieldCheck className="w-4 h-4" />
-                      <span>Confirmar Pagamento</span>
+                      <span>{isMpConfigured ? "Verificar PIX Pago" : "Confirmar Pagamento"}</span>
                     </>
                   )}
                 </button>
@@ -358,15 +506,15 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
               <div className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs text-left font-mono">
                 <div className="flex justify-between py-1 text-zinc-400">
                   <span>Status:</span>
-                  <span className="text-emerald-400 font-bold">APROVADO</span>
+                  <span className="text-emerald-400 font-bold">ATIVO</span>
+                </div>
+                <div className="flex justify-between py-1 text-zinc-400">
+                  <span>Plano:</span>
+                  <span className="text-white">{currentPlan.name}</span>
                 </div>
                 <div className="flex justify-between py-1 text-zinc-400">
                   <span>Gateway:</span>
-                  <span className="text-white">Mercado Pago Sandbox</span>
-                </div>
-                <div className="flex justify-between py-1 text-zinc-400">
-                  <span>Próxima Cobrança:</span>
-                  <span className="text-white">09/10/2026</span>
+                  <span className="text-white">Mercado Pago</span>
                 </div>
               </div>
 
@@ -375,7 +523,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                   triggerHaptic("light");
                   onClose();
                 }}
-                className="w-full py-3 rounded-xl bg-emerald-500 text-zinc-950 font-black text-xs uppercase tracking-wider"
+                className="w-full py-3 rounded-xl bg-emerald-500 text-zinc-950 font-black text-xs uppercase tracking-wider active:scale-95 transition-all"
               >
                 Ir para o Treino
               </button>

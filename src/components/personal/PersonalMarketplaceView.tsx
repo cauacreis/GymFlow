@@ -21,8 +21,12 @@ import {
   Filter,
   CalendarDays,
   LogOut,
+  Crown,
+  Lock,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getCurrentUser } from "@/lib/auth-store";
+import { getUserPlanTier, isSubscriptionExpired } from "@/lib/subscription-features";
 import {
   getStoredCoaches,
   getStoredBookings,
@@ -39,12 +43,14 @@ interface PersonalMarketplaceViewProps {
   studentId?: string;
   studentName?: string;
   studentPhone?: string;
+  onOpenPlans?: () => void;
 }
 
 export function PersonalMarketplaceView({
   studentId = "student_carlos",
   studentName = "Aluno",
   studentPhone = "",
+  onOpenPlans,
 }: PersonalMarketplaceViewProps) {
   const [coaches, setCoaches] = useState<CoachTrainer[]>([]);
   const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_principal");
@@ -160,6 +166,14 @@ export function PersonalMarketplaceView({
 
   // Enviar Solicitação de Agendamento
   const handleConfirmBooking = () => {
+    const user = getCurrentUser();
+    if (isSubscriptionExpired(user)) {
+      setBookingErrorMessage("Sua assinatura ou período de teste está expirado. Renove seu plano para agendar treinos presenciais.");
+      triggerHaptic("warning");
+      if (onOpenPlans) onOpenPlans();
+      return;
+    }
+
     if (!selectedTimeSlot) {
       setBookingErrorMessage("Por favor, selecione um horário disponível na grade antes de continuar.");
       triggerHaptic("warning");
@@ -219,6 +233,58 @@ export function PersonalMarketplaceView({
           Encontre os melhores Personal Trainers com horários vagos na sua unidade, escolha seu plano e garanta seu horário presencial.
         </p>
       </div>
+
+      {/* Indicador de Benefício VIP ou Aviso de Expiração */}
+      {(() => {
+        const u = getCurrentUser();
+        const isVip = getUserPlanTier(u) === "vip";
+        const isExpired = isSubscriptionExpired(u);
+
+        if (isExpired) {
+          return (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-950/40 via-zinc-900 to-zinc-950 border border-rose-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Assinatura Expirada</p>
+                  <p className="text-[11px] text-zinc-400">Regularize seu plano para agendar sessões com Personals.</p>
+                </div>
+              </div>
+              {onOpenPlans && (
+                <button
+                  onClick={() => {
+                    triggerHaptic("selection");
+                    onOpenPlans();
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs shrink-0 active:scale-95 transition-all shadow-md"
+                >
+                  Renovar
+                </button>
+              )}
+            </div>
+          );
+        }
+
+        if (isVip) {
+          return (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-zinc-900 to-zinc-950 border border-amber-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
+                  <Crown className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Benefício VIP: Acompanhamento Incluso</p>
+                  <p className="text-[11px] text-zinc-400">Você tem prioridade e acompanhamento com treinadores no seu plano VIP.</p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Seção: Meus Agendamentos Ativos (se houver) */}
       {myBookings.length > 0 && (

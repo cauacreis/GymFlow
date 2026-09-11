@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ allowed: true, isLocalFallback: true });
     }
 
-    // 1. Verifica se dispositivo já tem conta registrada
+    // 1. Verifica se dispositivo já tem conta registrada (Anti-Enumeração: Não vaza o e-mail completo)
     const { data: deviceRecord, error: deviceError } = await supabase
       .from("device_registrations")
       .select("registered_email, trial_used")
@@ -25,11 +25,13 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (!deviceError && deviceRecord) {
-      if (deviceRecord.registered_email && deviceRecord.registered_email.toLowerCase() !== email.toLowerCase()) {
+      if (
+        deviceRecord.registered_email &&
+        deviceRecord.registered_email.toLowerCase() !== email.toLowerCase()
+      ) {
         return NextResponse.json({
           allowed: false,
           reason: "Este dispositivo já possui uma conta registrada. Permitimos apenas 1 conta por aparelho.",
-          registeredEmail: deviceRecord.registered_email,
         });
       }
     }
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
     // 2. Verifica se o email já existe
     const { data: emailRecord, error: emailError } = await supabase
       .from("profiles")
-      .select("id, email")
+      .select("id")
       .eq("email", email)
       .maybeSingle();
 

@@ -31,6 +31,8 @@ import {
   History,
   Ruler,
   CheckCircle2,
+  Lock,
+  Crown,
 } from "lucide-react";
 import { studentAnalyticsData } from "@/lib/analytics-data";
 import { triggerHaptic } from "@/lib/haptic";
@@ -41,6 +43,8 @@ import {
   BodyMetricEntry,
 } from "@/lib/body-metrics-store";
 import { getCurrentUser, subscribeToAuth, UserProfile } from "@/lib/auth-store";
+import { canAccessFeature } from "@/lib/subscription-features";
+import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
 import { NewBodyMetricModal } from "./NewBodyMetricModal";
 import { BodyMetricsHistoryModal } from "./BodyMetricsHistoryModal";
 
@@ -58,7 +62,11 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export function StudentAnalyticsDashboard() {
+interface StudentAnalyticsDashboardProps {
+  onOpenPlans?: () => void;
+}
+
+export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashboardProps = {}) {
   const { kpis, strengthProgression, muscleVolumeDistribution, monthlyAttendance, personalRecords } =
     studentAnalyticsData;
 
@@ -67,9 +75,10 @@ export function StudentAnalyticsDashboard() {
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
   const [isMounted, setIsMounted] = useState(false);
 
-  // Modais de medição e histórico
+  // Modais de medição, histórico e gating
   const [isNewMetricModalOpen, setIsNewMetricModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isGateOpen, setIsGateOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -323,49 +332,85 @@ export function StudentAnalyticsDashboard() {
 
 
       {/* GRÁFICO 2: COMPOSIÇÃO CORPORAL & BIOIMPEDÂNCIA DINÂMICA */}
-      <div className="rounded-3xl p-4 sm:p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                <HeartPulse className="w-3.5 h-3.5 text-teal-400" /> Composição Corporal InBody
-              </h3>
-              <span className="text-[10px] font-mono text-teal-400 font-bold bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20">
-                Recomposição Ativa
-              </span>
+      {(() => {
+        const inbodyAccess = canAccessFeature("inbody_bioimpedance", currentUser);
+        return (
+          <div className="rounded-3xl p-4 sm:p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <HeartPulse className="w-3.5 h-3.5 text-teal-400" /> Composição Corporal InBody
+                  </h3>
+                  {inbodyAccess.allowed ? (
+                    <span className="text-[10px] font-mono text-teal-400 font-bold bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20">
+                      Recomposição Ativa
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 flex items-center gap-1">
+                      <Crown className="w-3 h-3" /> Exclusivo VIP
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-zinc-400 mt-0.5">
+                  Peso total ({latestMetric.weight.toFixed(1)} kg) • Massa Magra ({latestMetric.muscleMass.toFixed(1)} kg) • Altura: {(heightCm / 100).toFixed(2)}m
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                {/* Badge de Altura & IMC */}
+                <span
+                  className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.08] text-zinc-300 flex items-center gap-1"
+                  title={`IMC: Peso ${latestMetric.weight.toFixed(1)}kg / Altura ${(heightCm / 100).toFixed(2)}m`}
+                >
+                  <Ruler className="w-3 h-3 text-sky-400" />
+                  <span>IMC {bmiData.bmi}</span>
+                  <span className="text-zinc-500">•</span>
+                  <span className={bmiData.color}>{bmiData.category}</span>
+                </span>
+
+                <button
+                  onClick={() => {
+                    if (!inbodyAccess.allowed) {
+                      triggerHaptic("warning");
+                      setIsGateOpen(true);
+                      return;
+                    }
+                    triggerHaptic("medium");
+                    setIsNewMetricModalOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
+                  title="Registrar nova medição"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Medir</span>
+                </button>
+              </div>
             </div>
-            <p className="text-[10px] text-zinc-400 mt-0.5">
-              Peso total ({latestMetric.weight.toFixed(1)} kg) • Massa Magra ({latestMetric.muscleMass.toFixed(1)} kg) • Altura: {(heightCm / 100).toFixed(2)}m
-            </p>
-          </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            {/* Badge de Altura & IMC */}
-            <span
-              className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.08] text-zinc-300 flex items-center gap-1"
-              title={`IMC: Peso ${latestMetric.weight.toFixed(1)}kg / Altura ${(heightCm / 100).toFixed(2)}m`}
-            >
-              <Ruler className="w-3 h-3 text-sky-400" />
-              <span>IMC {bmiData.bmi}</span>
-              <span className="text-zinc-500">•</span>
-              <span className={bmiData.color}>{bmiData.category}</span>
-            </span>
-
-            <button
-              onClick={() => {
-                triggerHaptic("medium");
-                setIsNewMetricModalOpen(true);
-              }}
-              className="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
-              title="Registrar nova medição"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Medir</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="h-52 w-full mt-2">
+            {!inbodyAccess.allowed ? (
+              <div className="h-52 w-full mt-2 rounded-2xl bg-zinc-950/60 border border-amber-500/20 p-4 flex flex-col items-center justify-center text-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Bioimpedância InBody Mensal Gratuita</h4>
+                  <p className="text-[11px] text-zinc-400 mt-0.5 max-w-sm leading-relaxed">
+                    Acompanhamento de bioimpedância de precisão, massa magra segmentada e taxa metabólica inclusos para alunos VIP.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    triggerHaptic("selection");
+                    setIsGateOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all"
+                >
+                  Desbloquear Bioimpedância VIP
+                </button>
+              </div>
+            ) : (
+              <div className="h-52 w-full mt-2">
           {isMounted ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={bodyCompositionChartData}>
@@ -406,7 +451,10 @@ export function StudentAnalyticsDashboard() {
             <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
           )}
         </div>
+        )}
       </div>
+    );
+  })()}
 
       {/* GRÁFICO 3: VOLUME SEMANAL POR GRUPO MUSCULAR */}
       <div className="rounded-3xl p-4 sm:p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg">
@@ -538,6 +586,18 @@ export function StudentAnalyticsDashboard() {
         onOpenNewMetric={() => {
           setIsHistoryModalOpen(false);
           setIsNewMetricModalOpen(true);
+        }}
+      />
+
+      {/* Portão de Funcionalidade: Bioimpedância InBody VIP */}
+      <FeatureGateModal
+        isOpen={isGateOpen}
+        onClose={() => setIsGateOpen(false)}
+        feature="inbody_bioimpedance"
+        requiredPlan="vip"
+        onOpenPlans={() => {
+          setIsGateOpen(false);
+          if (onOpenPlans) onOpenPlans();
         }}
       />
     </div>

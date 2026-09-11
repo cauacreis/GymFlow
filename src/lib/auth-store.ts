@@ -40,7 +40,8 @@ export interface UserProfile {
   };
   // Gestão de Assinatura & Acesso Paywall
   subscriptionStatus?: "trial" | "active" | "past_due" | "expired" | "pending_choice";
-  subscriptionPlan?: "trial_7d" | "monthly_recurring" | "monthly_pix" | "annual_pro";
+  subscriptionPlan?: "trial_7d" | "monthly_recurring" | "monthly_pix" | "annual_pro" | "basico" | "pro" | "vip" | string;
+  planTier?: "basico" | "pro" | "vip";
   trialEndsAt?: string; // Data ISO do fim dos 7 dias grátis
   subscriptionEndsAt?: string; // Data ISO do fim da assinatura paga
   deviceFingerprint?: string;
@@ -85,18 +86,26 @@ const DEFAULT_USER: UserProfile = {
   },
 };
 
-export function isUserAuthenticated(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_AUTH);
-    if (!raw) return false;
-    const user = JSON.parse(raw);
+export function isUserAuthenticated(user?: UserProfile): boolean {
+  if (user) {
     return Boolean(
-      user &&
       user.email &&
       user.email.includes("@") &&
       user.id &&
       user.id !== "user_me"
+    );
+  }
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_AUTH);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return Boolean(
+      parsed &&
+      parsed.email &&
+      parsed.email.includes("@") &&
+      parsed.id &&
+      parsed.id !== "user_me"
     );
   } catch {
     return false;
@@ -106,8 +115,8 @@ export function isUserAuthenticated(): boolean {
 /**
  * Valida se o usuário tem direito de acesso ao aplicativo:
  * 1. Treinadores com conta cadastrada têm acesso total
- * 2. Alunos com plano 'active' ou trial de 7 dias válido têm acesso
- * 3. Alunos recém-cadastrados ou com trial expirado devem escolher/renovar assinatura
+ * 2. Alunos com plano 'active' (com data válida) ou trial de 7 dias válido têm acesso
+ * 3. Alunos recém-cadastrados ou com assinatura/trial expirada devem escolher/renovar assinatura
  */
 export function hasActiveAccess(user?: UserProfile): boolean {
   const u = user || getCurrentUser();
@@ -115,12 +124,28 @@ export function hasActiveAccess(user?: UserProfile): boolean {
   if (u.activeRole === "coach") return true;
 
   const status = u.subscriptionStatus;
-  if (!status || status === "pending_choice") return false;
-  if (status === "active") return true;
+  if (!status || status === "pending_choice" || status === "expired" || status === "past_due") {
+    return false;
+  }
+
+  const now = Date.now();
+
+  if (status === "active") {
+    if (u.subscriptionEndsAt) {
+      const isExpired = new Date(u.subscriptionEndsAt).getTime() <= now;
+      if (isExpired) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   if (status === "trial") {
     if (!u.trialEndsAt) return true;
-    return new Date(u.trialEndsAt).getTime() > Date.now();
+    const isExpired = new Date(u.trialEndsAt).getTime() <= now;
+    return !isExpired;
   }
+
   return false;
 }
 
@@ -133,6 +158,7 @@ export function activateTrialForUser(days: number = 7): UserProfile {
     ...u,
     subscriptionStatus: "trial",
     subscriptionPlan: "trial_7d",
+    planTier: "pro",
     trialEndsAt: trialEndDate.toISOString(),
   };
 
@@ -140,15 +166,24 @@ export function activateTrialForUser(days: number = 7): UserProfile {
   return updated;
 }
 
-export function activatePaidPlanForUser(planId: string, isRecurring: boolean = false): UserProfile {
+export function activatePaidPlanForUser(
+  planId: string,
+  isRecurring: boolean = false,
+  tier?: "basico" | "pro" | "vip"
+): UserProfile {
   const u = getCurrentUser();
   const endDate = new Date();
   endDate.setMonth(endDate.getMonth() + 1);
 
+  let determinedTier: "basico" | "pro" | "vip" = tier || "pro";
+  if (planId === "basico") determinedTier = "basico";
+  else if (planId === "vip") determinedTier = "vip";
+
   const updated: UserProfile = {
     ...u,
     subscriptionStatus: "active",
-    subscriptionPlan: isRecurring ? "monthly_recurring" : "monthly_pix",
+    subscriptionPlan: isRecurring ? "monthly_recurring" : planId,
+    planTier: determinedTier,
     subscriptionEndsAt: endDate.toISOString(),
   };
 

@@ -50,6 +50,7 @@ export function SubscriptionOnboardingModal({
 
   // PIX direto gerado pelo Mercado Pago
   const [pixData, setPixData] = useState<{
+    id?: string;
     qrCode: string;
     qrCodeBase64?: string;
     amount: number;
@@ -67,6 +68,28 @@ export function SubscriptionOnboardingModal({
       });
     }
   }, [isOpen, user]);
+
+  // Polling automático da compensação do PIX a cada 4 segundos
+  useEffect(() => {
+    if (!isOpen || selectedPlan !== "pix" || !pixData?.id) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const u = getCurrentUser();
+        const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${u.id}`);
+        const data = await res.json();
+        if (data.success && data.status === "approved") {
+          activatePaidPlanForUser("monthly_pix", false, "pro");
+          triggerHaptic("success");
+          onSuccess();
+        }
+      } catch {}
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, selectedPlan, pixData?.id, onSuccess]);
 
   if (!isOpen) return null;
 
@@ -196,6 +219,7 @@ export function SubscriptionOnboardingModal({
       }
 
       setPixData({
+        id: data.pix.id ? String(data.pix.id) : undefined,
         qrCode: data.pix.qr_code,
         qrCodeBase64: data.pix.qr_code_base64,
         amount: data.pix.amount || 45.0,
@@ -210,11 +234,44 @@ export function SubscriptionOnboardingModal({
     }
   };
 
-  // Confirmação simulada do PIX pelo usuário
-  const handleConfirmPixPaid = () => {
-    triggerHaptic("success");
-    activatePaidPlanForUser("monthly_pix", false);
-    onSuccess();
+  // Verificação e confirmação do PIX
+  const handleConfirmPixPaid = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      if (pixData?.id) {
+        const u = getCurrentUser();
+        const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${u.id}`);
+        const data = await res.json();
+
+        if (data.success && data.status === "approved") {
+          activatePaidPlanForUser("monthly_pix", false, "pro");
+          triggerHaptic("success");
+          onSuccess();
+          return;
+        }
+
+        if (data.status === "pending" || data.status === "in_process") {
+          setErrorMessage("Pagamento ainda não detectado pelo banco. Se já pagou, aguarde alguns instantes pela compensação do PIX e clique novamente.");
+          triggerHaptic("warning");
+          return;
+        }
+
+        if (!data.success || data.status !== "approved") {
+          setErrorMessage(data.message || "Pagamento não confirmado pelo Mercado Pago. Aguarde alguns instantes e tente novamente.");
+          triggerHaptic("warning");
+          return;
+        }
+      }
+
+      setErrorMessage("Aguardando geração e compensação do PIX. Copie o código e pague no app do seu banco.");
+      triggerHaptic("warning");
+    } catch {
+      setErrorMessage("Erro ao verificar pagamento. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopyPix = () => {

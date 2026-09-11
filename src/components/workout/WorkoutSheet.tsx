@@ -38,6 +38,8 @@ import {
   ExerciseDBItem,
 } from "@/lib/exercisedb";
 import { ExerciseGifModal, ExerciseModalData } from "./ExerciseGifModal";
+import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
+import { canAccessFeature } from "@/lib/subscription-features";
 
 export interface ExerciseSet {
   setNumber: number;
@@ -74,9 +76,10 @@ export interface WorkoutSplit {
 interface WorkoutSheetProps {
   studentId?: string;
   onOpenTimer: (defaultSeconds?: number) => void;
+  onOpenPlans?: () => void;
 }
 
-export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutSheetProps) {
+export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlans }: WorkoutSheetProps) {
   const [workoutMode, setWorkoutMode] = useState<"gym" | "home">("gym");
   const [workoutPackage, setWorkoutPackage] = useState<StudentWorkoutPackage>(() =>
     getStudentWorkout(studentId)
@@ -87,6 +90,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
   // Modal de Animação GIF / Execução
   const [selectedExerciseModal, setSelectedExerciseModal] = useState<ExerciseModalData | null>(null);
   const [isGifModalOpen, setIsGifModalOpen] = useState(false);
+  const [isGateOpen, setIsGateOpen] = useState(false);
 
   // Modal de Adição de Exercício (Catálogo de Academia e Personalizado)
   const [isAddExerciseModalOpen, setIsAddExerciseModalOpen] = useState(false);
@@ -352,9 +356,16 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
     }
   };
 
-  // Abrir modal de GIF
+  // Abrir modal de GIF (com gating por assinatura)
   const handleOpenGifModal = (exercise: Exercise) => {
     triggerHaptic("selection");
+    const access = canAccessFeature("advanced_workout");
+    if (!access.allowed) {
+      triggerHaptic("warning");
+      setIsGateOpen(true);
+      return;
+    }
+
     setSelectedExerciseModal({
       id: exercise.id,
       name: exercise.name,
@@ -1029,6 +1040,18 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
         exercise={selectedExerciseModal}
         isOpen={isGifModalOpen}
         onClose={() => setIsGifModalOpen(false)}
+      />
+
+      {/* Portão de Funcionalidade: Fichas com GIFs e Biomecânica Pro */}
+      <FeatureGateModal
+        isOpen={isGateOpen}
+        onClose={() => setIsGateOpen(false)}
+        feature="advanced_workout"
+        requiredPlan="pro"
+        onOpenPlans={() => {
+          setIsGateOpen(false);
+          if (onOpenPlans) onOpenPlans();
+        }}
       />
     </div>
   );

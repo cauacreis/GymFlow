@@ -334,6 +334,12 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
       instagram: user.instagram || null,
       location: user.location || null,
       pricing: user.pricing || null,
+      subscription_status: user.subscriptionStatus || null,
+      subscription_plan: user.subscriptionPlan || null,
+      plan_tier: user.planTier || null,
+      trial_ends_at: user.trialEndsAt || null,
+      subscription_ends_at: user.subscriptionEndsAt || null,
+      device_fingerprint: user.deviceFingerprint || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -377,6 +383,12 @@ export async function fetchProfileFromSupabase(userId: string): Promise<UserProf
       instagram: data.instagram || undefined,
       location: data.location || undefined,
       pricing: data.pricing || undefined,
+      subscriptionStatus: data.subscription_status || undefined,
+      subscriptionPlan: data.subscription_plan || undefined,
+      planTier: data.plan_tier || undefined,
+      trialEndsAt: data.trial_ends_at || undefined,
+      subscriptionEndsAt: data.subscription_ends_at || undefined,
+      deviceFingerprint: data.device_fingerprint || undefined,
     };
   } catch {
     return null;

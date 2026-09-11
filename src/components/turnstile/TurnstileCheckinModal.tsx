@@ -3,31 +3,39 @@
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
 import { Drawer } from "@/components/ui/Drawer";
-import { ShieldCheck, CheckCircle, RefreshCw, Smartphone, Users, Zap } from "lucide-react";
+import { ShieldCheck, CheckCircle, RefreshCw, Smartphone, Users, Zap, Lock, AlertCircle } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getCurrentUser } from "@/lib/auth-store";
+import { canAccessFeature, getUserPlanTier, isSubscriptionExpired } from "@/lib/subscription-features";
 
 interface TurnstileCheckinModalProps {
   isOpen: boolean;
   onClose: () => void;
   user?: { name: string; email: string } | null;
+  onOpenPlans?: () => void;
 }
 
 export function TurnstileCheckinModal({
   isOpen,
   onClose,
   user,
+  onOpenPlans,
 }: TurnstileCheckinModalProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [secondsRemaining, setSecondsRemaining] = useState(30);
   const [isScanned, setIsScanned] = useState(false);
   const [tokenSeed, setTokenSeed] = useState(Date.now());
 
-  const memberName = user?.name || "Carlos Silva";
-  const matricula = "GF-84920";
+  const currentUser = getCurrentUser();
+  const memberName = user?.name || currentUser.name || "Aluno GymFlow";
+  const matricula = currentUser.matricula || "GF-84920";
+  const planTier = getUserPlanTier(currentUser);
+  const isExpired = isSubscriptionExpired(currentUser);
+  const access = canAccessFeature("turnstile_checkin", currentUser);
 
-  // Geração do QR Code dinâmico com token rotativo
+  // Geração do QR Code dinâmico com token rotativo (apenas se acesso liberado)
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isExpired || !access.allowed) {
       setIsScanned(false);
       return;
     }
@@ -49,7 +57,7 @@ export function TurnstileCheckinModal({
     })
       .then((url) => setQrCodeUrl(url))
       .catch((err) => console.error("QR Code Error:", err));
-  }, [isOpen, tokenSeed, matricula]);
+  }, [isOpen, tokenSeed, matricula, isExpired, access.allowed]);
 
   // Timer de rotação do QR Code (30 segundos)
   useEffect(() => {
@@ -83,7 +91,35 @@ export function TurnstileCheckinModal({
         {/* Glow de Fundo */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-56 h-56 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
 
-        {isScanned ? (
+        {isExpired || !access.allowed ? (
+          /* Estado Bloqueado: Assinatura Vencida ou Sem Plano */
+          <div className="flex flex-col items-center gap-3 py-6 px-4 w-full text-center animate-fadeIn">
+            <div className="w-16 h-16 rounded-3xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center shadow-lg shadow-rose-500/10">
+              <Lock className="w-8 h-8" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20">
+                Acesso Bloqueado na Catraca
+              </span>
+              <h3 className="text-lg font-black text-white mt-1.5">Assinatura Inativa ou Vencida</h3>
+              <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                Seu plano de acesso à academia expirou. Para liberar o giro da catraca digital na portaria, regularize sua assinatura.
+              </p>
+            </div>
+            {onOpenPlans && (
+              <button
+                onClick={() => {
+                  triggerHaptic("selection");
+                  onClose();
+                  onOpenPlans();
+                }}
+                className="mt-2 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+              >
+                Renovar Assinatura Agora
+              </button>
+            )}
+          </div>
+        ) : isScanned ? (
           /* Estado de Sucesso: Catraca Liberada */
           <div className="flex flex-col items-center gap-3 py-8 px-4 w-full animate-fadeIn">
             <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)]">
@@ -134,7 +170,7 @@ export function TurnstileCheckinModal({
 
               <div className="flex flex-col items-end gap-1">
                 <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
-                  Plano Black VIP
+                  Plano {planTier.toUpperCase()}
                 </span>
                 <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

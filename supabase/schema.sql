@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   instagram TEXT,
   location TEXT,
   pricing JSONB DEFAULT '{"basicMonthly": 35, "proMonthly": 45, "vipMonthly": 55, "dailySession": 35, "weeklyPlan": 45, "monthlyPlan": 55}'::jsonb,
+  subscription_status TEXT DEFAULT 'pending_choice' CHECK (subscription_status IN ('pending_choice', 'trial', 'active', 'past_due', 'expired')),
+  subscription_plan TEXT DEFAULT 'trial_7d',
+  plan_tier TEXT DEFAULT 'pro' CHECK (plan_tier IN ('basico', 'pro', 'vip')),
+  trial_ends_at TIMESTAMPTZ,
+  subscription_ends_at TIMESTAMPTZ,
+  device_fingerprint TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
@@ -122,8 +128,35 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- 8. Tabela de Dispositivos (Anti-Fraude e Limite de 1 Conta por Aparelho)
+CREATE TABLE IF NOT EXISTS public.device_registrations (
+  device_id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  registered_email TEXT,
+  trial_used BOOLEAN NOT NULL DEFAULT FALSE,
+  trial_used_at TIMESTAMPTZ,
+  subscription_plan TEXT DEFAULT 'pending_choice',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- 9. Tabela de Pagamentos (Auditoria Financeira e Idempotência Mercado Pago)
+CREATE TABLE IF NOT EXISTS public.payments (
+  id TEXT PRIMARY KEY,
+  payment_id TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_email TEXT,
+  status TEXT NOT NULL,
+  payment_method TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  plan_id TEXT NOT NULL,
+  external_reference TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
 -- ==============================================================================
--- 8. Índices de Alta Performance
+-- 10. Índices de Alta Performance
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_students_coach_id ON public.students(coach_id);
 CREATE INDEX IF NOT EXISTS idx_students_status ON public.students(status);
@@ -141,6 +174,8 @@ ALTER TABLE public.coach_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_workouts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.device_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de Acesso Público e Autenticado (Permissivas para operação fluida)
 DROP POLICY IF EXISTS "Permitir leitura de perfis" ON public.profiles;
@@ -163,6 +198,55 @@ CREATE POLICY "Permitir acesso aos agendamentos" ON public.bookings FOR ALL USIN
 
 DROP POLICY IF EXISTS "Permitir acesso às notificações" ON public.notifications;
 CREATE POLICY "Permitir acesso às notificações" ON public.notifications FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Permitir leitura de pagamentos do proprio usuario" ON public.payments;
+CREATE POLICY "Permitir leitura de pagamentos do proprio usuario" ON public.payments 
+  FOR SELECT 
+  USING (auth.uid() = user_id OR auth.role() = 'service_role');
+
+DROP POLICY IF EXISTS "Permitir gerenciamento de pagamentos apenas pelo servidor" ON public.payments;
+CREATE POLICY "Permitir gerenciamento de pagamentos apenas pelo servidor" ON public.payments 
+  FOR ALL 
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+-- Trigger Anti-Fraude: Impede escalação de privilégios de assinatura diretamente via cliente anon
+CREATE OR REPLACE FUNCTION public.protect_profile_subscription_fields()
+RETURNS TRIGGER AS $$
+DECLARE
+  jwt_role text;
+BEGIN
+  BEGIN
+    jwt_role := current_setting('request.jwt.claim.role', true);
+  EXCEPTION WHEN OTHERS THEN
+    jwt_role := NULL;
+  END;
+
+  IF jwt_role = 'service_role' OR current_user = 'postgres' THEN
+    RETURN NEW;
+  END IF;
+
+  IF (OLD.subscription_status IS DISTINCT FROM NEW.subscription_status) OR
+     (OLD.plan_tier IS DISTINCT FROM NEW.plan_tier) OR
+     (OLD.subscription_ends_at IS DISTINCT FROM NEW.subscription_ends_at) OR
+     (OLD.trial_ends_at IS DISTINCT FROM NEW.trial_ends_at) OR
+     (OLD.subscription_plan IS DISTINCT FROM NEW.subscription_plan) THEN
+    NEW.subscription_status := OLD.subscription_status;
+    NEW.plan_tier := OLD.plan_tier;
+    NEW.subscription_ends_at := OLD.subscription_ends_at;
+    NEW.trial_ends_at := OLD.trial_ends_at;
+    NEW.subscription_plan := OLD.subscription_plan;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_protect_profile_subscription ON public.profiles;
+CREATE TRIGGER trg_protect_profile_subscription
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_profile_subscription_fields();
 
 -- ==============================================================================
 -- 10. Trigger Automático: Criação de Perfil no Cadastro do Usuário (Auth.Users)
