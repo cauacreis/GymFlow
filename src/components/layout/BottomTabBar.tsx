@@ -11,10 +11,11 @@ import {
   Calendar,
   User,
   Sparkles,
+  BarChart3,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 
-export type GymTabType = "treino" | "personal" | "aulas" | "evolucao" | "perfil" | "alunos" | "agenda";
+export type GymTabType = "treino" | "personal" | "aulas" | "evolucao" | "perfil" | "alunos" | "agenda" | "fichas" | "analytics";
 
 interface BottomTabBarProps {
   currentTab: GymTabType;
@@ -36,8 +37,8 @@ export function BottomTabBar({ currentTab, onSelectTab, role = "student" }: Bott
   const coachTabs = [
     { id: "alunos" as GymTabType, label: "Alunos", icon: Users },
     { id: "agenda" as GymTabType, label: "Agenda", icon: Calendar },
-    { id: "aulas" as GymTabType, label: "Aulas", icon: CalendarDays },
-    { id: "evolucao" as GymTabType, label: "Evolução", icon: TrendingUp },
+    { id: "fichas" as GymTabType, label: "Fichas", icon: Dumbbell },
+    { id: "analytics" as GymTabType, label: "Analytics", icon: BarChart3 },
     { id: "perfil" as GymTabType, label: "Perfil", icon: User },
   ];
 

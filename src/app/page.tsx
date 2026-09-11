@@ -68,9 +68,9 @@ export default function GymFlowApp() {
   useEffect(() => {
     const handleAuthChange = (updated: UserProfile) => {
       setUserProfile(updated);
-      if (updated.activeRole === "coach" && (currentTab === "treino" || currentTab === "personal")) {
+      if (updated.activeRole === "coach" && (currentTab === "treino" || currentTab === "personal" || currentTab === "evolucao" || currentTab === "aulas")) {
         setCurrentTab("alunos");
-      } else if (updated.activeRole === "student" && (currentTab === "alunos" || currentTab === "agenda")) {
+      } else if (updated.activeRole === "student" && (currentTab === "alunos" || currentTab === "fichas" || currentTab === "analytics")) {
         setCurrentTab("treino");
       }
     };
@@ -139,40 +139,11 @@ export default function GymFlowApp() {
         {/* ------------------------------------------------------------- */}
         {isCoach ? (
           <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-            {/* ABA 1 DO PROFESSOR: ALUNOS & PRESCRIÇÕES */}
-            {currentTab === "alunos" && (
-              <CoachDashboard defaultTab="students" onSwitchToStudentView={handleToggleRole} />
-            )}
-
-            {/* ABA 2 DO PROFESSOR: MINHA AGENDA & SOLICITAÇÕES */}
-            {currentTab === "agenda" && (
-              <CoachDashboard defaultTab="agenda" onSwitchToStudentView={handleToggleRole} />
-            )}
-
-            {/* ABA 3 DO PROFESSOR: AULAS & TURMAS */}
-            {currentTab === "aulas" && (
-              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
-                      Turmas & Coletivas
-                    </span>
-                    <h2 className="text-base font-black text-white mt-0.5">Grade de Aulas</h2>
-                  </div>
-                  <span className="text-[10px] text-zinc-400 bg-white/[0.04] px-2.5 py-1 rounded-xl border border-white/[0.06]">
-                    Visão do Professor
-                  </span>
-                </div>
-                <GymClassesView />
-              </div>
-            )}
-
-            {/* ABA 4 DO PROFESSOR: ANALYTICS & MÉTRICAS DE NEGÓCIO E ALUNOS */}
-            {currentTab === "evolucao" && (
-              <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-                <CoachAnalyticsDashboard />
-              </div>
-            )}
+            <CoachDashboard
+              currentTab={currentTab}
+              onSelectTab={handleTabSelect}
+              onSwitchToStudentView={handleToggleRole}
+            />
           </div>
         ) : (
           /* ------------------------------------------------------------- */

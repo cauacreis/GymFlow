@@ -50,14 +50,33 @@ import { CoachAgendaManager } from "./CoachAgendaManager";
 import { CoachStudentsManager } from "./CoachStudentsManager";
 import { ExerciseGifModal, ExerciseModalData } from "../workout/ExerciseGifModal";
 import { CoachAnalyticsDashboard } from "../analytics/CoachAnalyticsDashboard";
+import { GymTabType } from "../layout/BottomTabBar";
 
 interface CoachDashboardProps {
   onSwitchToStudentView?: () => void;
   defaultTab?: "students" | "agenda" | "workouts" | "analytics";
+  currentTab?: GymTabType;
+  onSelectTab?: (tab: GymTabType) => void;
 }
 
-export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" }: CoachDashboardProps) {
-  const [mainTab, setMainTab] = useState<"students" | "agenda" | "workouts" | "analytics">(defaultTab);
+export function CoachDashboard({
+  onSwitchToStudentView,
+  defaultTab = "students",
+  currentTab,
+  onSelectTab,
+}: CoachDashboardProps) {
+  const [internalTab, setInternalTab] = useState<"students" | "agenda" | "workouts" | "analytics">(defaultTab);
+  
+  const effectiveTab: "students" | "agenda" | "workouts" | "analytics" = currentTab
+    ? currentTab === "agenda"
+      ? "agenda"
+      : currentTab === "fichas"
+      ? "workouts"
+      : currentTab === "analytics" || currentTab === "evolucao"
+      ? "analytics"
+      : "students"
+    : internalTab;
+
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("student_carlos");
   const [modeTab, setModeTab] = useState<"preformed" | "custom">("preformed");
@@ -262,87 +281,28 @@ export function CoachDashboard({ onSwitchToStudentView, defaultTab = "students" 
         </div>
       )}
 
-      {/* Navegação Segmentada do Professor: Alunos • Agenda • Fichas • Métricas */}
-      <div className="grid grid-cols-4 p-1 rounded-2xl bg-zinc-900/60 border border-white/[0.06] shadow-sm backdrop-blur-md">
-        <button
-          onClick={() => {
-            triggerHaptic("selection");
-            setMainTab("students");
-          }}
-          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            mainTab === "students"
-              ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <Users className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Alunos</span>
-        </button>
-
-        <button
-          onClick={() => {
-            triggerHaptic("selection");
-            setMainTab("agenda");
-          }}
-          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            mainTab === "agenda"
-              ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Agenda</span>
-        </button>
-
-        <button
-          onClick={() => {
-            triggerHaptic("selection");
-            setMainTab("workouts");
-          }}
-          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            mainTab === "workouts"
-              ? "bg-emerald-500 text-zinc-950 font-black shadow-sm"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <Dumbbell className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Fichas</span>
-        </button>
-
-        <button
-          onClick={() => {
-            triggerHaptic("selection");
-            setMainTab("analytics");
-          }}
-          className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-            mainTab === "analytics"
-              ? "bg-amber-500 text-zinc-950 font-black shadow-sm"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          <BarChart3 className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Analytics</span>
-        </button>
-      </div>
-
       {/* ABA PRINCIPAL 0: CARTEIRA DE ALUNOS & CRM (ONLINE E OFFLINE) */}
-      {mainTab === "students" && (
+      {effectiveTab === "students" && (
         <CoachStudentsManager
           onPrescribeWorkoutForStudent={(id) => {
             setSelectedStudentId(id);
-            setMainTab("workouts");
+            if (onSelectTab) {
+              onSelectTab("fichas");
+            } else {
+              setInternalTab("workouts");
+            }
           }}
         />
       )}
 
       {/* ABA PRINCIPAL 1: AGENDA & GESTÃO DE HORÁRIOS / ALUNOS PRESENCIAIS */}
-      {mainTab === "agenda" && <CoachAgendaManager coachId="coach_rodrigo" />}
+      {effectiveTab === "agenda" && <CoachAgendaManager coachId="coach_rodrigo" />}
 
       {/* ABA PRINCIPAL 2: ANALYTICS & DASHBOARD DE MÉTRICAS */}
-      {mainTab === "analytics" && <CoachAnalyticsDashboard />}
+      {effectiveTab === "analytics" && <CoachAnalyticsDashboard />}
 
-      {/* ABA PRINCIPAL 3: MONTAGEM E PRESCRIÇÃO DE FICHAS COM EXERCISEDB */}
-      {mainTab === "workouts" && (
+      {/* ABA PRINCIPAL 3: MONTAGEM E PRESCRIÇÃO DE FICHAS COM BANCO DE EXERCÍCIOS */}
+      {effectiveTab === "workouts" && (
         <div className="flex flex-col gap-4 animate-in fade-in duration-150">
           {/* Seletor de Alunos */}
           <div className="rounded-3xl p-4 bg-zinc-900 border border-white/[0.08] flex flex-col gap-2.5">
