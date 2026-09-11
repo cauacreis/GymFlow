@@ -59,6 +59,7 @@ import {
 import { getCurrentUser, saveUserProfile } from "@/lib/auth-store";
 import { ExerciseInWorkout, WorkoutSplitTemplate } from "@/lib/exercisedb";
 import { StudentFullProfileModal } from "./StudentFullProfileModal";
+import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
 
 interface CoachStudentsManagerProps {
   onPrescribeWorkoutForStudent?: (studentId: string) => void;
@@ -71,6 +72,7 @@ export function CoachStudentsManager({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"todos" | "ativo" | "atrasado" | "inativo">("todos");
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
+  const [whatsAppModalStudent, setWhatsAppModalStudent] = useState<StudentProfile | null>(null);
 
   // Planos oferecidos pelo professor
   const [coachPlans, setCoachPlans] = useState<CoachPlanOption[]>([]);
@@ -755,16 +757,19 @@ export function CoachStudentsManager({
                         </div>
 
                         {student.phone && (
-                          <a
-                            href={getWhatsAppLink(student.phone, student.name)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-emerald-400 hover:text-emerald-300 font-bold text-[10px] flex items-center gap-1 shrink-0 ml-2"
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerHaptic("selection");
+                              setWhatsAppModalStudent(student);
+                            }}
+                            className="text-emerald-400 hover:text-emerald-300 font-bold text-[10px] flex items-center gap-1 shrink-0 ml-2 active:scale-95 transition-all"
+                            title="Conversar no WhatsApp com mensagens pré-definidas"
                           >
                             <MessageCircle className="w-3 h-3" />
                             <span>WhatsApp</span>
-                          </a>
+                          </button>
                         )}
                       </div>
 
@@ -1153,16 +1158,18 @@ export function CoachStudentsManager({
                     </button>
 
                     {student.phone && (
-                      <a
-                        href={getWhatsAppLink(student.phone, student.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 flex items-center transition-colors"
-                        title="Conversar no WhatsApp"
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic("selection");
+                          setWhatsAppModalStudent(student);
+                        }}
+                        className="p-1 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 flex items-center transition-colors active:scale-95"
+                        title="Conversar no WhatsApp com mensagens pré-definidas"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1991,6 +1998,19 @@ export function CoachStudentsManager({
             </div>
           </div>
         </div>
+      )}
+      {/* MODAL DE WHATSAPP COM MODELOS PRÉ-DEFINIDOS & MENSAGEM LIVRE */}
+      {whatsAppModalStudent && (
+        <CoachWhatsAppModal
+          isOpen={!!whatsAppModalStudent}
+          onClose={() => setWhatsAppModalStudent(null)}
+          studentName={whatsAppModalStudent.name}
+          studentPhone={whatsAppModalStudent.phone || ""}
+          studentPlan={whatsAppModalStudent.plan}
+          studentGoal={whatsAppModalStudent.goal}
+          paymentDueDate={whatsAppModalStudent.paymentDueDate || "Dia 10"}
+          monthlyPresence={whatsAppModalStudent.monthlyPresence ?? 95}
+        />
       )}
     </div>
   );

@@ -44,6 +44,7 @@ import {
   updateAttendanceStatus,
   updateBookingNotes,
 } from "@/lib/booking-store";
+import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
 
 interface StudentFullProfileModalProps {
   isOpen: boolean;
@@ -64,6 +65,7 @@ export function StudentFullProfileModal({
 }: StudentFullProfileModalProps) {
   const [localStudent, setLocalStudent] = useState<StudentProfile | null>(student);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Campos de edição
@@ -317,18 +319,18 @@ export function StudentFullProfileModal({
 
           <div className="flex items-center gap-2 shrink-0">
             {localStudent.phone && (
-              <a
-                href={`https://wa.me/${localStudent.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
-                  `Olá, ${localStudent.name}! Aqui é o seu treinador. Passando para alinhar seus treinos...`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="py-1.5 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
-                title="Conversar no WhatsApp"
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setIsWhatsAppModalOpen(true);
+                }}
+                className="py-1.5 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                title="Conversar no WhatsApp (mensagens pré-definidas ou personalizada)"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">WhatsApp</span>
-              </a>
+              </button>
             )}
 
             <button
@@ -839,16 +841,18 @@ export function StudentFullProfileModal({
 
                     {/* Cobrança WhatsApp (se tiver telefone) */}
                     {localStudent.phone ? (
-                      <a
-                        href={getCobrarWhatsAppLink()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition-all active:scale-95"
-                        title="Abrir WhatsApp com lembrete amigável pré-formatado"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("selection");
+                          setIsWhatsAppModalOpen(true);
+                        }}
+                        className="py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition-all active:scale-95 shadow-sm"
+                        title="Abrir WhatsApp com mensagens pré-definidas (mensalidade, treino, etc.) ou personalizada"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                         <span>Cobrar WhatsApp</span>
-                      </a>
+                      </button>
                     ) : (
                       <button
                         type="button"
@@ -1206,6 +1210,20 @@ export function StudentFullProfileModal({
           )}
         </div>
       </div>
+
+      {/* MODAL DE WHATSAPP COM MODELOS PRÉ-DEFINIDOS & MENSAGEM LIVRE */}
+      <CoachWhatsAppModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => setIsWhatsAppModalOpen(false)}
+        studentName={localStudent.name}
+        studentPhone={localStudent.phone || ""}
+        studentPlan={localStudent.plan}
+        studentGoal={localStudent.goal}
+        scheduledTime={currentBooking?.slotTime || localStudent.scheduledTimeToday}
+        scheduledDay={currentBooking?.slotDay || "Hoje"}
+        paymentDueDate={localStudent.paymentDueDate || "Dia 10"}
+        monthlyPresence={presenceRate}
+      />
     </div>
   );
 }

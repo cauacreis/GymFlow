@@ -43,6 +43,7 @@ import {
   subscribeToWorkoutChanges,
 } from "@/lib/workout-store";
 import { StudentFullProfileModal } from "./StudentFullProfileModal";
+import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
 
 interface CoachAgendaManagerProps {
   coachId?: string;
@@ -60,6 +61,17 @@ export function CoachAgendaManager({
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Modal WhatsApp Mensagens Rápidas
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppStudent, setWhatsAppStudent] = useState<{
+    name: string;
+    phone: string;
+    plan?: string;
+    goal?: string;
+    scheduledTime?: string;
+    scheduledDay?: string;
+  } | null>(null);
 
   // Navegação de Período & Modo de Visualização
   const [referenceDate, setReferenceDate] = useState<Date>(new Date());
@@ -1020,17 +1032,25 @@ export function CoachAgendaManager({
                   </button>
 
                   {selectedBooking.studentPhone ? (
-                    <a
-                      href={`https://wa.me/${selectedBooking.studentPhone}?text=${encodeURIComponent(
-                        `Olá, ${selectedBooking.studentName}! Aqui é o seu treinador. Sobre nosso treino de ${selectedBooking.slotDay} às ${selectedBooking.slotTime}...`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        setWhatsAppStudent({
+                          name: selectedBooking.studentName,
+                          phone: selectedBooking.studentPhone,
+                          plan: selectedBooking.planType ? `Plano ${selectedBooking.planType.toUpperCase()}` : undefined,
+                          scheduledTime: selectedBooking.slotTime,
+                          scheduledDay: selectedBooking.slotDay,
+                        });
+                        setIsWhatsAppModalOpen(true);
+                      }}
+                      className="py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                      title="Conversar no WhatsApp com mensagens pré-definidas ou personalizada"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>WhatsApp</span>
-                    </a>
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -1248,6 +1268,23 @@ export function CoachAgendaManager({
             </button>
           </form>
         </div>
+      )}
+
+      {/* MODAL DE WHATSAPP COM MODELOS PRÉ-DEFINIDOS & MENSAGEM LIVRE */}
+      {whatsAppStudent && (
+        <CoachWhatsAppModal
+          isOpen={isWhatsAppModalOpen}
+          onClose={() => {
+            setIsWhatsAppModalOpen(false);
+            setWhatsAppStudent(null);
+          }}
+          studentName={whatsAppStudent.name}
+          studentPhone={whatsAppStudent.phone}
+          studentPlan={whatsAppStudent.plan}
+          studentGoal={whatsAppStudent.goal}
+          scheduledTime={whatsAppStudent.scheduledTime}
+          scheduledDay={whatsAppStudent.scheduledDay}
+        />
       )}
     </div>
   );
