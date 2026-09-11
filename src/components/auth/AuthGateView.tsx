@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { z } from "zod";
 import {
-  ShieldCheck,
   Lock,
   Mail,
   User,
@@ -16,8 +15,9 @@ import {
   Check,
   AlertCircle,
   ArrowRight,
-  Shield,
-  Zap,
+  ShieldCheck,
+  RotateCcw,
+  KeyRound,
 } from "lucide-react";
 import {
   registerNewUser,
@@ -39,6 +39,10 @@ import { canRegisterAccountOnDevice, registerDeviceAccount } from "@/lib/device-
 const loginSchema = z.object({
   email: z.string().trim().email("Formato de e-mail inválido").max(100),
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres").max(100),
+});
+
+const forgotSchema = z.object({
+  email: z.string().trim().email("Formato de e-mail inválido").max(100),
 });
 
 const signupSchema = z
@@ -64,7 +68,7 @@ const signupSchema = z
       .max(100),
     confirmPassword: z.string().min(1, "Confirme sua senha"),
     termsAccepted: z.literal(true, {
-      errorMap: () => ({ message: "Você precisa aceitar os Termos de Uso e LGPD." }),
+      errorMap: () => ({ message: "Você precisa aceitar os Termos de Uso e LGPD para continuar." }),
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -77,7 +81,7 @@ interface AuthGateViewProps {
 }
 
 export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
-  const [tab, setTab] = useState<"login" | "signup">("login");
+  const [tab, setTab] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -103,7 +107,9 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
     setIsLoading(true);
 
     try {
-      // 1. MODO LOGIN
+      // ----------------------------------------------------------------------
+      // MODO 1: LOGIN
+      // ----------------------------------------------------------------------
       if (tab === "login") {
         loginSchema.parse({ email, password });
 
@@ -116,7 +122,11 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
           });
 
           if (error) {
-            throw new Error(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : error.message);
+            throw new Error(
+              error.message === "Invalid login credentials"
+                ? "E-mail ou senha incorretos."
+                : error.message
+            );
           }
 
           if (data?.user) {
@@ -154,8 +164,10 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
         onAuthenticated(loggedUser);
       }
 
-      // 2. MODO CADASTRO (SIGNUP)
-      else {
+      // ----------------------------------------------------------------------
+      // MODO 2: CADASTRO (SIGNUP)
+      // ----------------------------------------------------------------------
+      else if (tab === "signup") {
         signupSchema.parse({
           name,
           email,
@@ -169,10 +181,10 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
           termsAccepted,
         });
 
-        // 🛡️ Proteção Anti-Abuso: Bloqueio de múltiplas contas por dispositivo
+        // 🛡️ Proteção Anti-Abuso Silenciosa: Impede mais de uma conta por dispositivo físico
         const deviceCheck = await canRegisterAccountOnDevice(email.trim());
         if (!deviceCheck.allowed) {
-          throw new Error(deviceCheck.reason || "Criação de conta bloqueada para este dispositivo.");
+          throw new Error(deviceCheck.reason || "Não foi possível concluir o cadastro para este dispositivo.");
         }
 
         let createdUserId: string | undefined;
@@ -215,7 +227,7 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
           goal: selectedRole === "student" ? goal : undefined,
         });
 
-        // 🛡️ Registra vínculo do dispositivo no sistema anti-abuso
+        // 🛡️ Registra vínculo do dispositivo no sistema anti-abuso de forma transparente
         await registerDeviceAccount({
           email: newUser.email,
           userId: newUser.id,
@@ -244,6 +256,26 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
         triggerHaptic("success");
         onAuthenticated(newUser);
       }
+
+      // ----------------------------------------------------------------------
+      // MODO 3: ESQUECI A SENHA (RECUPERAÇÃO)
+      // ----------------------------------------------------------------------
+      else if (tab === "forgot") {
+        forgotSchema.parse({ email });
+
+        if (client) {
+          const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/auth?recovery=true` : undefined;
+          const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
+            redirectTo,
+          });
+          if (error) throw new Error(error.message);
+        } else {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+
+        triggerHaptic("success");
+        setSuccessMessage(`Enviamos o link de recuperação para ${email.trim()}. Verifique sua caixa de entrada.`);
+      }
     } catch (err: any) {
       triggerHaptic("warning");
       if (err instanceof z.ZodError) {
@@ -257,69 +289,105 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#060608] text-white flex items-center justify-center p-4 relative selection:bg-emerald-500/30 selection:text-emerald-300">
-      {/* Background Decorativo */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-full bg-[#070709] text-white flex items-center justify-center p-4 relative selection:bg-emerald-500/30 selection:text-emerald-300">
+      {/* Luz Ambiente Sutil de Alta Fidelidade */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] bg-emerald-500/[0.07] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-10 right-1/4 w-[380px] h-[380px] bg-teal-500/[0.04] rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="w-full max-w-md bg-zinc-950/90 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-2xl relative z-10 flex flex-col space-y-5">
-        {/* Cabeçalho */}
-        <div className="text-center space-y-1.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-black tracking-wider uppercase">
-            <Zap className="w-3.5 h-3.5 fill-emerald-400" />
-            <span>GymFlow Access</span>
+      {/* Cartão Central Double-Bezel Estilo Linear/Apple */}
+      <div className="w-full max-w-[420px] bg-zinc-950/80 border border-white/[0.08] rounded-3xl p-6 sm:p-8 shadow-[0_32px_64px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.06)] backdrop-blur-2xl relative z-10 space-y-6">
+        {/* Cabeçalho com Emblema da Marca */}
+        <div className="flex flex-col items-center text-center space-y-2.5">
+          <div className="relative group">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 opacity-20 blur-md group-hover:opacity-35 transition-opacity" />
+            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800/90 to-zinc-950 border border-white/10 flex items-center justify-center shadow-inner">
+              <Dumbbell className="w-6 h-6 text-emerald-400 stroke-[2.2]" />
+            </div>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight pt-1">
-            {tab === "login" ? "Entrar na sua conta" : "Crie sua conta"}
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400">
-            {tab === "login"
-              ? "Acesse suas rotinas, agendamentos e treinos de elite."
-              : "Cadastre-se para iniciar seu período de teste ou plano."}
-          </p>
+          <div className="space-y-1 pt-1">
+            <h1 className="text-2xl font-black text-white tracking-tight">
+              {tab === "login"
+                ? "Entrar na sua conta"
+                : tab === "signup"
+                ? "Criar sua conta"
+                : "Recuperar senha"}
+            </h1>
+            <p className="text-xs text-zinc-400 max-w-[280px] mx-auto leading-relaxed">
+              {tab === "login"
+                ? "Acesse suas rotinas, agendamentos e treinos personalizados."
+                : tab === "signup"
+                ? "Cadastre-se para iniciar seus treinos de alta performance."
+                : "Digite seu e-mail para receber as instruções de recuperação."}
+            </p>
+          </div>
         </div>
 
-        {/* Alternador Login / Cadastro */}
-        <div className="grid grid-cols-2 p-1 rounded-2xl bg-zinc-900 border border-white/[0.08]">
+        {/* Segmented Control / Alternador Elegante */}
+        {tab !== "forgot" ? (
+          <div className="grid grid-cols-2 p-1 rounded-xl bg-zinc-900/90 border border-white/[0.06]">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("selection");
+                setTab("login");
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
+              className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                tab === "login"
+                  ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08]"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              Entrar
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("selection");
+                setTab("signup");
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
+              className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                tab === "signup"
+                  ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08]"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              Criar Conta
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
             onClick={() => {
-              triggerHaptic("selection");
+              triggerHaptic("light");
               setTab("login");
               setErrorMessage(null);
+              setSuccessMessage(null);
             }}
-            className={`py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === "login"
-                ? "bg-emerald-500 text-zinc-950 font-black shadow-md"
-                : "text-zinc-400 hover:text-white"
-            }`}
+            className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center justify-center gap-1.5 transition-colors"
           >
-            Entrar
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Voltar para o login</span>
           </button>
+        )}
 
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic("selection");
-              setTab("signup");
-              setErrorMessage(null);
-            }}
-            className={`py-2 rounded-xl text-xs font-bold transition-all ${
-              tab === "signup"
-                ? "bg-emerald-500 text-zinc-950 font-black shadow-md"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Criar Conta
-          </button>
-        </div>
-
-        {/* Mensagem de Erro */}
+        {/* Notificações de Erro e Sucesso */}
         {errorMessage && (
-          <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span className="leading-snug">{errorMessage}</span>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
+            <Check className="w-4 h-4 shrink-0 text-emerald-400 stroke-[3]" />
+            <span className="leading-snug">{successMessage}</span>
           </div>
         )}
 
@@ -327,15 +395,18 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
         <form onSubmit={handleAuthSubmit} className="space-y-3.5">
           {tab === "signup" && (
             <>
-              {/* Escolha Aluno ou Personal */}
-              <div className="grid grid-cols-2 gap-2">
+              {/* Seleção de Papel (Aluno ou Personal) */}
+              <div className="grid grid-cols-2 gap-2 pb-1">
                 <button
                   type="button"
-                  onClick={() => setSelectedRole("student")}
-                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                  onClick={() => {
+                    triggerHaptic("selection");
+                    setSelectedRole("student");
+                  }}
+                  className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
                     selectedRole === "student"
-                      ? "bg-emerald-500/15 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500/30"
-                      : "bg-zinc-900 border-white/[0.08] text-zinc-400 hover:text-white"
+                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/20 shadow-sm"
+                      : "bg-zinc-900/50 border-white/[0.06] text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
                   <Dumbbell className="w-4 h-4" />
@@ -344,11 +415,14 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
 
                 <button
                   type="button"
-                  onClick={() => setSelectedRole("coach")}
-                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                  onClick={() => {
+                    triggerHaptic("selection");
+                    setSelectedRole("coach");
+                  }}
+                  className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
                     selectedRole === "coach"
-                      ? "bg-amber-500/15 border-amber-500 text-amber-300 ring-1 ring-amber-500/30"
-                      : "bg-zinc-900 border-white/[0.08] text-zinc-400 hover:text-white"
+                      ? "bg-amber-500/10 border-amber-500/40 text-amber-300 ring-1 ring-amber-500/20 shadow-sm"
+                      : "bg-zinc-900/50 border-white/[0.06] text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
                   <GraduationCap className="w-4 h-4" />
@@ -356,41 +430,41 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
                 </button>
               </div>
 
-              {/* Nome Completo */}
+              {/* Nome */}
               <div className="relative">
-                <User className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Nome completo"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900/60 border border-white/[0.08] hover:border-white/[0.14] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
-              {/* Telefone / WhatsApp */}
+              {/* WhatsApp */}
               <div className="relative">
-                <Phone className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Phone className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="tel"
-                  placeholder="WhatsApp (ex: 11999990000)"
+                  placeholder="WhatsApp com DDD (ex: 11999990000)"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900/60 border border-white/[0.08] hover:border-white/[0.14] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
 
-              {/* Se for Coach: CREF */}
+              {/* CREF para Professor */}
               {selectedRole === "coach" && (
                 <div className="relative">
-                  <Shield className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <ShieldCheck className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Registro CREF (opcional)"
+                    placeholder="Registro CREF (ex: 08412-SP)"
                     value={cref}
                     onChange={(e) => setCref(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900/60 border border-white/[0.08] hover:border-white/[0.14] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
                   />
                 </div>
               )}
@@ -399,93 +473,115 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
 
           {/* E-mail */}
           <div className="relative">
-            <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="email"
               placeholder="Seu e-mail"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+              className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900/60 border border-white/[0.08] hover:border-white/[0.14] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
             />
           </div>
 
           {/* Senha */}
-          <div className="relative">
-            <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Sua senha"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
+          {tab !== "forgot" && (
+            <div className="relative">
+              <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Sua senha"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-zinc-900/60 border border-white/[0.08] hover:border-white/[0.14] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                title={showPassword ? "Ocultar senha" : "Exibir senha"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          )}
 
           {/* Confirmação de Senha no Cadastro */}
           {tab === "signup" && (
             <div className="relative">
-              <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Confirme sua senha"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-900/60 border border-white/[0.08] hover:border-white/[0.14] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all"
               />
+            </div>
+          )}
+
+          {/* Atalho Esqueceu a Senha */}
+          {tab === "login" && (
+            <div className="flex justify-end pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setTab("forgot");
+                  setErrorMessage(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-[11px] text-zinc-400 hover:text-emerald-400 transition-colors"
+              >
+                Esqueceu a senha?
+              </button>
             </div>
           )}
 
           {/* Termos de Uso no Cadastro */}
           {tab === "signup" && (
-            <label className="flex items-start gap-2.5 text-xs text-zinc-400 cursor-pointer pt-1">
+            <label className="flex items-start gap-2.5 text-xs text-zinc-400 cursor-pointer pt-1 select-none">
               <input
                 type="checkbox"
                 checked={termsAccepted}
                 onChange={(e) => setTermsAccepted(e.target.checked)}
                 className="mt-0.5 rounded bg-zinc-900 border-white/20 text-emerald-500 focus:ring-emerald-500/30"
               />
-              <span className="leading-snug">
-                Concordo com os Termos de Uso, Política de Privacidade e proteção LGPD do GymFlow.
+              <span className="leading-snug text-[11px]">
+                Concordo com os Termos de Uso e Política de Privacidade do GymFlow.
               </span>
             </label>
           )}
 
-          {/* Botão de Ação */}
+          {/* Botão de Ação com Estilo Ilha / Trailing Icon */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center justify-between shadow-[0_0_24px_rgba(16,185,129,0.22)] hover:shadow-[0_0_32px_rgba(16,185,129,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 group"
           >
-            {isLoading ? (
-              <span>Processando...</span>
-            ) : tab === "login" ? (
-              <>
-                <span>Acessar o GymFlow</span>
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              </>
-            ) : (
-              <>
-                <span>Cadastrar e Continuar</span>
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              </>
-            )}
+            <span className="flex-1 text-center font-black">
+              {isLoading
+                ? "Processando..."
+                : tab === "login"
+                ? "Acessar o GymFlow"
+                : tab === "signup"
+                ? "Cadastrar e Continuar"
+                : "Enviar Link de Recuperação"}
+            </span>
+
+            <div className="w-6 h-6 rounded-full bg-zinc-950/10 flex items-center justify-center group-hover:translate-x-0.5 transition-transform shrink-0">
+              <ArrowRight className="w-3.5 h-3.5 stroke-[2.8]" />
+            </div>
           </button>
         </form>
 
-        {/* Proteção Anti-Abuso & Rodapé */}
-        <div className="pt-2 text-center text-[10px] text-zinc-500 flex items-center justify-center gap-1.5 border-t border-white/[0.06]">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Sistema anti-abuso ativo: 1 conta por dispositivo físico.</span>
+        {/* Rodapé Padrão de Sistemas Globais (Clean & Transparente) */}
+        <div className="pt-2 text-center space-y-2 border-t border-white/[0.06]">
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            Ambiente protegido com criptografia de ponta a ponta e proteção LGPD.
+          </p>
         </div>
       </div>
     </div>
