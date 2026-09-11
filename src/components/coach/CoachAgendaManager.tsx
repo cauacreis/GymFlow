@@ -33,6 +33,7 @@ import {
   CoachTrainer,
   BookingRequest,
   getRescheduleDayOptions,
+  isSlotToday,
 } from "@/lib/booking-store";
 import {
   getStoredStudents,
@@ -154,12 +155,7 @@ export function CoachAgendaManager({
   const todayDayName = fullNames[now.getDay()];
   const todayDateFormatted = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const todayBookings = bookings.filter((b) => {
-    if (b.slotDay === "Hoje" || b.slotDay.toLowerCase().includes("hoje")) return true;
-    if (b.slotDay.includes(todayDateFormatted)) return true;
-    if (b.slotDay.toLowerCase().startsWith(todayDayName.toLowerCase().slice(0, 3))) return true;
-    return false;
-  });
+  const todayBookings = bookings.filter((b) => isSlotToday(b.slotDay));
 
   const activeStudentsCount = students.filter((s) => (s.status || "ativo") === "ativo").length;
   const attendedToday = todayBookings.filter((b) => b.attendanceStatus === "attended").length;
@@ -189,7 +185,7 @@ export function CoachAgendaManager({
   const getBookingsForDay = (d: (typeof weekDays)[0]) => {
     return bookings.filter((b) => {
       if (b.slotDay.includes(d.dateFormatted)) return true;
-      if (d.isToday && (b.slotDay === "Hoje" || b.slotDay.toLowerCase().includes("hoje"))) return true;
+      if (d.isToday && isSlotToday(b.slotDay)) return true;
       if (b.slotDay.toLowerCase().includes(d.dayName.toLowerCase().slice(0, 3))) return true;
       return false;
     });
@@ -245,16 +241,6 @@ export function CoachAgendaManager({
   ) => {
     triggerHaptic(newStatus === "attended" ? "success" : newStatus === "missed" ? "warning" : "light");
     updateAttendanceStatus(bookingId, newStatus);
-
-    // Se o agendamento tiver aluno associado, sincroniza no cadastro de alunos
-    const b = bookings.find((item) => item.id === bookingId);
-    if (b && b.studentId) {
-      if (newStatus === "attended") {
-        recordStudentAttendance(b.studentId, "presence");
-      } else if (newStatus === "missed") {
-        recordStudentAttendance(b.studentId, "absence");
-      }
-    }
 
     if (selectedBooking && selectedBooking.id === bookingId) {
       setSelectedBooking((prev) => (prev ? { ...prev, attendanceStatus: newStatus } : null));

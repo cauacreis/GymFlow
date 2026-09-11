@@ -26,6 +26,7 @@ import {
   subscribeToBookings,
   BookingRequest,
   getRescheduleDayOptions,
+  isSlotToday,
 } from "@/lib/booking-store";
 import { getStoredStudents, StudentProfile, subscribeToWorkoutChanges } from "@/lib/workout-store";
 
@@ -90,11 +91,11 @@ export function StudentAgendaCalendar({
             time: b.slotTime,
             status: hasPendingResched
               ? ("remanejamento_pendente" as const)
-              : b.attendanceStatus === "attended" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "presente")
+              : b.attendanceStatus === "attended" || (isSlotToday(b.slotDay) && st?.todayAttendanceStatus === "presente")
               ? ("presente" as const)
-              : b.attendanceStatus === "missed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "falta")
+              : b.attendanceStatus === "missed" || (isSlotToday(b.slotDay) && st?.todayAttendanceStatus === "falta")
               ? ("falta" as const)
-              : b.attendanceStatus === "delayed" || (b.slotDay === "Hoje" && st?.todayAttendanceStatus === "atraso")
+              : b.attendanceStatus === "delayed" || (isSlotToday(b.slotDay) && st?.todayAttendanceStatus === "atraso")
               ? ("atraso" as const)
               : ("agendado" as const),
             coachName: b.coachName,

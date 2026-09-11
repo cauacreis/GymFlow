@@ -13,6 +13,7 @@ import {
   fetchCoachPlansFromSupabase,
   saveCoachPlanToSupabase,
 } from "./supabase-service";
+import { isSlotToday } from "./booking-store";
 
 export interface StudentProfile {
   id: string;
@@ -486,40 +487,78 @@ export function recordStudentAttendance(
     upsertStudentToSupabase(updatedStudent).catch(() => {});
   }
 
-  // 1. Sincroniza com o booking-store se houver reserva ativa
+  // 1. Sincroniza com o booking-store (gymflow_bookings_v3)
   try {
-    const rawBookings = localStorage.getItem("gymflow_bookings_v2");
-    if (rawBookings) {
-      const bookingsList: any[] = JSON.parse(rawBookings);
-      let changedBooking = false;
-      const updatedBookings = bookingsList.map((b) => {
-        if (b.studentId === studentId && (b.slotDay === "Hoje" || b.slotDay?.toLowerCase().includes("hoje"))) {
-          changedBooking = true;
-          return {
-            ...b,
-            attendanceStatus: type === "presence" ? "attended" : type === "absence" ? "missed" : "delayed",
-          };
-        }
-        return b;
-      });
-      if (changedBooking) {
-        localStorage.setItem("gymflow_bookings_v2", JSON.stringify(updatedBookings));
-        window.dispatchEvent(new Event("gymflow:booking-updated"));
+    const rawBookings = localStorage.getItem("gymflow_bookings_v3");
+    const bookingsList: any[] = rawBookings ? JSON.parse(rawBookings) : [];
+    let changedBooking = false;
+    const targetStatus = type === "presence" ? "attended" : type === "absence" ? "missed" : "delayed";
+
+    const updatedBookings = bookingsList.map((b) => {
+      if (b.studentId === studentId && isSlotToday(b.slotDay)) {
+        changedBooking = true;
+        return {
+          ...b,
+          attendanceStatus: targetStatus,
+        };
       }
+      return b;
+    });
+
+    // Se o aluno não tinha reserva criada para hoje na grade, cria uma automaticamente para aparecer na Agenda
+    if (!changedBooking && updatedStudent) {
+      const now = new Date();
+      const shortDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      const dayShort = shortDays[now.getDay()];
+      const dayNum = String(now.getDate()).padStart(2, "0");
+      const monthNum = String(now.getMonth() + 1).padStart(2, "0");
+      const timeNow = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      const newBooking = {
+        id: `b_today_${updatedStudent.id}_${Date.now()}`,
+        studentId: updatedStudent.id,
+        studentName: updatedStudent.name,
+        studentPhone: updatedStudent.phone || "",
+        coachId: "coach_rodrigo",
+        coachName: "Prof. Rodrigo",
+        coachPhone: "11999990000",
+        slotDay: `${dayShort} (${dayNum}/${monthNum})`,
+        slotTime: updatedStudent.scheduledTimeToday || "08:00",
+        planType: updatedStudent.plan?.toLowerCase().includes("vip")
+          ? "vip"
+          : updatedStudent.plan?.toLowerCase().includes("pro")
+          ? "pro"
+          : "basico",
+        basePrice: 45,
+        extraOfferedAmount: 0,
+        totalPrice: 45,
+        status: "accepted",
+        paymentStatus: "paid",
+        attendanceStatus: targetStatus,
+        createdAt: `Hoje às ${timeNow}`,
+      };
+      updatedBookings.unshift(newBooking);
+      changedBooking = true;
+    }
+
+    if (changedBooking) {
+      localStorage.setItem("gymflow_bookings_v3", JSON.stringify(updatedBookings));
+      window.dispatchEvent(new Event("gymflow:booking-updated"));
     }
   } catch (err) {
     console.error("Erro ao sincronizar reserva:", err);
   }
 
-  // 2. Envia notificação instantânea para o aluno no aplicativo
+  // 2. Envia notificação instantânea para o aluno no aplicativo (gymflow_notifications_v2)
   try {
     const targetStudent = updated.find((st) => st.id === studentId);
     const studentName = targetStudent?.name || "Aluno";
-    const rawNotifs = localStorage.getItem("gymflow_notifications_v1");
+    const rawNotifs = localStorage.getItem("gymflow_notifications_v2");
     const notifsList: any[] = rawNotifs ? JSON.parse(rawNotifs) : [];
+    const timeNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     let notifTitle = "Presença Confirmada! 🔥";
-    let notifMsg = `Seu treinador confirmou sua presença no treino de hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Bom treino!`;
+    let notifMsg = `Seu treinador confirmou sua presença no treino de hoje às ${timeNow}. Bom treino!`;
     let notifType = "training_reminder";
 
     if (type === "absence") {
@@ -539,11 +578,11 @@ export function recordStudentAttendance(
       type: notifType,
       title: notifTitle,
       message: notifMsg,
-      timestamp: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      timestamp: `Hoje às ${timeNow}`,
       read: false,
     });
 
-    localStorage.setItem("gymflow_notifications_v1", JSON.stringify(notifsList));
+    localStorage.setItem("gymflow_notifications_v2", JSON.stringify(notifsList.slice(0, 40)));
     window.dispatchEvent(new Event("gymflow:notifications-updated"));
   } catch (err) {
     console.error("Erro ao enviar notificação de presença:", err);
@@ -651,9 +690,9 @@ export function assignWorkoutToStudent(
     });
     localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updatedStudents));
 
-    // Notifica o aluno instantaneamente no aplicativo
+    // Notifica o aluno instantaneamente no aplicativo (gymflow_notifications_v2)
     try {
-      const rawNotifs = localStorage.getItem("gymflow_notifications_v1");
+      const rawNotifs = localStorage.getItem("gymflow_notifications_v2");
       const notifsList: any[] = rawNotifs ? JSON.parse(rawNotifs) : [];
       notifsList.unshift({
         id: `notif_${Date.now()}`,
@@ -665,7 +704,7 @@ export function assignWorkoutToStudent(
         timestamp: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
         read: false,
       });
-      localStorage.setItem("gymflow_notifications_v1", JSON.stringify(notifsList));
+      localStorage.setItem("gymflow_notifications_v2", JSON.stringify(notifsList.slice(0, 40)));
       window.dispatchEvent(new Event("gymflow:notifications-updated"));
     } catch (notifErr) {
       console.error("Erro ao enviar notificação de treino:", notifErr);

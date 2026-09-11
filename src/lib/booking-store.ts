@@ -202,8 +202,35 @@ export function matchesScheduleDay(slotDay: string, targetDay: string): boolean 
   if (targetDay === "Amanhã" && (slotDay === "Amanhã" || slotDay === tomorrowName)) return true;
   if (slotDay === "Amanhã" && targetDay === tomorrowName) return true;
 
-  // Se tem prefixo compatível
-  if (slotDay.startsWith(targetDay) || targetDay.startsWith(slotDay)) return true;
+  return false;
+}
+
+/**
+ * Verifica se um slot de treino corresponde rigorosamente a HOJE.
+ * Reconhece "Hoje", o nome do dia da semana (ex: "Sexta", "Sexta-feira"), abreviações ("Sex")
+ * e a data no formato DD/MM (ex: "11/09").
+ */
+export function isSlotToday(slotDay: string | undefined): boolean {
+  if (!slotDay) return false;
+  const normalize = (str: string) =>
+    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const s = normalize(slotDay.trim());
+  if (s === "hoje" || s.includes("hoje")) return true;
+
+  const now = new Date();
+  const fullDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+  const shortDays = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+  const todayDayIndex = now.getDay();
+  const todayFull = fullDays[todayDayIndex];
+  const todayShort = shortDays[todayDayIndex];
+
+  if (s.includes(todayFull) || s.includes(todayShort)) return true;
+
+  const dayNum = String(now.getDate()).padStart(2, "0");
+  const monthNum = String(now.getMonth() + 1).padStart(2, "0");
+  const dateStr = `${dayNum}/${monthNum}`;
+  if (s.includes(dateStr)) return true;
 
   return false;
 }
@@ -1117,6 +1144,68 @@ export function updateAttendanceStatus(
 
   const updated = bookings.map((b) => (b.id === bookingId ? { ...b, attendanceStatus } : b));
   localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
+
+  // Sincroniza imediatamente o perfil do aluno em gymflow_students_v3
+  if (booking.studentId) {
+    try {
+      const rawStudents = localStorage.getItem("gymflow_students_v3");
+      if (rawStudents) {
+        const studentsList: any[] = JSON.parse(rawStudents);
+        const timeNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        let changedStudent = false;
+
+        const updatedStudents = studentsList.map((st) => {
+          if (st.id === booking.studentId) {
+            changedStudent = true;
+            if (attendanceStatus === "attended") {
+              return {
+                ...st,
+                todayAttendanceStatus: "presente",
+                monthlyPresence: (st.monthlyPresence || 0) + 1,
+                totalClasses: (st.totalClasses || 0) + 1,
+                lastPresence: `Hoje às ${timeNow}`,
+                delayMinutes: undefined,
+              };
+            } else if (attendanceStatus === "missed") {
+              return {
+                ...st,
+                todayAttendanceStatus: "falta",
+                monthlyAbsences: (st.monthlyAbsences || 0) + 1,
+                delayMinutes: undefined,
+              };
+            } else if (attendanceStatus === "delayed") {
+              return {
+                ...st,
+                todayAttendanceStatus: "atraso",
+                monthlyDelays: (st.monthlyDelays || 0) + 1,
+                delayMinutes,
+                lastPresence: `Hoje às ${timeNow} (${delayMinutes}m atraso)`,
+              };
+            } else {
+              return {
+                ...st,
+                todayAttendanceStatus: "agendado",
+                delayMinutes: undefined,
+              };
+            }
+          }
+          return st;
+        });
+
+        if (changedStudent) {
+          localStorage.setItem("gymflow_students_v3", JSON.stringify(updatedStudents));
+          window.dispatchEvent(new Event("gymflow:workout-updated"));
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao sincronizar perfil do aluno em updateAttendanceStatus:", err);
+    }
+  }
+
+  const updatedBooking = updated.find((b) => b.id === bookingId);
+  if (updatedBooking) {
+    saveBookingToSupabase(updatedBooking).catch(() => {});
+  }
 
   if (attendanceStatus === "attended") {
     addNotification({

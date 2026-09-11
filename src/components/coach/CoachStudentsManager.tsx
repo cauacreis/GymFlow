@@ -48,7 +48,14 @@ import {
   DEFAULT_COACH_PLANS,
   StudentWorkoutPackage,
 } from "@/lib/workout-store";
-import { getStoredBookings, getStoredCoaches, updateCoachPricing } from "@/lib/booking-store";
+import {
+  getStoredBookings,
+  getStoredCoaches,
+  updateCoachPricing,
+  isSlotToday,
+  subscribeToBookings,
+  BookingRequest,
+} from "@/lib/booking-store";
 import { getCurrentUser, saveUserProfile } from "@/lib/auth-store";
 import { ExerciseInWorkout, WorkoutSplitTemplate } from "@/lib/exercisedb";
 
@@ -124,8 +131,12 @@ export function CoachStudentsManager({
       }
     };
     load();
-    const unsub = subscribeToWorkoutChanges(load);
-    return () => unsub();
+    const unsubWorkouts = subscribeToWorkoutChanges(load);
+    const unsubBookings = subscribeToBookings(load);
+    return () => {
+      unsubWorkouts();
+      unsubBookings();
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -309,7 +320,7 @@ export function CoachStudentsManager({
   const handleAddAbsence = (studentId: string) => handleRecordAttendance(studentId, "absence");
   const handleAddDelay = (studentId: string, minutes: number = 15) => handleRecordAttendance(studentId, "delay", minutes);
 
-  // Adicionar aluno à grade de hoje (Quinta-feira)
+  // Adicionar aluno à grade de hoje com sincronização imediata na Agenda
   const handleAddStudentToToday = (studentId: string, time: string = "18:00") => {
     triggerHaptic("light");
     updateStudentProfile(studentId, {
@@ -317,6 +328,53 @@ export function CoachStudentsManager({
       todayAttendanceStatus: "agendado",
     });
     setStudents(getStoredStudents());
+
+    // Garante que o card apareça instantaneamente na grade da Agenda
+    const targetStudent = getStoredStudents().find((s) => s.id === studentId);
+    if (targetStudent && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("gymflow_bookings_v3");
+        const bookingsList: BookingRequest[] = raw ? JSON.parse(raw) : [];
+        const existing = bookingsList.find(
+          (b) => b.studentId === studentId && isSlotToday(b.slotDay)
+        );
+        if (!existing) {
+          const now = new Date();
+          const shortDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+          const dayShort = shortDays[now.getDay()];
+          const dayNum = String(now.getDate()).padStart(2, "0");
+          const monthNum = String(now.getMonth() + 1).padStart(2, "0");
+          bookingsList.unshift({
+            id: `book_today_${studentId}_${Date.now()}`,
+            studentId,
+            studentName: targetStudent.name,
+            studentPhone: targetStudent.phone || "",
+            coachId: "coach_rodrigo",
+            coachName: "Prof. Rodrigo",
+            coachPhone: "11999990000",
+            slotDay: `${dayShort} (${dayNum}/${monthNum})`,
+            slotTime: time,
+            planType: targetStudent.plan?.toLowerCase().includes("vip")
+              ? "vip"
+              : targetStudent.plan?.toLowerCase().includes("pro")
+              ? "pro"
+              : "basico",
+            basePrice: 45,
+            extraOfferedAmount: 0,
+            totalPrice: 45,
+            status: "accepted",
+            paymentStatus: "paid",
+            attendanceStatus: "pending",
+            createdAt: `Hoje às ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+          });
+          localStorage.setItem("gymflow_bookings_v3", JSON.stringify(bookingsList));
+          window.dispatchEvent(new Event("gymflow:booking-updated"));
+        }
+      } catch (err) {
+        console.error("Erro ao sincronizar agendamento para hoje:", err);
+      }
+    }
+
     showToast("Aluno agendado para a grade de hoje!");
   };
 
@@ -443,14 +501,18 @@ export function CoachStudentsManager({
 
       {/* Header do Módulo de Alunos */}
       <div className="flex flex-col gap-2 pb-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-base sm:text-lg font-black text-white whitespace-nowrap">
+        <div className="flex items-start sm:items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-black text-white">
               Alunos do Treinador
             </h2>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08] whitespace-nowrap shrink-0">
-              {students.length} cadastrados • {students.filter((s) => (s.status || "ativo") === "ativo").length} ativos
-            </span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08] inline-flex items-center gap-1">
+                <span>{students.length} cadastrados</span>
+                <span>•</span>
+                <span className="text-emerald-400">{students.filter((s) => (s.status || "ativo") === "ativo").length} ativos</span>
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -496,19 +558,19 @@ export function CoachStudentsManager({
           if (s.todayAttendanceStatus && s.todayAttendanceStatus !== "agendado") return true;
           if (s.lastPresence && s.lastPresence.toLowerCase().includes("hoje")) return true;
           return bookings.some(
-            (b) => b.studentId === s.id && (b.slotDay === "Hoje" || b.slotDay?.toLowerCase().includes("hoje"))
+            (b) => b.studentId === s.id && isSlotToday(b.slotDay)
           );
         });
 
         const getStudentTimeToday = (s: StudentProfile) => {
           if (s.scheduledTimeToday) return s.scheduledTimeToday;
           const matchBooking = bookings.find(
-            (b) => b.studentId === s.id && (b.slotDay === "Hoje" || b.slotDay?.toLowerCase().includes("hoje"))
+            (b) => b.studentId === s.id && isSlotToday(b.slotDay)
           );
           if (matchBooking) return matchBooking.slotTime;
           if (s.id === "student_carlos") return "18:00";
           if (s.id === "student_lucas") return "07:00";
-          if (s.id === "student_beatriz") return "19:30";
+          if (s.id === "student_beatriz") return "06:00";
           return "Hoje";
         };
 
@@ -517,7 +579,7 @@ export function CoachStudentsManager({
             <div className="absolute -top-12 -left-12 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
             {/* Cabeçalho da Seção de Hoje */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="min-w-0">
                 <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 flex items-center gap-1.5 truncate">
                   <Clock className="w-3.5 h-3.5 shrink-0" /> Grade de Hoje • {formattedToday}
@@ -534,7 +596,7 @@ export function CoachStudentsManager({
 
               {/* Seletor rápido para agendar aluno offline ou livre para hoje */}
               {students.length > 0 && (
-                <div className="shrink-0">
+                <div className="w-full sm:w-auto shrink-0">
                   <select
                     defaultValue=""
                     onChange={(e) => {
@@ -543,16 +605,16 @@ export function CoachStudentsManager({
                         e.target.value = "";
                       }
                     }}
-                    className="py-1.5 px-2 rounded-xl bg-zinc-950 border border-white/10 text-xs text-zinc-300 focus:outline-none focus:border-amber-500/50 transition-colors cursor-pointer max-w-[160px] truncate"
+                    className="w-full sm:w-auto py-1.5 px-3 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs text-amber-300 hover:border-amber-500/60 focus:outline-none focus:border-amber-500 transition-colors cursor-pointer"
                   >
-                    <option value="" disabled>
+                    <option value="" disabled className="bg-zinc-950 text-zinc-400">
                       + Agendar p/ Hoje...
                     </option>
                     {students
                       .filter((st) => !todayStudents.some((ts) => ts.id === st.id))
                       .map((st) => (
                         <option key={st.id} value={st.id} className="bg-zinc-950 text-white">
-                          {st.name}
+                          {st.name} ({st.plan || "Plano"})
                         </option>
                       ))}
                   </select>
