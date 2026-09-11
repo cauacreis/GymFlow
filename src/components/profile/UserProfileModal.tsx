@@ -20,6 +20,8 @@ import {
   Save,
   Instagram,
   MapPin,
+  Scale,
+  Ruler,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -52,6 +54,15 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
   const [email, setEmail] = useState(profile.email);
   const [phone, setPhone] = useState(profile.phone || "");
   const [goal, setGoal] = useState<UserProfile["goal"]>(profile.goal || "Hipertrofia");
+
+  // Biometria & Dados Corporais (Altura, Peso, %BF e Metas)
+  const [height, setHeight] = useState(profile.height || 178);
+  const [weight, setWeight] = useState(profile.weight || 78.4);
+  const [bodyFat, setBodyFat] = useState(profile.bodyFat || 13.8);
+  const [targetWeight, setTargetWeight] = useState(profile.targetWeight || 76.0);
+  const [targetBodyFat, setTargetBodyFat] = useState(profile.targetBodyFat || 12.0);
+  const [gender, setGender] = useState<UserProfile["gender"]>(profile.gender || "masculino");
+
   const [cref, setCref] = useState(profile.cref || "");
   const [specialty, setSpecialty] = useState(profile.specialty || "Hipertrofia & Biomecânica");
   const [bio, setBio] = useState(profile.bio || "");
@@ -75,6 +86,12 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
       setEmail(current.email);
       setPhone(current.phone || "");
       setGoal(current.goal || "Hipertrofia");
+      setHeight(current.height || 178);
+      setWeight(current.weight || 78.4);
+      setBodyFat(current.bodyFat || 13.8);
+      setTargetWeight(current.targetWeight || 76.0);
+      setTargetBodyFat(current.targetBodyFat || 12.0);
+      setGender(current.gender || "masculino");
       setCref(current.cref || "");
       setSpecialty(current.specialty || "Hipertrofia & Biomecânica");
       setBio(current.bio || "");
@@ -118,6 +135,12 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
       activeRole,
       avatarUrl,
       goal,
+      height: Number(height) || 178,
+      weight: Number(weight) || 78.4,
+      bodyFat: Number(bodyFat) || 13.8,
+      targetWeight: Number(targetWeight) || undefined,
+      targetBodyFat: Number(targetBodyFat) || undefined,
+      gender,
       cref: cref.trim() || undefined,
       specialty,
       bio,
@@ -316,6 +339,115 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
                   value={profile.matricula || "GF-84920"}
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950/50 border border-white/[0.04] text-xs text-zinc-500 font-mono cursor-not-allowed"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* SEÇÃO: BIOMETRIA & DADOS CORPORAIS (ALTURA, PESO, GORDURA E METAS) */}
+          <div className="p-4 rounded-2xl bg-zinc-900/40 border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Scale className="w-3.5 h-3.5 text-sky-400" /> Biometria & Dados Corporais
+              </h4>
+              <span className="text-[9px] text-sky-400 font-mono">
+                {height ? `${(height / 100).toFixed(2)}m` : "--"} • {weight ? `${weight}kg` : "--"}
+              </span>
+            </div>
+            <p className="text-[10px] text-zinc-400">
+              Sua altura e dados base são utilizados para calcular o IMC, taxa de gordura e alimentar os gráficos de evolução.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1">
+                  <Ruler className="w-3 h-3 text-sky-400" /> Altura (cm)
+                </label>
+                <input
+                  type="number"
+                  min="100"
+                  max="250"
+                  step="1"
+                  required
+                  value={height}
+                  onChange={(e) => setHeight(Number(e.target.value))}
+                  placeholder="Ex: 178"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono focus:outline-none focus:border-sky-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1">
+                  <Scale className="w-3 h-3 text-emerald-400" /> Peso Atual (kg)
+                </label>
+                <input
+                  type="number"
+                  min="30"
+                  max="250"
+                  step="0.1"
+                  required
+                  value={weight}
+                  onChange={(e) => setWeight(Number(e.target.value))}
+                  placeholder="Ex: 78.4"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-teal-400" /> Gordura (% BF)
+                </label>
+                <input
+                  type="number"
+                  min="3"
+                  max="60"
+                  step="0.1"
+                  required
+                  value={bodyFat}
+                  onChange={(e) => setBodyFat(Number(e.target.value))}
+                  placeholder="Ex: 13.8"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono focus:outline-none focus:border-teal-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">Meta Peso (kg)</label>
+                <input
+                  type="number"
+                  min="30"
+                  max="250"
+                  step="0.1"
+                  value={targetWeight || ""}
+                  onChange={(e) => setTargetWeight(e.target.value ? Number(e.target.value) : 0)}
+                  placeholder="Ex: 76.0"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono focus:outline-none focus:border-sky-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">Meta Gordura (% BF)</label>
+                <input
+                  type="number"
+                  min="3"
+                  max="50"
+                  step="0.1"
+                  value={targetBodyFat || ""}
+                  onChange={(e) => setTargetBodyFat(e.target.value ? Number(e.target.value) : 0)}
+                  placeholder="Ex: 12.0"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono focus:outline-none focus:border-teal-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">Sexo Biológico</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as UserProfile["gender"])}
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                >
+                  <option value="masculino">Masculino</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="outro">Outro</option>
+                </select>
               </div>
             </div>
           </div>

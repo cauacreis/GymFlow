@@ -12,9 +12,16 @@ export interface UserProfile {
   phone?: string;
   activeRole: UserRole;
   enabledRoles: UserRole[]; // Permite que a pessoa treine E seja treinada (ambos os modos ativos)
-  // Campos específicos de Aluno
+  // Campos específicos de Aluno & Biometria Corporal
   goal?: "Hipertrofia" | "Emagrecimento" | "Força & Performance" | "Condicionamento Geral";
   matricula?: string;
+  height?: number; // Altura em cm (ex: 178)
+  weight?: number; // Peso corporal atual em kg (ex: 78.4)
+  bodyFat?: number; // Percentual de gordura atual em % (ex: 13.8)
+  targetWeight?: number; // Meta de peso em kg (ex: 76.0)
+  targetBodyFat?: number; // Meta de gordura em % (ex: 12.0)
+  gender?: "masculino" | "feminino" | "outro";
+  birthDate?: string;
   // Campos específicos de Professor
   cref?: string;
   specialty?: string;
@@ -48,6 +55,12 @@ const DEFAULT_USER: UserProfile = {
   avatarUrl: "",
   goal: "Hipertrofia",
   matricula: "GF-10001",
+  height: 178,
+  weight: 78.4,
+  bodyFat: 13.8,
+  targetWeight: 76.0,
+  targetBodyFat: 12.0,
+  gender: "masculino",
   cref: "",
   specialty: "Musculação & Hipertrofia",
   bio: "Treinador e especialista em periodização e biomecânica.",
@@ -170,10 +183,19 @@ export function registerNewUser(data: {
 }
 
 export function logoutUser(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(STORAGE_KEY_AUTH);
-    window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: DEFAULT_USER }));
-  }
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY_AUTH);
+  window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: DEFAULT_USER }));
+}
+
+export function subscribeToAuth(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(EVENT_AUTH_CHANGED, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(EVENT_AUTH_CHANGED, callback);
+    window.removeEventListener("storage", callback);
+  };
 }
 
 export function subscribeToAuthChanges(callback: (user: UserProfile) => void): () => void {
