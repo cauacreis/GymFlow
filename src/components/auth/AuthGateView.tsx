@@ -18,7 +18,9 @@ import {
   ShieldCheck,
   RotateCcw,
   KeyRound,
+  FileText,
 } from "lucide-react";
+import { TermsOfServiceModal } from "./TermsOfServiceModal";
 import {
   registerNewUser,
   saveUserProfile,
@@ -92,6 +94,8 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
   const [specialty, setSpecialty] = useState("Musculação & Hipertrofia");
   const [goal, setGoal] = useState<UserProfile["goal"]>("Hipertrofia");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [hasReadTermsToBottom, setHasReadTermsToBottom] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -168,6 +172,11 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
       // MODO 2: CADASTRO (SIGNUP)
       // ----------------------------------------------------------------------
       else if (tab === "signup") {
+        if (!hasReadTermsToBottom) {
+          setShowTermsModal(true);
+          throw new Error("Para criar sua conta, é obrigatório ler os Termos de Uso e LGPD até o final.");
+        }
+
         signupSchema.parse({
           name,
           email,
@@ -540,19 +549,85 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
             </div>
           )}
 
-          {/* Termos de Uso no Cadastro */}
+          {/* Termos de Uso e LGPD com Rolagem Obrigatória */}
           {tab === "signup" && (
-            <label className="flex items-start gap-2.5 text-xs text-zinc-400 cursor-pointer pt-1 select-none">
-              <input
-                type="checkbox"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 rounded bg-zinc-900 border-white/20 text-emerald-500 focus:ring-emerald-500/30"
-              />
-              <span className="leading-snug text-[11px]">
-                Concordo com os Termos de Uso e Política de Privacidade do GymFlow.
-              </span>
-            </label>
+            <div className="pt-1">
+              <div
+                onClick={() => {
+                  if (!hasReadTermsToBottom) {
+                    triggerHaptic("light");
+                    setShowTermsModal(true);
+                  }
+                }}
+                className={`p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                  hasReadTermsToBottom
+                    ? "bg-zinc-900/40 border-emerald-500/25 hover:border-emerald-500/40"
+                    : "bg-zinc-900/40 border-amber-500/30 hover:border-amber-500/50 hover:bg-zinc-900/60"
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className="pt-0.5">
+                    {hasReadTermsToBottom ? (
+                      <input
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setTermsAccepted(e.target.checked);
+                        }}
+                        className="w-4 h-4 rounded bg-zinc-900 border-white/20 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                      />
+                    ) : (
+                      <div
+                        className="w-4 h-4 rounded bg-zinc-900 border border-amber-500/50 flex items-center justify-center text-amber-400"
+                        title="Bloqueado: leia os termos até o final"
+                      >
+                        <Lock className="w-2.5 h-2.5" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 text-[11px] leading-snug">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-zinc-200 font-medium">
+                        Termos de Uso & Proteção de Dados
+                      </span>
+                      {hasReadTermsToBottom ? (
+                        <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Lido e Aceito
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-amber-400 font-bold animate-pulse flex items-center gap-1">
+                          <FileText className="w-3 h-3" /> Ler obrigatório
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-zinc-400 text-[10px] mt-0.5">
+                      {hasReadTermsToBottom ? (
+                        <span>
+                          Você visualizou todas as cláusulas.{" "}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowTermsModal(true);
+                            }}
+                            className="text-emerald-400 underline hover:text-emerald-300 font-medium"
+                          >
+                            Rever termos
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="text-amber-200/80">
+                          Clique aqui para abrir os termos. O aceite só é liberado após rolar e ler o documento até o final.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Botão de Ação com Estilo Ilha / Trailing Icon */}
@@ -584,6 +659,18 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
           </p>
         </div>
       </div>
+
+      {/* Modal de Termos de Uso e LGPD com leitura obrigatória */}
+      <TermsOfServiceModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => {
+          setHasReadTermsToBottom(true);
+          setTermsAccepted(true);
+          setErrorMessage(null);
+        }}
+        hasAlreadyAccepted={hasReadTermsToBottom}
+      />
     </div>
   );
 }
