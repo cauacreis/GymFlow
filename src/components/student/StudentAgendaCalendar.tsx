@@ -31,6 +31,7 @@ import {
   isSlotToday,
 } from "@/lib/booking-store";
 import { getStoredStudents, StudentProfile, subscribeToWorkoutChanges } from "@/lib/workout-store";
+import { getCurrentUser } from "@/lib/auth-store";
 import { LeaveCoachModal } from "./LeaveCoachModal";
 
 interface StudentAgendaCalendarProps {
@@ -84,13 +85,36 @@ export function StudentAgendaCalendar({
       setBookings(allBookings);
 
       const allStudents = getStoredStudents();
-      const st = allStudents.find((s) => s.id === studentId) || allStudents[0];
+      const currentUser = getCurrentUser();
+      const targetId = studentId || currentUser.id;
+      let st = allStudents.find((s) => s.id === targetId || (currentUser.email && s.email === currentUser.email));
+      if (!st) {
+        const safeMatricula = currentUser.matricula || (targetId ? `GF-${targetId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 5)}` : "GF-10001");
+        st = {
+          id: targetId || "student_user",
+          name: currentUser.name || "Aluno",
+          email: currentUser.email || "",
+          phone: currentUser.phone || "",
+          matricula: safeMatricula,
+          goal: currentUser.goal || "Hipertrofia",
+          currentRoutineTitle: "Treino Personalizado",
+          prescribedBy: "Prof. Rodrigo",
+          prescribedAt: "Hoje",
+          status: "ativo",
+          monthlyPresence: 0,
+          monthlyAbsences: 0,
+          totalClasses: 0,
+          hasWorkoutSheet: true,
+        };
+      }
       setStudent(st);
 
       // Sincroniza eventos da agenda com os agendamentos reais do aluno
-      const myBookings = allBookings.filter((b) => !studentId || b.studentId === studentId);
-      if (myBookings.length > 0) {
-        const dynamicEvents: CalendarDayEvent[] = myBookings.map((b) => {
+      const myStudentBookings = allBookings.filter(
+        (b) => b.studentId === targetId || (currentUser.name && b.studentName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+      );
+      if (myStudentBookings.length > 0) {
+        const dynamicEvents: CalendarDayEvent[] = myStudentBookings.map((b) => {
           const hasPendingResched = b.rescheduleRequest && b.rescheduleRequest.status === "pending";
           return {
             id: b.id,
@@ -141,10 +165,13 @@ export function StudentAgendaCalendar({
   const nextSession = calendarEvents.find((e) => e.status === "agendado" || e.status === "remanejamento_pendente");
 
   // Dados do Personal Trainer Atual do Aluno
-  const myBookings = bookings.filter((b) => !studentId || b.studentId === studentId);
+  const activeUser = getCurrentUser();
+  const currentTargetId = studentId || activeUser.id;
+  const myBookings = bookings.filter(
+    (b) => b.studentId === currentTargetId || (activeUser.name && b.studentName.trim().toLowerCase() === activeUser.name.trim().toLowerCase())
+  );
   const activeCoachBooking =
-    myBookings.find((b) => b.status === "accepted" || b.status === "pending") ||
-    (myBookings.length > 0 ? myBookings[0] : null);
+    myBookings.find((b) => b.status === "accepted" || b.status === "pending") || null;
 
   const hasActiveCoach =
     !!activeCoachBooking &&

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
 import { motion } from "framer-motion";
 import {
   AreaChart,
@@ -59,8 +60,14 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export function CoachAnalyticsDashboard() {
   const [students, setStudents] = useState(() => getStoredStudents());
+  const [isMounted, setIsMounted] = useState(false);
   const { kpis, monthlyRevenueHistory, weeklyAttendance, busiestHours, agendaHeatmap, recentCoachActivity } = coachAnalyticsData;
   const [selectedTimeframe, setSelectedTimeframe] = useState<"mes" | "ano">("mes");
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
 
   // Cálculos dinâmicos com dados reais
   const activeStudentsCount = students.filter((s) => (s.status || "ativo") === "ativo").length;
@@ -230,29 +237,33 @@ export function CoachAnalyticsDashboard() {
         </div>
 
         <div className="h-48 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={monthlyRevenueHistory}>
-              <defs>
-                <linearGradient id="coachRevGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={38} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                name="Receita (R$)"
-                stroke="#f59e0b"
-                strokeWidth={2.5}
-                fill="url(#coachRevGrad)"
-                activeDot={{ r: 4, fill: "#f59e0b" }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyRevenueHistory}>
+                <defs>
+                  <linearGradient id="coachRevGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={38} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  name="Receita (R$)"
+                  stroke="#f59e0b"
+                  strokeWidth={2.5}
+                  fill="url(#coachRevGrad)"
+                  activeDot={{ r: 4, fill: "#f59e0b" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+          )}
         </div>
       </div>
 
@@ -276,18 +287,23 @@ export function CoachAnalyticsDashboard() {
         </div>
 
         <div className="h-44 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weeklyAttendance} barGap={4}>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={25} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="value" name="Presenças" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={24} />
-              <Bar dataKey="secondary" name="Faltas" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={24} fillOpacity={0.8} />
-            </BarChart>
-          </ResponsiveContainer>
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyAttendance} barGap={4}>
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={25} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" name="Presenças" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                <Bar dataKey="secondary" name="Faltas" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={24} fillOpacity={0.8} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+          )}
         </div>
       </div>
+
 
       {/* GRÁFICO 3: HEATMAP DE OCUPAÇÃO DA AGENDA (Seg-Sáb x Horários) */}
       <div className="rounded-3xl p-4 sm:p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg">
@@ -356,24 +372,29 @@ export function CoachAnalyticsDashboard() {
         </div>
 
         <div className="h-44 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={busiestHours} layout="vertical">
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={38} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="value" name="Alunos" radius={[0, 4, 4, 0]} maxBarSize={14}>
-                {busiestHours.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={entry.value >= 16 ? "#f59e0b" : entry.value >= 12 ? "#10b981" : "#38bdf8"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={busiestHours} layout="vertical">
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={38} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" name="Alunos" radius={[0, 4, 4, 0]} maxBarSize={14}>
+                  {busiestHours.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.value >= 16 ? "#f59e0b" : entry.value >= 12 ? "#10b981" : "#38bdf8"}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+          )}
         </div>
       </div>
+
 
       {/* RANKING DOS TOP ALUNOS */}
       <div className="rounded-3xl p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg space-y-3">

@@ -419,6 +419,7 @@ export function getStoredStudents(): StudentProfile[] {
 }
 
 export function saveNewStudent(studentData: {
+  id?: string;
   name: string;
   email?: string;
   goal: StudentProfile["goal"];
@@ -430,38 +431,62 @@ export function saveNewStudent(studentData: {
   isOfflineStudent?: boolean;
 }): StudentProfile {
   const students = getStoredStudents();
-  const newStudent: StudentProfile = {
-    id: `student_${Date.now()}`,
-    name: studentData.name,
-    email: studentData.email || "",
-    phone: studentData.phone || "",
-    matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
-    goal: studentData.goal,
-    plan: studentData.plan || "Mensal VIP Presencial",
-    status: "ativo",
-    monthlyPresence: 0,
-    monthlyAbsences: 0,
-    totalClasses: 0,
-    hasWorkoutSheet: false, // Ficha não é obrigatória!
-    isOfflineStudent: studentData.isOfflineStudent ?? true,
-    age: studentData.age || 25,
-    emergencyContact: studentData.emergencyContact || "",
-    avatarUrl: studentData.avatarUrl || "",
-    currentRoutineTitle: "Acompanhamento Presencial Livre",
-    prescribedBy: "",
-    prescribedAt: "Sem Ficha Fixa",
-  };
+  const existingIndex = students.findIndex(
+    (s) => (studentData.id && s.id === studentData.id) || (studentData.email && s.email === studentData.email)
+  );
 
-  const updated = [newStudent, ...students];
+  let targetStudent: StudentProfile;
+
+  if (existingIndex >= 0) {
+    const existing = students[existingIndex];
+    targetStudent = {
+      ...existing,
+      id: studentData.id || existing.id,
+      name: studentData.name || existing.name,
+      email: studentData.email || existing.email,
+      phone: studentData.phone !== undefined ? studentData.phone : existing.phone,
+      goal: studentData.goal || existing.goal,
+      plan: studentData.plan || existing.plan,
+      age: studentData.age || existing.age,
+      emergencyContact: studentData.emergencyContact !== undefined ? studentData.emergencyContact : existing.emergencyContact,
+      avatarUrl: studentData.avatarUrl !== undefined ? studentData.avatarUrl : existing.avatarUrl,
+      isOfflineStudent: studentData.isOfflineStudent !== undefined ? studentData.isOfflineStudent : existing.isOfflineStudent,
+    };
+    students[existingIndex] = targetStudent;
+  } else {
+    targetStudent = {
+      id: studentData.id || `student_${Date.now()}`,
+      name: studentData.name,
+      email: studentData.email || "",
+      phone: studentData.phone || "",
+      matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
+      goal: studentData.goal,
+      plan: studentData.plan || "Mensal VIP Presencial",
+      status: "ativo",
+      monthlyPresence: 0,
+      monthlyAbsences: 0,
+      totalClasses: 0,
+      hasWorkoutSheet: false, // Ficha não é obrigatória!
+      isOfflineStudent: studentData.isOfflineStudent ?? true,
+      age: studentData.age || 25,
+      emergencyContact: studentData.emergencyContact || "",
+      avatarUrl: studentData.avatarUrl || "",
+      currentRoutineTitle: "Acompanhamento Presencial Livre",
+      prescribedBy: "",
+      prescribedAt: "Sem Ficha Fixa",
+    };
+    students.unshift(targetStudent);
+  }
+
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
     window.dispatchEvent(new Event(EVENT_NAME));
   }
 
   // Sincroniza em segundo plano com Supabase
-  upsertStudentToSupabase(newStudent).catch(() => {});
+  upsertStudentToSupabase(targetStudent).catch(() => {});
 
-  return newStudent;
+  return targetStudent;
 }
 
 export function updateStudentProfile(

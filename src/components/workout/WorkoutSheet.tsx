@@ -895,6 +895,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
                   <input
                     type="text"
                     required
+                    maxLength={70}
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
                     placeholder="Ex: Tríceps Francês na Polia com Barra W"
@@ -948,9 +949,9 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
                     <input
                       type="number"
                       min={1}
-                      max={10}
+                      max={12}
                       value={customSets}
-                      onChange={(e) => setCustomSets(Number(e.target.value))}
+                      onChange={(e) => setCustomSets(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
                       className="w-full mt-1 p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
                     />
                   </div>
@@ -958,6 +959,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
                     <label className="text-[10px] font-bold text-zinc-400 uppercase">Reps</label>
                     <input
                       type="text"
+                      maxLength={20}
                       value={customReps}
                       onChange={(e) => setCustomReps(e.target.value)}
                       placeholder="10-12"
@@ -969,8 +971,9 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
                     <input
                       type="number"
                       min={0}
+                      max={500}
                       value={customWeight}
-                      onChange={(e) => setCustomWeight(Number(e.target.value))}
+                      onChange={(e) => setCustomWeight(Math.min(500, Math.max(0, Number(e.target.value) || 0)))}
                       className="w-full mt-1 p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
                     />
                   </div>
@@ -979,9 +982,10 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
                     <input
                       type="number"
                       min={15}
+                      max={600}
                       step={15}
                       value={customRest}
-                      onChange={(e) => setCustomRest(Number(e.target.value))}
+                      onChange={(e) => setCustomRest(Math.min(600, Math.max(15, Number(e.target.value) || 15)))}
                       className="w-full mt-1 p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
                     />
                   </div>
@@ -991,6 +995,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer }: WorkoutS
                   <label className="text-[10px] font-bold text-zinc-400 uppercase">Observações / Dica Técnica</label>
                   <input
                     type="text"
+                    maxLength={150}
                     value={customNotes}
                     onChange={(e) => setCustomNotes(e.target.value)}
                     placeholder="Ex: Segurar 2s no pico de contração"

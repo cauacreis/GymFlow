@@ -217,7 +217,17 @@ export function CoachAgendaManager({
   const todayDayName = fullNames[now.getDay()];
   const todayDateFormatted = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const todayBookings = bookings.filter((b) => isSlotToday(b.slotDay));
+  // Filtra agendamentos pertencentes ao treinador atual para garantir isolamento multi-tenant
+  const coachBookings = bookings.filter((b) => {
+    if (!coachId) return true;
+    if (b.coachId === coachId) return true;
+    if ((coachId === "coach_rodrigo" || coachId === "user_me") && (!b.coachId || b.coachId === "coach_rodrigo")) {
+      return true;
+    }
+    return false;
+  });
+
+  const todayBookings = coachBookings.filter((b) => isSlotToday(b.slotDay));
 
   const activeStudentsCount = students.filter((s) => (s.status || "ativo") === "ativo").length;
   const attendedToday = todayBookings.filter((b) => b.attendanceStatus === "attended").length;
@@ -245,7 +255,7 @@ export function CoachAgendaManager({
 
   // Filtragem de agendamentos por dia da semana
   const getBookingsForDay = (d: (typeof weekDays)[0]) => {
-    return bookings.filter((b) => {
+    return coachBookings.filter((b) => {
       if (b.slotDay.includes(d.dateFormatted)) return true;
       if (d.isToday && isSlotToday(b.slotDay)) return true;
       if (b.slotDay.toLowerCase().includes(d.dayName.toLowerCase().slice(0, 3))) return true;
@@ -820,7 +830,7 @@ export function CoachAgendaManager({
       {/* ------------------------------------------------------------------ */}
       {viewMode === "lista" && (
         <div className="flex flex-col gap-2.5">
-          {bookings.map((b) => {
+          {coachBookings.map((b) => {
             const style = getStatusStyle(b.attendanceStatus);
             return (
               <div

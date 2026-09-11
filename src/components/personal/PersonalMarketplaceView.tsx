@@ -36,11 +36,13 @@ import { BookingCalendarModal } from "./BookingCalendarModal";
 import { LeaveCoachModal } from "../student/LeaveCoachModal";
 
 interface PersonalMarketplaceViewProps {
+  studentId?: string;
   studentName?: string;
   studentPhone?: string;
 }
 
 export function PersonalMarketplaceView({
+  studentId = "student_carlos",
   studentName = "Aluno",
   studentPhone = "",
 }: PersonalMarketplaceViewProps) {
@@ -56,8 +58,10 @@ export function PersonalMarketplaceView({
   const [searchQuery, setSearchQuery] = useState("");
   const [myBookings, setMyBookings] = useState<BookingRequest[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [bookingErrorMessage, setBookingErrorMessage] = useState<string | null>(null);
   const [isLeaveCoachModalOpen, setIsLeaveCoachModalOpen] = useState(false);
   const [selectedBookingToLeave, setSelectedBookingToLeave] = useState<BookingRequest | null>(null);
+
 
   useEffect(() => {
     const refreshData = () => {
@@ -157,9 +161,12 @@ export function PersonalMarketplaceView({
   // Enviar Solicitação de Agendamento
   const handleConfirmBooking = () => {
     if (!selectedTimeSlot) {
-      alert("Por favor, selecione um horário disponível na grade!");
+      setBookingErrorMessage("Por favor, selecione um horário disponível na grade antes de continuar.");
+      triggerHaptic("warning");
       return;
     }
+
+    setBookingErrorMessage(null);
 
     const slotDayString = isContract
       ? `${selectedDayOfWeekName}, ${selectedDateFormatted} (Início)`
@@ -167,7 +174,7 @@ export function PersonalMarketplaceView({
 
     triggerHaptic("heavy");
     requestTrainerBooking({
-      studentId: "student_carlos",
+      studentId: studentId || "student_carlos",
       studentName,
       studentPhone,
       coachId: currentCoach.id,
@@ -723,8 +730,16 @@ export function PersonalMarketplaceView({
             )}
           </div>
 
+          {bookingErrorMessage && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{bookingErrorMessage}</span>
+            </div>
+          )}
+
           {/* 5. RESUMO DE INVESTIMENTO E BOTÃO DE CONFIRMAÇÃO */}
           <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
+
             <div>
               <span className="text-[9px] uppercase font-bold text-zinc-400">
                 {isContract ? (selectedPlanType === "semanal" ? "Total Semanal:" : "Total Mensal:") : "Total da Sessão:"}

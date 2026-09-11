@@ -89,6 +89,13 @@ export function CoachDashboard({
       : "students"
     : internalTab;
 
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
+
+  useEffect(() => {
+    const unsub = subscribeToAuthChanges((u) => setCurrentUser(u));
+    return () => unsub();
+  }, []);
+
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("student_carlos");
 
@@ -444,7 +451,7 @@ export function CoachDashboard({
       )}
 
       {/* ABA PRINCIPAL 1: AGENDA & GESTÃO DE HORÁRIOS / ALUNOS PRESENCIAIS */}
-      {effectiveTab === "agenda" && <CoachAgendaManager coachId="coach_rodrigo" />}
+      {effectiveTab === "agenda" && <CoachAgendaManager coachId={currentUser.id || "coach_rodrigo"} />}
 
       {/* ABA PRINCIPAL 2: ANALYTICS & DASHBOARD DE MÉTRICAS */}
       {effectiveTab === "analytics" && <CoachAnalyticsDashboard />}

@@ -22,10 +22,12 @@ export function Header({
   onToggleViewMode,
   onOpenProfile,
   onOpenPlans,
+  onOpenAuth,
   onOpenNotifications,
   unreadNotificationsCount = 0,
   user,
 }: HeaderProps) {
+
   const isCoach = viewMode === "coach";
 
   return (
@@ -98,6 +100,21 @@ export function Header({
             <Sparkles className="w-3.5 h-3.5" />
           </button>
 
+          {/* Botão de Login / Cadastro para Visitantes */}
+          {!user?.email && (
+            <button
+              onClick={() => {
+                triggerHaptic("selection");
+                onOpenAuth();
+              }}
+              className="h-7 px-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black text-[11px] shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1 active:scale-95 transition-all"
+              title="Fazer Login ou Criar Conta"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Entrar</span>
+            </button>
+          )}
+
           {/* Avatar de Perfil */}
           <button
             onClick={() => {
@@ -121,6 +138,7 @@ export function Header({
               <User className="w-3.5 h-3.5" />
             )}
           </button>
+
         </div>
       </div>
     </header>

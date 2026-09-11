@@ -40,7 +40,8 @@ export interface UserProfile {
   };
 }
 
-import { saveProfileToSupabase } from "./supabase-service";
+import { saveProfileToSupabase, fetchProfileFromSupabase } from "./supabase-service";
+import { getSupabase } from "./supabase";
 
 const STORAGE_KEY_AUTH = "gymflow_current_user_v4";
 const EVENT_AUTH_CHANGED = "gymflow:auth-changed";
@@ -76,6 +77,11 @@ const DEFAULT_USER: UserProfile = {
     monthlyPlan: 55,
   },
 };
+
+export function isUserAuthenticated(): boolean {
+  const user = getCurrentUser();
+  return Boolean(user && user.email && user.id !== "user_me");
+}
 
 export function getCurrentUser(): UserProfile {
   if (typeof window === "undefined") return DEFAULT_USER;
@@ -117,6 +123,10 @@ export function saveUserProfile(updated: Partial<UserProfile>): UserProfile {
 
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(merged));
+    // Seta cookie para o middleware reconhecer sessões autenticadas
+    if (merged.email && merged.id !== "user_me") {
+      document.cookie = "gymflow_session=active; path=/; max-age=2592000; SameSite=Lax";
+    }
     window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: merged }));
   }
 
@@ -143,6 +153,9 @@ export function switchUserRole(newRole: UserRole): UserProfile {
     window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: updated }));
   }
 
+  // Persiste a alternância de papel no Supabase para não ser revertida na próxima sessão
+  saveProfileToSupabase(updated).catch(() => {});
+
   return updated;
 }
 
@@ -153,10 +166,13 @@ export function registerNewUser(data: {
   phone?: string;
   cref?: string;
   specialty?: string;
+  bio?: string;
+  hourlyRate?: number;
   goal?: UserProfile["goal"];
+  id?: string;
 }): UserProfile {
   const newUser: UserProfile = {
-    id: `user_${Date.now()}`,
+    id: data.id || `user_${Date.now()}`,
     name: data.name,
     email: data.email,
     phone: data.phone || "",
@@ -167,12 +183,13 @@ export function registerNewUser(data: {
     goal: data.goal || "Hipertrofia",
     cref: data.cref?.trim() || undefined,
     specialty: data.specialty || (data.role === "coach" ? "Musculação & Hipertrofia" : undefined),
-    bio: data.role === "coach" ? "Treinador especialista em performance e técnica perfeita." : undefined,
-    hourlyRate: data.role === "coach" ? 70 : undefined,
+    bio: data.bio || (data.role === "coach" ? "Treinador especialista em performance e técnica perfeita." : undefined),
+    hourlyRate: data.hourlyRate || (data.role === "coach" ? 70 : undefined),
   };
 
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(newUser));
+    document.cookie = "gymflow_session=active; path=/; max-age=2592000; SameSite=Lax";
     window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: newUser }));
   }
 
@@ -184,8 +201,80 @@ export function registerNewUser(data: {
 
 export function logoutUser(): void {
   if (typeof window === "undefined") return;
+  const client = getSupabase();
+  if (client) {
+    client.auth.signOut().catch(() => {});
+  }
   localStorage.removeItem(STORAGE_KEY_AUTH);
+  document.cookie = "gymflow_session=; path=/; max-age=0; SameSite=Lax";
   window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: DEFAULT_USER }));
+}
+
+/**
+ * Inicializa a sincronização contínua com a sessão do Supabase Auth
+ */
+export function initAuthSession(): () => void {
+  if (typeof window === "undefined") return () => {};
+  const client = getSupabase();
+  if (!client) return () => {};
+
+  // 1. Inspeciona a sessão atual no Supabase
+  client.auth.getSession().then(async ({ data: { session } }) => {
+    if (session?.user) {
+      const cloudProfile = await fetchProfileFromSupabase(session.user.id);
+      if (cloudProfile) {
+        saveUserProfile(cloudProfile);
+      } else {
+        const meta = session.user.user_metadata || {};
+        saveUserProfile({
+          id: session.user.id,
+          email: session.user.email || "",
+          name: meta.name || session.user.email?.split("@")[0] || "Usuário",
+          activeRole: (meta.role as UserRole) || "student",
+          phone: meta.phone || "",
+          cref: meta.cref || undefined,
+          specialty: meta.specialty || undefined,
+          bio: meta.bio || undefined,
+          goal: meta.goal || "Hipertrofia",
+        });
+      }
+    }
+  }).catch(() => {});
+
+  // 2. Escuta mudanças na autenticação do Supabase
+  const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
+    if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
+      if (session?.user) {
+        const cloudProfile = await fetchProfileFromSupabase(session.user.id);
+        if (cloudProfile) {
+          saveUserProfile(cloudProfile);
+        } else {
+          const meta = session.user.user_metadata || {};
+          saveUserProfile({
+            id: session.user.id,
+            email: session.user.email || "",
+            name: meta.name || session.user.email?.split("@")[0] || "Usuário",
+            activeRole: (meta.role as UserRole) || "student",
+            phone: meta.phone || "",
+            cref: meta.cref || undefined,
+            specialty: meta.specialty || undefined,
+            bio: meta.bio || undefined,
+            goal: meta.goal || "Hipertrofia",
+          });
+        }
+      }
+    } else if (event === "SIGNED_OUT") {
+      localStorage.removeItem(STORAGE_KEY_AUTH);
+      document.cookie = "gymflow_session=; path=/; max-age=0; SameSite=Lax";
+      window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: DEFAULT_USER }));
+    } else if (event === "PASSWORD_RECOVERY") {
+      window.dispatchEvent(new CustomEvent("gymflow:password-recovery"));
+    }
+  });
+
+  return () => {
+    subscription.unsubscribe();
+  };
 }
 
 export function subscribeToAuth(callback: () => void): () => void {
@@ -210,3 +299,4 @@ export function subscribeToAuthChanges(callback: (user: UserProfile) => void): (
     window.removeEventListener("storage", handler);
   };
 }
+

@@ -22,7 +22,8 @@ function isRateLimited(key: string, limit: number, windowMs: number): boolean {
 }
 
 export function middleware(request: NextRequest) {
-  const ip = request.ip || request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const forwarded = request.headers.get("x-forwarded-for");
+  const ip = request.ip || (forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1");
   const path = request.nextUrl.pathname;
 
   // Rate Limiting para rotas de autenticação (mitigação de brute-force)
@@ -59,7 +60,7 @@ export function middleware(request: NextRequest) {
 
   // Proteção de rotas autenticadas (Ex: /profile, /orders)
   const protectedRoutes = ["/profile", "/orders"];
-  if (protectedRoutes.some((route) => path.startsWith(route))) {
+  if (protectedRoutes.some((route) => path === route || path.startsWith(`${route}/`))) {
     const sessionToken = request.cookies.get("gymflow_session");
     if (!sessionToken?.value) {
       const loginUrl = new URL("/auth", request.url);
@@ -74,7 +75,9 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/api/:path*",
+    "/profile",
     "/profile/:path*",
+    "/orders",
     "/orders/:path*",
   ],
 };

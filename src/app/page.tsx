@@ -22,9 +22,11 @@ import {
   getCurrentUser,
   switchUserRole,
   subscribeToAuthChanges,
+  initAuthSession,
   UserProfile,
   UserRole,
 } from "@/lib/auth-store";
+
 import {
   getStoredNotifications,
   subscribeToNotifications,
@@ -58,21 +60,56 @@ export default function GymFlowApp() {
 
   // Modais
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<"login" | "signup" | "forgot" | "update-password" | "magic-link">("login");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPlansOpen, setIsPlansOpen] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [isGymBotOpen, setIsGymBotOpen] = useState(false);
 
+  // Inicialização e Sincronização Contínua com Supabase Auth
+  useEffect(() => {
+    const unsubSession = initAuthSession();
+    const handlePasswordRecovery = () => {
+      setAuthInitialMode("update-password");
+      setIsAuthOpen(true);
+    };
+
+    window.addEventListener("gymflow:password-recovery", handlePasswordRecovery);
+
+    // Checa se a URL contém indicação de redefinição de senha ou modo de autenticação
+    if (typeof window !== "undefined") {
+      if (window.location.hash.includes("type=recovery") || window.location.search.includes("recovery=true")) {
+        setAuthInitialMode("update-password");
+        setIsAuthOpen(true);
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        const authParam = params.get("auth");
+        if (authParam === "signup" || authParam === "login" || authParam === "forgot" || authParam === "magic-link") {
+          setAuthInitialMode(authParam);
+          setIsAuthOpen(true);
+        }
+      }
+    }
+
+    return () => {
+      unsubSession();
+      window.removeEventListener("gymflow:password-recovery", handlePasswordRecovery);
+    };
+  }, []);
+
   // Sincronização reativa com Auth Store
   useEffect(() => {
     const handleAuthChange = (updated: UserProfile) => {
       setUserProfile(updated);
-      if (updated.activeRole === "coach" && (currentTab === "treino" || currentTab === "personal" || currentTab === "evolucao" || currentTab === "aulas")) {
-        setCurrentTab("alunos");
-      } else if (updated.activeRole === "student" && (currentTab === "alunos" || currentTab === "fichas" || currentTab === "analytics")) {
-        setCurrentTab("treino");
-      }
+      setCurrentTab((prevTab) => {
+        if (updated.activeRole === "coach" && (prevTab === "treino" || prevTab === "personal" || prevTab === "evolucao" || prevTab === "aulas")) {
+          return "alunos";
+        } else if (updated.activeRole === "student" && (prevTab === "alunos" || prevTab === "fichas" || prevTab === "analytics")) {
+          return "treino";
+        }
+        return prevTab;
+      });
     };
 
     handleAuthChange(getCurrentUser());
@@ -80,6 +117,7 @@ export default function GymFlowApp() {
     const unsubAuth = subscribeToAuthChanges(handleAuthChange);
     return () => unsubAuth();
   }, []);
+
 
   // Sincronização de Notificações
   useEffect(() => {
@@ -178,6 +216,7 @@ export default function GymFlowApp() {
             {currentTab === "personal" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <PersonalMarketplaceView
+                  studentId={userProfile.id}
                   studentName={userProfile.name}
                   studentPhone={userProfile.phone || ""}
                 />
@@ -239,6 +278,7 @@ export default function GymFlowApp() {
         onClose={() => setIsProfileOpen(false)}
         onOpenAuth={() => {
           setIsProfileOpen(false);
+          setAuthInitialMode("login");
           setIsAuthOpen(true);
         }}
       />
@@ -246,7 +286,11 @@ export default function GymFlowApp() {
       {/* MODAL DE AUTENTICAÇÃO COM SELEÇÃO DE PAPEL (ALUNO OU PROFESSOR) */}
       <AuthModal
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        initialMode={authInitialMode}
+        onClose={() => {
+          setIsAuthOpen(false);
+          setAuthInitialMode("login");
+        }}
         onSuccessLogin={(userData) => {
           const current = getCurrentUser();
           setUserProfile(current);
@@ -255,6 +299,7 @@ export default function GymFlowApp() {
           }
         }}
       />
+
 
       {/* Central de Notificações */}
       <NotificationBellModal

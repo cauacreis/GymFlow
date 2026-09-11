@@ -1531,7 +1531,33 @@ export function updateBookingNotes(bookingId: string, notes: string): void {
 export function updateCoachPublicProfile(coachId: string, profile: Partial<CoachTrainer>): void {
   if (typeof window === "undefined") return;
   const coaches = getStoredCoaches();
-  const updated = coaches.map((c) => (c.id === coachId ? { ...c, ...profile } : c));
+  const exists = coaches.some((c) => c.id === coachId);
+  let updated: CoachTrainer[];
+  if (exists) {
+    updated = coaches.map((c) => (c.id === coachId ? { ...c, ...profile } : c));
+  } else {
+    const newCoach: CoachTrainer = {
+      id: coachId,
+      name: profile.name || "Personal Trainer",
+      cref: profile.cref,
+      avatarUrl: profile.avatarUrl || "",
+      phone: profile.phone || "",
+      specialty: profile.specialty || "Musculação & Hipertrofia",
+      distance: profile.distance || "Na sua unidade",
+      rating: profile.rating ?? 5.0,
+      reviewCount: profile.reviewCount ?? 1,
+      bio: profile.bio || "Personal Trainer no GymFlow.",
+      instagram: profile.instagram,
+      location: profile.location || "Salão Principal",
+      pricing: profile.pricing || {
+        basicMonthly: 35,
+        proMonthly: 45,
+        vipMonthly: 55,
+      },
+      slots: profile.slots || [],
+    };
+    updated = [newCoach, ...coaches];
+  }
   localStorage.setItem(STORAGE_COACHES, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_BOOKING));
 }

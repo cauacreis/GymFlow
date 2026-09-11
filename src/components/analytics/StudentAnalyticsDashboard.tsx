@@ -65,6 +65,7 @@ export function StudentAnalyticsDashboard() {
   // Estado dinâmico de medições corporais & usuário
   const [metrics, setMetrics] = useState<BodyMetricEntry[]>(() => getStoredBodyMetrics());
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
+  const [isMounted, setIsMounted] = useState(false);
 
   // Modais de medição e histórico
   const [isNewMetricModalOpen, setIsNewMetricModalOpen] = useState(false);
@@ -72,6 +73,7 @@ export function StudentAnalyticsDashboard() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    setIsMounted(true);
     const refresh = () => {
       setMetrics(getStoredBodyMetrics());
       setCurrentUser(getCurrentUser());
@@ -84,6 +86,7 @@ export function StudentAnalyticsDashboard() {
       unsubAuth();
     };
   }, []);
+
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -278,41 +281,46 @@ export function StudentAnalyticsDashboard() {
         </div>
 
         <div className="h-52 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={strengthProgression}>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[60, 180]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} iconType="circle" />
-              <Line
-                type="monotone"
-                dataKey="supino"
-                name="Supino Reto"
-                stroke="#10b981"
-                strokeWidth={2.5}
-                dot={{ r: 4, fill: "#10b981" }}
-              />
-              <Line
-                type="monotone"
-                dataKey="agachamento"
-                name="Agachamento"
-                stroke="#38bdf8"
-                strokeWidth={2.5}
-                dot={{ r: 4, fill: "#38bdf8" }}
-              />
-              <Line
-                type="monotone"
-                dataKey="terra"
-                name="Lev. Terra"
-                stroke="#f59e0b"
-                strokeWidth={2.5}
-                dot={{ r: 4, fill: "#f59e0b" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={strengthProgression}>
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[60, 180]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} iconType="circle" />
+                <Line
+                  type="monotone"
+                  dataKey="supino"
+                  name="Supino Reto"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#10b981" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="agachamento"
+                  name="Agachamento"
+                  stroke="#38bdf8"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#38bdf8" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="terra"
+                  name="Lev. Terra"
+                  stroke="#f59e0b"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#f59e0b" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+          )}
         </div>
       </div>
+
 
       {/* GRÁFICO 2: COMPOSIÇÃO CORPORAL & BIOIMPEDÂNCIA DINÂMICA */}
       <div className="rounded-3xl p-4 sm:p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg">
@@ -358,41 +366,45 @@ export function StudentAnalyticsDashboard() {
         </div>
 
         <div className="h-52 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={bodyCompositionChartData}>
-              <defs>
-                <linearGradient id="bodyWeightGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="muscleMassGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis domain={["auto", "auto"]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} iconType="circle" />
-              <Area
-                type="monotone"
-                dataKey="peso"
-                name="Peso Total (kg)"
-                stroke="#38bdf8"
-                strokeWidth={2}
-                fill="url(#bodyWeightGrad)"
-              />
-              <Area
-                type="monotone"
-                dataKey="massaMagra"
-                name="Massa Magra (kg)"
-                stroke="#10b981"
-                strokeWidth={2.5}
-                fill="url(#muscleMassGrad)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={bodyCompositionChartData}>
+                <defs>
+                  <linearGradient id="bodyWeightGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="muscleMassGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis domain={["auto", "auto"]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} iconType="circle" />
+                <Area
+                  type="monotone"
+                  dataKey="peso"
+                  name="Peso Total (kg)"
+                  stroke="#38bdf8"
+                  strokeWidth={2}
+                  fill="url(#bodyWeightGrad)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="massaMagra"
+                  name="Massa Magra (kg)"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fill="url(#muscleMassGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+          )}
         </div>
       </div>
 
@@ -408,16 +420,20 @@ export function StudentAnalyticsDashboard() {
         </div>
 
         <div className="h-48 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={muscleVolumeDistribution} barGap={4}>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 9 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 24]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={22} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="series" name="Séries Feitas" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={22} />
-              <Bar dataKey="alvo" name="Meta Semanal" fill="#ffffff15" radius={[4, 4, 0, 0]} maxBarSize={22} />
-            </BarChart>
-          </ResponsiveContainer>
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={muscleVolumeDistribution} barGap={4}>
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 9 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 24]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={22} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="series" name="Séries Feitas" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                <Bar dataKey="alvo" name="Meta Semanal" fill="#ffffff15" radius={[4, 4, 0, 0]} maxBarSize={22} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+          )}
         </div>
       </div>
 
@@ -436,31 +452,36 @@ export function StudentAnalyticsDashboard() {
         </div>
 
         <div className="h-44 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={monthlyAttendance}>
-              <defs>
-                <linearGradient id="studentAttendGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[10, 25]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={25} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="treinos"
-                name="Treinos Concluídos"
-                stroke="#10b981"
-                strokeWidth={2.5}
-                fill="url(#studentAttendGrad)"
-                activeDot={{ r: 4, fill: "#10b981" }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyAttendance}>
+                <defs>
+                  <linearGradient id="studentAttendGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[10, 25]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={25} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="treinos"
+                  name="Treinos Concluídos"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fill="url(#studentAttendGrad)"
+                  activeDot={{ r: 4, fill: "#10b981" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+          )}
         </div>
       </div>
+
 
       {/* VITRINE DE RECORDES PESSOAIS (PRs) */}
       <div className="rounded-3xl p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg space-y-3">

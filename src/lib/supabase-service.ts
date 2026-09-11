@@ -343,3 +343,43 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
     return false;
   }
 }
+
+export async function fetchProfileFromSupabase(userId: string): Promise<UserProfile | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  try {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUUID) return null;
+
+    const { data, error } = await client
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    return {
+      id: data.id,
+      name: data.name || "Usuário",
+      email: data.email || "",
+      phone: data.phone || "",
+      activeRole: data.active_role || "student",
+      enabledRoles: data.enabled_roles || ["student", "coach"],
+      matricula: data.matricula || `GF-${data.id.slice(0, 5)}`,
+      goal: data.goal || "Hipertrofia",
+      cref: data.cref || undefined,
+      specialty: data.specialty || undefined,
+      bio: data.bio || undefined,
+      hourlyRate: data.hourly_rate ?? 35,
+      avatarUrl: data.avatar_url || undefined,
+      instagram: data.instagram || undefined,
+      location: data.location || undefined,
+      pricing: data.pricing || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+

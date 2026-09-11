@@ -28,9 +28,12 @@ import {
   getCurrentUser,
   saveUserProfile,
   switchUserRole,
+  logoutUser,
+  isUserAuthenticated,
   UserProfile,
   UserRole,
 } from "@/lib/auth-store";
+
 import { updateCoachPublicProfile } from "@/lib/booking-store";
 import { AvatarUpload } from "./AvatarUpload";
 
@@ -151,7 +154,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
 
     // Se for professor, atualiza os dados públicos no marketplace
     if (isCoach) {
-      updateCoachPublicProfile("coach_rodrigo", {
+      updateCoachPublicProfile(profile.id || "coach_rodrigo", {
         name,
         cref: cref.trim() || undefined,
         specialty,
@@ -592,17 +595,47 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
           )}
 
           {/* Botões de Ação */}
-          <div className="pt-2 flex items-center justify-between gap-3 border-t border-white/[0.06]">
-            {onOpenAuth && (
-              <button
-                type="button"
-                onClick={onOpenAuth}
-                className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Entrar com Outra Conta</span>
-              </button>
-            )}
+          <div className="pt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] flex-wrap">
+            <div className="flex items-center gap-2">
+              {profile.email && profile.id !== "user_me" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("warning");
+                    logoutUser();
+                    onClose();
+                  }}
+                  className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1.5 transition-colors px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20"
+                  title="Sair desta conta"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sair da Conta</span>
+                </button>
+              ) : (
+                onOpenAuth && (
+                  <button
+                    type="button"
+                    onClick={onOpenAuth}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-colors px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 font-bold"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Entrar / Cadastrar</span>
+                  </button>
+                )
+              )}
+
+              {profile.email && profile.id !== "user_me" && onOpenAuth && (
+                <button
+                  type="button"
+                  onClick={onOpenAuth}
+                  className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-colors px-2 py-1.5"
+                  title="Acessar com outro e-mail"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Trocar</span>
+                </button>
+              )}
+            </div>
 
             <button
               type="submit"
@@ -621,3 +654,4 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
     </div>
   );
 }
+
