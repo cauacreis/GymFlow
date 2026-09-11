@@ -58,6 +58,7 @@ import {
 } from "@/lib/booking-store";
 import { getCurrentUser, saveUserProfile } from "@/lib/auth-store";
 import { ExerciseInWorkout, WorkoutSplitTemplate } from "@/lib/exercisedb";
+import { StudentFullProfileModal } from "./StudentFullProfileModal";
 
 interface CoachStudentsManagerProps {
   onPrescribeWorkoutForStudent?: (studentId: string) => void;
@@ -1123,256 +1124,21 @@ export function CoachStudentsManager({
         )}
       </div>
 
-      {/* DRAWER / MODAL DE DETALHES DO ALUNO */}
-      {selectedStudent && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
-          onClick={() => setSelectedStudent(null)}
-        >
-          <div
-            className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-zinc-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header do Aluno */}
-            <div className="p-5 border-b border-white/[0.08] bg-zinc-900/60 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-950 border-2 border-amber-500/40 shrink-0">
-                  {selectedStudent.avatarUrl ? (
-                    <img
-                      src={selectedStudent.avatarUrl}
-                      alt={selectedStudent.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center font-black text-amber-400 text-base">
-                      {selectedStudent.name.charAt(0)}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-white">{selectedStudent.name}</h3>
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      {selectedStudent.isOfflineStudent ? "Offline / Presencial" : "Usuário do Site"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    Matrícula: {selectedStudent.matricula} • {selectedStudent.age || 28} anos
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedStudent(null)}
-                className="p-2 rounded-xl text-zinc-400 hover:text-white bg-white/[0.04]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Conteúdo com Scroll */}
-            <div className="p-5 overflow-y-auto space-y-4 no-scrollbar">
-              {/* Botões Rápidos de Registro de Frequência no Salão */}
-              <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.08] flex items-center justify-between gap-2">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-zinc-400 block">
-                    Frequência do Mês
-                  </span>
-                  <span className="text-xs font-black text-white mt-0.5 block">
-                    {selectedStudent.monthlyPresence ?? 0} Presenças •{" "}
-                    {selectedStudent.monthlyAbsences ?? 0} Faltas
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    onClick={() => handleAddPresence(selectedStudent.id)}
-                    className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-black flex items-center gap-1 transition-all active:scale-95"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>+ Presença</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleAddAbsence(selectedStudent.id)}
-                    className="px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-black flex items-center gap-1 transition-all active:scale-95"
-                  >
-                    <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                    <span>+ Falta</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleAddDelay(selectedStudent.id, 15)}
-                    className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-black flex items-center gap-1 transition-all active:scale-95"
-                  >
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>+ Atraso</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Plano Contratado do Aluno */}
-              <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.08] flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
-                    <Tag className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-zinc-400 block">
-                      Plano Contratado
-                    </span>
-                    <span className="text-xs font-black text-amber-300 mt-0.5 block">
-                      {selectedStudent.plan || "Acompanhamento Livre"}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("light");
-                    setSelectedStudentNewPlan(
-                      selectedStudent.plan ||
-                        (coachPlans.length > 0
-                          ? `${coachPlans[0].name} (R$ ${coachPlans[0].price}/mês)`
-                          : "Mensal Pro (R$ 45/mês)")
-                    );
-                    setIsEditStudentPlanModalOpen(true);
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Alterar Plano</span>
-                </button>
-              </div>
-
-              {/* Status da Ficha Técnica (Opcional!) */}
-              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.08] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider flex items-center gap-1.5">
-                    <Dumbbell className="w-3.5 h-3.5 text-amber-400" /> Ficha de Treino Prescrita
-                  </span>
-                  <span className="text-[9px] font-mono text-zinc-500">
-                    {selectedStudent.hasWorkoutSheet ? "Vinculada" : "Opcional"}
-                  </span>
-                </div>
-
-                {selectedStudent.hasWorkoutSheet ? (
-                  <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/25 flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-xs font-black text-white">
-                          {selectedStudent.currentRoutineTitle}
-                        </h4>
-                        <p className="text-[10px] text-zinc-400">
-                          Prescrito em {selectedStudent.prescribedAt}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => handleDetachWorkout(selectedStudent.id)}
-                        className="text-[10px] text-rose-400 hover:text-rose-300 font-bold underline"
-                      >
-                        Desvincular
-                      </button>
-                    </div>
-
-                    {selectedStudent.notesFromCoach && (
-                      <p className="text-[11px] text-zinc-300 italic bg-white/[0.02] p-2 rounded-lg border border-white/[0.04]">
-                        "{selectedStudent.notesFromCoach}"
-                      </p>
-                    )}
-
-                    <div className="pt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = selectedStudent;
-                          setSelectedStudent(null);
-                          handleOpenEditWorkout(current);
-                        }}
-                        className="flex-1 py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md shadow-amber-500/20"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>Editar Ficha & Exercícios</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] text-center space-y-2.5">
-                    <p className="text-xs text-zinc-400">
-                      Este aluno está em <strong>acompanhamento presencial livre</strong> (sem ficha
-                      obrigatória).
-                    </p>
-                    <div className="flex items-center justify-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = selectedStudent;
-                          setSelectedStudent(null);
-                          handleOpenEditWorkout(current);
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs inline-flex items-center gap-1 active:scale-95 transition-all shadow-md shadow-amber-500/20"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span>Montar Ficha Agora</span>
-                      </button>
-
-                      {onPrescribeWorkoutForStudent && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedStudent(null);
-                            onPrescribeWorkoutForStudent(selectedStudent.id);
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-white/[0.06] text-zinc-200 font-bold text-xs inline-flex items-center gap-1 border border-white/10 active:scale-95 transition-all"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Banco de Exercícios</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Informações de Contato e Emergência */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                  <span className="text-[10px] text-zinc-400 block font-bold uppercase">
-                    Telefone / WhatsApp
-                  </span>
-                  <span className="text-xs font-mono text-white mt-1 block">
-                    {selectedStudent.phone || "Não informado"}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                  <span className="text-[10px] text-zinc-400 block font-bold uppercase">
-                    Contato de Emergência
-                  </span>
-                  <span className="text-xs font-mono text-white mt-1 block">
-                    {selectedStudent.emergencyContact || "Não informado"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Botão de Exclusão do Aluno */}
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => handleDeleteStudent(selectedStudent.id)}
-                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Remover Aluno da Lista</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL / PERFIL COMPLETO DO ALUNO (ESTILO PILATESFLOW COM EDIÇÃO) */}
+      <StudentFullProfileModal
+        isOpen={!!selectedStudent}
+        onClose={() => setSelectedStudent(null)}
+        student={selectedStudent}
+        onEditWorkout={(st) => {
+          setSelectedStudent(null);
+          handleOpenEditWorkout(st);
+        }}
+        onStudentUpdated={(updated) => {
+          setStudents(getStoredStudents());
+          setSelectedStudent(updated);
+          showToast(`Perfil de ${updated.name} atualizado!`);
+        }}
+      />
 
       {/* MODAL: CADASTRAR NOVO ALUNO (ONLINE OU OFFLINE) */}
       {isNewStudentModalOpen && (

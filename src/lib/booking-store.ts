@@ -1464,6 +1464,19 @@ export function respondToReschedule(bookingId: string, accept: boolean): void {
   window.dispatchEvent(new Event(EVENT_BOOKING));
 }
 
+export function updateBookingNotes(bookingId: string, notes: string): void {
+  if (typeof window === "undefined") return;
+  const bookings = getStoredBookings();
+  const updated = bookings.map((b) => (b.id === bookingId ? { ...b, notes } : b));
+  localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+
+  const match = updated.find((b) => b.id === bookingId);
+  if (match) {
+    saveBookingToSupabase(match).catch(() => {});
+  }
+}
+
 export function updateCoachPublicProfile(coachId: string, profile: Partial<CoachTrainer>): void {
   if (typeof window === "undefined") return;
   const coaches = getStoredCoaches();

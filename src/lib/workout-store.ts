@@ -41,6 +41,9 @@ export interface StudentProfile {
   todayAttendanceStatus?: "presente" | "falta" | "atraso" | "agendado";
   delayMinutes?: number;
   scheduledTimeToday?: string;
+  notes?: string;
+  registeredSince?: string;
+  weeklySchedule?: string[];
 }
 
 export interface CoachPlanOption {
@@ -164,6 +167,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Hoje às 06:00",
     todayAttendanceStatus: "presente",
     scheduledTimeToday: "06:00",
+    registeredSince: "09/02/2024",
+    weeklySchedule: ["Segunda · 06:00", "Quarta · 06:00", "Sexta · 06:00"],
+    notes: "Aluna exemplar, foco em progressão de cargas nos exercícios de glúteos e posteriores. Sempre pontual.",
   },
   {
     id: "student_lucas",
@@ -188,6 +194,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Hoje às 07:00",
     todayAttendanceStatus: "presente",
     scheduledTimeToday: "07:00",
+    registeredSince: "15/01/2024",
+    weeklySchedule: ["Segunda · 07:00", "Quarta · 07:00", "Sexta · 07:00"],
+    notes: "Meta de supino 100kg até o fim do semestre. Cuidar alinhamento da coluna no levantamento terra.",
   },
   {
     id: "student_ana",
@@ -211,6 +220,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Hoje às 08:00",
     todayAttendanceStatus: "presente",
     scheduledTimeToday: "08:00",
+    registeredSince: "12/03/2024",
+    weeklySchedule: ["Segunda · 08:00", "Quarta · 08:00", "Sexta · 08:00"],
+    notes: "Condicionamento físico e alinhamento postural. Aluna exemplar, nunca falta sem avisar.",
   },
   {
     id: "student_camila",
@@ -234,6 +246,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Hoje às 09:00",
     todayAttendanceStatus: "presente",
     scheduledTimeToday: "09:00",
+    registeredSince: "05/04/2024",
+    weeklySchedule: ["Terça · 09:00", "Quinta · 09:00", "Sexta · 09:00"],
+    notes: "Foco em queima calórica e tônus muscular. Treinos metabólicos rápidos com alta densidade.",
   },
   {
     id: "student_mariana",
@@ -257,6 +272,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Hoje às 10:00",
     todayAttendanceStatus: "presente",
     scheduledTimeToday: "10:00",
+    registeredSince: "20/02/2024",
+    weeklySchedule: ["Segunda · 10:00", "Quarta · 10:00", "Sexta · 10:00"],
+    notes: "Boa evolução no treino de pernas e glúteos. Manter cadência lenta na fase excêntrica.",
   },
   {
     id: "student_diego",
@@ -280,6 +298,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Hoje às 12:00",
     todayAttendanceStatus: "presente",
     scheduledTimeToday: "12:00",
+    registeredSince: "18/05/2024",
+    weeklySchedule: ["Segunda · 12:00", "Quarta · 12:00", "Quinta · 12:00"],
+    notes: "Foco em progressão de carga no agachamento livre. Intervalo de descanso completo.",
   },
   {
     id: "student_pedro",
@@ -303,6 +324,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Ontem às 07:00",
     todayAttendanceStatus: "agendado",
     scheduledTimeToday: "17:00",
+    registeredSince: "10/06/2024",
+    weeklySchedule: ["Terça · 07:00", "Quinta · 07:00"],
+    notes: "Aluno dedicado. Ajustar técnica no levantamento lateral e puxada pela frente.",
   },
   {
     id: "student_carlos",
@@ -327,6 +351,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     lastPresence: "Hoje às 18:00",
     todayAttendanceStatus: "presente",
     scheduledTimeToday: "18:00",
+    registeredSince: "03/01/2024",
+    weeklySchedule: ["Segunda · 18:00", "Quarta · 18:00", "Quinta · 18:00"],
+    notes: "Treina no final do dia após o trabalho. Hidratação reforçada e cargas pesadas.",
   },
 ];
 
@@ -426,6 +453,30 @@ export function updateStudentProfile(
   });
   localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
+
+  // Se nome ou telefone mudaram, sincroniza também na lista de agendamentos da agenda
+  if (updates.name || updates.phone) {
+    try {
+      const rawBookings = localStorage.getItem("gymflow_bookings_v3");
+      if (rawBookings) {
+        const bookingsList = JSON.parse(rawBookings);
+        if (Array.isArray(bookingsList)) {
+          const updatedBookings = bookingsList.map((b: any) => {
+            if (b.studentId === studentId) {
+              return {
+                ...b,
+                ...(updates.name ? { studentName: updates.name } : {}),
+                ...(updates.phone ? { studentPhone: updates.phone } : {}),
+              };
+            }
+            return b;
+          });
+          localStorage.setItem("gymflow_bookings_v3", JSON.stringify(updatedBookings));
+          window.dispatchEvent(new Event("gymflow:booking-updated"));
+        }
+      }
+    } catch {}
+  }
 
   if (updatedStudent) {
     upsertStudentToSupabase(updatedStudent).catch(() => {});

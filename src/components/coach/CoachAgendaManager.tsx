@@ -27,6 +27,7 @@ import {
   getStoredBookings,
   updateBookingStatus,
   updateAttendanceStatus,
+  updateBookingNotes,
   requestReschedule,
   respondToReschedule,
   subscribeToBookings,
@@ -41,6 +42,7 @@ import {
   StudentProfile,
   subscribeToWorkoutChanges,
 } from "@/lib/workout-store";
+import { StudentFullProfileModal } from "./StudentFullProfileModal";
 
 interface CoachAgendaManagerProps {
   coachId?: string;
@@ -66,6 +68,9 @@ export function CoachAgendaManager({
 
   // Modais
   const [selectedBooking, setSelectedBooking] = useState<BookingRequest | null>(null);
+  const [agendaNoteInput, setAgendaNoteInput] = useState<string>("");
+  const [fullProfileStudent, setFullProfileStudent] = useState<StudentProfile | null>(null);
+  const [fullProfileBooking, setFullProfileBooking] = useState<BookingRequest | null>(null);
   const [quickScheduleCell, setQuickScheduleCell] = useState<{ dayName: string; time: string } | null>(null);
   const [selectedStudentForSchedule, setSelectedStudentForSchedule] = useState<string>("");
 
@@ -76,6 +81,51 @@ export function CoachAgendaManager({
   );
   const [rescheduleTime, setRescheduleTime] = useState("18:00");
   const [rescheduleReason, setRescheduleReason] = useState("");
+
+  // Sincroniza anotações da aula ao abrir booking
+  useEffect(() => {
+    if (selectedBooking) {
+      setAgendaNoteInput(selectedBooking.notes || "");
+    }
+  }, [selectedBooking]);
+
+  // Abrir perfil completo do aluno estilo PilatesFlow
+  const handleOpenStudentProfile = (booking: BookingRequest) => {
+    triggerHaptic("selection");
+    const match =
+      students.find((s) => s.id === booking.studentId) ||
+      students.find(
+        (s) => s.name.trim().toLowerCase() === booking.studentName.trim().toLowerCase()
+      ) ||
+      {
+        id: booking.studentId || `student_${Date.now()}`,
+        name: booking.studentName,
+        email: `${booking.studentName.toLowerCase().replace(/\s+/g, ".")}@email.com`,
+        phone: booking.studentPhone || "11987654321",
+        matricula: "GF-88412",
+        goal: "Hipertrofia" as const,
+        currentRoutineTitle: "Treino Personalizado",
+        prescribedBy: "Prof. Rodrigo",
+        prescribedAt: "Hoje",
+        plan:
+          booking.planType === "vip"
+            ? "Mensal VIP (R$ 55/mês)"
+            : booking.planType === "basico"
+            ? "Mensal Básico (R$ 35/mês)"
+            : "Mensal Pro (R$ 45/mês)",
+        status: "ativo" as const,
+        monthlyPresence: 16,
+        monthlyAbsences: 1,
+        totalClasses: 17,
+        age: 26,
+        registeredSince: "09/02/2024",
+        weeklySchedule: [`${booking.slotDay} · ${booking.slotTime}`],
+        notes: "Aluno focado, pontual e disciplinado.",
+      };
+
+    setFullProfileStudent(match);
+    setFullProfileBooking(booking);
+  };
 
   // Atualização em tempo real do relógio (traço vermelho que desce com o tempo)
   useEffect(() => {
@@ -788,128 +838,280 @@ export function CoachAgendaManager({
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* MODAL 1: DETALHES DA AULA & REGISTRO RÁPIDO DE PRESENÇA (1 TOQUE) */}
+      {/* MODAL 1: DETALHES DA AULA & GAVETA ESTILO PILATESFLOW */}
       {/* ------------------------------------------------------------------ */}
-      {selectedBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl bg-zinc-900 border border-white/10 p-5 shadow-2xl flex flex-col gap-4 relative animate-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setSelectedBooking(null)}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      {selectedBooking && (() => {
+        const student =
+          students.find((s) => s.id === selectedBooking.studentId) ||
+          students.find(
+            (s) => s.name.trim().toLowerCase() === selectedBooking.studentName.trim().toLowerCase()
+          );
+        const presence = student?.monthlyPresence ?? 16;
+        const absences = student?.monthlyAbsences ?? 1;
+        const total = presence + absences;
+        const presencePct = total > 0 ? Math.round((presence / total) * 100) : 95;
 
-            {/* Cabeçalho do Aluno */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-white/10 flex items-center justify-center text-base font-black text-amber-400 shrink-0">
-                {selectedBooking.studentName.charAt(0)}
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
-                  Gerenciar Aula / Presença
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center sm:justify-end p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+            onClick={() => setSelectedBooking(null)}
+          >
+            <div
+              className="w-full max-w-md rounded-3xl bg-zinc-950 border border-white/10 p-5 shadow-2xl flex flex-col gap-4 relative animate-in slide-in-from-right-4 sm:slide-in-from-right-8 duration-200 text-zinc-100 max-h-[92vh] overflow-y-auto no-scrollbar"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedBooking(null)}
+                className="absolute top-4 right-4 p-2 rounded-xl bg-white/[0.06] hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Cabeçalho da Aula (PilatesFlow Style) */}
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400 block">
+                  AULA
                 </span>
-                <h3 className="text-base font-black text-white truncate">{selectedBooking.studentName}</h3>
-                <p className="text-xs text-zinc-400 font-mono">
+                <h3 className="text-lg font-black text-white truncate mt-0.5">
+                  {selectedBooking.studentName}
+                </h3>
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">
                   {selectedBooking.slotDay} • {selectedBooking.slotTime} (55 min)
                 </p>
               </div>
-            </div>
 
-            {/* Status Atual */}
-            <div className="p-3 rounded-2xl bg-zinc-950 border border-white/[0.06] flex items-center justify-between">
-              <span className="text-xs text-zinc-400 font-medium">Status Atual da Aula:</span>
-              <span className={`text-xs font-black uppercase px-2.5 py-1 rounded-lg border ${getStatusStyle(selectedBooking.attendanceStatus).badge}`}>
-                {getStatusStyle(selectedBooking.attendanceStatus).label}
-              </span>
-            </div>
-
-            {/* BOTOES DE 1 TOQUE PARA ATUALIZAR STATUS */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-zinc-400">
-                Alterar Presença do Aluno:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleUpdateStatus(selectedBooking.id, "attended")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
-                    selectedBooking.attendanceStatus === "attended"
-                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
-                      : "bg-white/[0.04] text-emerald-400 hover:bg-emerald-600/20 border border-emerald-500/30"
+              {/* Status Atual */}
+              <div className="p-3 rounded-2xl bg-zinc-900/80 border border-white/[0.06] flex items-center justify-between">
+                <span className="text-xs text-zinc-400 font-medium">Status atual:</span>
+                <span
+                  className={`text-xs font-black uppercase px-2.5 py-1 rounded-lg border ${
+                    getStatusStyle(selectedBooking.attendanceStatus).badge
                   }`}
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Presente</span>
-                </button>
-
-                <button
-                  onClick={() => handleUpdateStatus(selectedBooking.id, "missed")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
-                    selectedBooking.attendanceStatus === "missed"
-                      ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                      : "bg-white/[0.04] text-red-400 hover:bg-red-500/20 border border-red-500/30"
-                  }`}
-                >
-                  <XCircle className="w-4 h-4" />
-                  <span>Falta</span>
-                </button>
-
-                <button
-                  onClick={() => handleUpdateStatus(selectedBooking.id, "justified")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
-                    selectedBooking.attendanceStatus === "justified"
-                      ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30"
-                      : "bg-white/[0.04] text-amber-400 hover:bg-amber-600/20 border border-amber-500/30"
-                  }`}
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>Justificado</span>
-                </button>
-
-                <button
-                  onClick={() => handleUpdateStatus(selectedBooking.id, "pending")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
-                    selectedBooking.attendanceStatus === "pending" || selectedBooking.attendanceStatus === "scheduled"
-                      ? "bg-slate-600 text-white shadow-lg"
-                      : "bg-white/[0.04] text-zinc-300 hover:bg-slate-700/40 border border-slate-600/30"
-                  }`}
-                >
-                  <Clock className="w-4 h-4" />
-                  <span>Pendente</span>
-                </button>
+                  {getStatusStyle(selectedBooking.attendanceStatus).label}
+                </span>
               </div>
-            </div>
 
-            {/* Ações Secundárias: WhatsApp & Remanejar */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/[0.06]">
-              {selectedBooking.studentPhone && (
-                <a
-                  href={`https://wa.me/${selectedBooking.studentPhone}?text=${encodeURIComponent(
-                    `Olá, ${selectedBooking.studentName}! Aqui é o ${selectedBooking.coachName}. Sobre nosso treino de ${selectedBooking.slotDay} às ${selectedBooking.slotTime}...`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>WhatsApp</span>
-                </a>
-              )}
-
-              <button
-                onClick={() => {
-                  setRescheduleBooking(selectedBooking);
-                  setSelectedBooking(null);
-                }}
-                className="py-2 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+              {/* CARD DO ALUNO CLICÁVEL (ABRE O PERFIL COMPLETO COM 1 TOQUE) */}
+              <div
+                onClick={() => handleOpenStudentProfile(selectedBooking)}
+                className="p-3.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-900 border border-purple-500/30 hover:border-purple-500/60 transition-all cursor-pointer group flex items-center justify-between gap-3 shadow-md active:scale-98"
+                title="Toque para abrir o perfil completo e editar aluno"
               >
-                <ArrowRightLeft className="w-3.5 h-3.5" />
-                <span>Remanejar</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative w-11 h-11 rounded-2xl overflow-hidden bg-zinc-950 border border-purple-500/30 flex items-center justify-center font-black text-purple-400 text-base shrink-0">
+                    {student?.avatarUrl ? (
+                      <img
+                        src={student.avatarUrl}
+                        alt={selectedBooking.studentName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      selectedBooking.studentName.charAt(0)
+                    )}
+                    <span className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-zinc-950" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-black text-white group-hover:text-purple-300 transition-colors truncate">
+                      {selectedBooking.studentName}
+                    </h4>
+                    <p className="text-[11px] text-zinc-400 truncate">
+                      {student?.plan || "Mensal VIP"} • {presencePct}% presença
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-purple-400 group-hover:translate-x-0.5 transition-transform shrink-0">
+                  <span className="text-[10px] font-bold hidden sm:inline">Perfil</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* BOTOES DE 1 TOQUE PARA ATUALIZAR STATUS */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                  MARCAR STATUS
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus(selectedBooking.id, "attended")}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                      selectedBooking.attendanceStatus === "attended"
+                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
+                        : "bg-white/[0.04] text-emerald-400 hover:bg-emerald-600/20 border border-emerald-500/30"
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Marcar Presença</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus(selectedBooking.id, "missed")}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                      selectedBooking.attendanceStatus === "missed"
+                        ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
+                        : "bg-white/[0.04] text-red-400 hover:bg-red-500/20 border border-red-500/30"
+                    }`}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Marcar Falta</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus(selectedBooking.id, "justified")}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                      selectedBooking.attendanceStatus === "justified"
+                        ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30"
+                        : "bg-white/[0.04] text-amber-400 hover:bg-amber-600/20 border border-amber-500/30"
+                    }`}
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Justificar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateStatus(selectedBooking.id, "pending")}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                      selectedBooking.attendanceStatus === "pending" ||
+                      selectedBooking.attendanceStatus === "scheduled"
+                        ? "bg-slate-600 text-white shadow-lg"
+                        : "bg-white/[0.04] text-zinc-300 hover:bg-slate-700/40 border border-slate-600/30"
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    <span>Pendente</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* OBSERVAÇÕES DA AULA */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                  OBSERVAÇÕES
+                </label>
+                <textarea
+                  rows={2}
+                  value={agendaNoteInput}
+                  onChange={(e) => setAgendaNoteInput(e.target.value)}
+                  placeholder="Notas sobre a aula de hoje..."
+                  className="w-full p-3 rounded-2xl bg-zinc-900 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 resize-none"
+                />
+              </div>
+
+              {/* OUTRAS AÇÕES */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                  OUTRAS AÇÕES
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenStudentProfile(selectedBooking)}
+                    className="py-2 px-3 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Ver Perfil & Editar</span>
+                  </button>
+
+                  {selectedBooking.studentPhone ? (
+                    <a
+                      href={`https://wa.me/${selectedBooking.studentPhone}?text=${encodeURIComponent(
+                        `Olá, ${selectedBooking.studentName}! Aqui é o seu treinador. Sobre nosso treino de ${selectedBooking.slotDay} às ${selectedBooking.slotTime}...`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="py-2 px-3 rounded-xl bg-white/[0.02] text-zinc-500 border border-white/[0.04] text-xs font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Sem Contato</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRescheduleBooking(selectedBooking);
+                      setSelectedBooking(null);
+                    }}
+                    className="py-2 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <span>Remanejar</span>
+                  </button>
+
+                  {onOpenWorkoutSheet && student ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedBooking(null);
+                        onOpenWorkoutSheet(student.id);
+                      }}
+                      className="py-2 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border border-white/10 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Ver Ficha</span>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* BOTÃO FINAL: SALVAR ALTERAÇÕES (ESTILO PILATESFLOW) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedBooking) {
+                    updateBookingNotes(selectedBooking.id, agendaNoteInput.trim());
+                  }
+                  setSelectedBooking(null);
+                  showToast("Alterações da aula salvas com sucesso!");
+                }}
+                className="w-full py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-purple-600/30 active:scale-98 transition-all flex items-center justify-center gap-2 mt-1"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Salvar alterações</span>
               </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* MODAL 1.5: PERFIL COMPLETO DO ALUNO (ESTILO PILATESFLOW COM EDIÇÃO) */}
+      {/* ------------------------------------------------------------------ */}
+      <StudentFullProfileModal
+        isOpen={!!fullProfileStudent}
+        onClose={() => {
+          setFullProfileStudent(null);
+          setFullProfileBooking(null);
+        }}
+        student={fullProfileStudent}
+        currentBooking={fullProfileBooking}
+        onEditWorkout={(st) => {
+          if (onOpenWorkoutSheet) {
+            onOpenWorkoutSheet(st.id);
+          }
+        }}
+        onStudentUpdated={(updated) => {
+          setStudents(getStoredStudents());
+          setBookings(getStoredBookings());
+          showToast(`Perfil de ${updated.name} atualizado!`);
+        }}
+      />
 
       {/* ------------------------------------------------------------------ */}
       {/* MODAL 2: AGENDAR ALUNO EM HORÁRIO VAGO CLICADO NA GRADE */}
