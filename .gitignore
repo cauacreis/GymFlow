@@ -62,3 +62,7 @@ tmp/
 temp/
 *.tsbuildinfo
 .eslintcache
+.vercel
+supabase/.temp/
+.supabase/
+
