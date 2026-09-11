@@ -69,7 +69,7 @@ export function CoachStudentsManager({
 }: CoachStudentsManagerProps) {
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"todos" | "ativo" | "inativo" | "pendente">("todos");
+  const [filterStatus, setFilterStatus] = useState<"todos" | "ativo" | "atrasado" | "inativo">("todos");
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
 
   // Planos oferecidos pelo professor
@@ -150,12 +150,24 @@ export function CoachStudentsManager({
   const filteredStudents = students.filter((s) => {
     const matchesSearch =
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.email && s.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (s.phone && s.phone.includes(searchQuery)) ||
       s.goal.toLowerCase().includes(searchQuery.toLowerCase());
 
     const status = s.status || "ativo";
-    const matchesFilter = filterStatus === "todos" || status === filterStatus;
+    const payment = s.paymentStatus || "pago";
+
+    const matchesFilter =
+      filterStatus === "todos"
+        ? true
+        : filterStatus === "ativo"
+        ? status === "ativo"
+        : filterStatus === "inativo"
+        ? status === "inativo"
+        : filterStatus === "atrasado"
+        ? payment === "atrasado"
+        : true;
+
     return matchesSearch && matchesFilter;
   });
 
@@ -874,22 +886,39 @@ export function CoachStudentsManager({
           />
         </div>
 
-        {/* Filtro por Status Minimalista */}
-        <div className="flex items-center p-0.5 rounded-xl bg-zinc-900 border border-white/[0.06] shrink-0 self-start sm:self-auto">
-          {(["todos", "ativo", "inativo", "pendente"] as const).map((st) => (
+        {/* Filtro por Status & Situação Financeira */}
+        <div className="flex items-center p-0.5 rounded-xl bg-zinc-900 border border-white/[0.06] shrink-0 self-start sm:self-auto overflow-x-auto no-scrollbar">
+          {[
+            { key: "todos", label: "Todos" },
+            { key: "ativo", label: "Ativos" },
+            {
+              key: "atrasado",
+              label: (
+                <span className="flex items-center gap-1">
+                  <span>Atrasados</span>
+                  {students.filter((st) => st.paymentStatus === "atrasado").length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-500/30 text-rose-300 text-[10px] font-mono font-bold">
+                      {students.filter((st) => st.paymentStatus === "atrasado").length}
+                    </span>
+                  )}
+                </span>
+              ),
+            },
+            { key: "inativo", label: "Inativos" },
+          ].map((item) => (
             <button
-              key={st}
+              key={item.key}
               onClick={() => {
                 triggerHaptic("selection");
-                setFilterStatus(st);
+                setFilterStatus(item.key as any);
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all ${
-                filterStatus === st
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                filterStatus === item.key
                   ? "bg-amber-500 text-zinc-950 font-bold shadow-sm"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
-              {st}
+              {item.label}
             </button>
           ))}
         </div>
@@ -975,6 +1004,25 @@ export function CoachStudentsManager({
                           }`}
                         >
                           {student.status || "Ativo"}
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded border flex items-center gap-1 ${
+                            student.paymentStatus === "pago"
+                              ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+                              : student.paymentStatus === "atrasado"
+                              ? "bg-rose-500/20 text-rose-300 border-rose-500/35 animate-pulse font-black"
+                              : student.paymentStatus === "pendente"
+                              ? "bg-amber-500/15 text-amber-300 border-amber-500/25"
+                              : "bg-zinc-700/30 text-zinc-400 border-zinc-700/40"
+                          }`}
+                        >
+                          {student.paymentStatus === "pago"
+                            ? "✓ Pago"
+                            : student.paymentStatus === "atrasado"
+                            ? "⚠️ Atrasado"
+                            : student.paymentStatus === "pendente"
+                            ? "🕒 Pendente"
+                            : "✕ Cancelado"}
                         </span>
                         {student.isOfflineStudent && (
                           <span className="text-[8px] font-mono uppercase px-1 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/20">

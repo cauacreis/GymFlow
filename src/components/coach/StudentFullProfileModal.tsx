@@ -23,11 +23,19 @@ import {
   Tag,
   Flame,
   ShieldCheck,
+  DollarSign,
+  CreditCard,
+  UserX,
+  UserCheck,
+  Ban,
+  RotateCcw,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   StudentProfile,
   updateStudentProfile,
+  updateStudentPaymentStatus,
+  inactivateStudentAndReleaseAgenda,
   getStoredCoachPlans,
   CoachPlanOption,
 } from "@/lib/workout-store";
@@ -67,6 +75,8 @@ export function StudentFullProfileModal({
   const [editGoal, setEditGoal] = useState<StudentProfile["goal"]>("Hipertrofia");
   const [editPlan, setEditPlan] = useState("");
   const [editStatus, setEditStatus] = useState<"ativo" | "inativo" | "pendente">("ativo");
+  const [editPaymentStatus, setEditPaymentStatus] = useState<"pago" | "atrasado" | "pendente" | "cancelado">("pago");
+  const [editPaymentDueDate, setEditPaymentDueDate] = useState("Dia 10");
   const [editNotes, setEditNotes] = useState("");
 
   // Observações da aula atual
@@ -84,6 +94,8 @@ export function StudentFullProfileModal({
       setEditGoal(student.goal || "Hipertrofia");
       setEditPlan(student.plan || "Mensal VIP (R$ 55/mês)");
       setEditStatus(student.status || "ativo");
+      setEditPaymentStatus(student.paymentStatus || "pago");
+      setEditPaymentDueDate(student.paymentDueDate || "Dia 10");
       setEditNotes(student.notes || student.notesFromCoach || "");
     }
   }, [student]);
@@ -106,6 +118,69 @@ export function StudentFullProfileModal({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Alterar pagamento com 1 clique
+  const handleQuickSetPayment = (status: "pago" | "atrasado" | "pendente" | "cancelado") => {
+    triggerHaptic(status === "pago" ? "success" : "warning");
+    updateStudentPaymentStatus(localStudent.id, status);
+    const updated: StudentProfile = {
+      ...localStudent,
+      paymentStatus: status,
+      ...(status === "pago" ? { lastPaymentDate: new Date().toLocaleDateString("pt-BR") } : {}),
+    };
+    setLocalStudent(updated);
+    if (onStudentUpdated) onStudentUpdated(updated);
+    showToast(
+      status === "pago"
+        ? "Mensalidade marcada como PAGA ✅"
+        : status === "atrasado"
+        ? "Mensalidade marcada como ATRASADA ⚠️"
+        : `Status financeiro alterado para ${status}`
+    );
+  };
+
+  // Inativar aluno e desocupar agenda
+  const handleInactivateAndReleaseAgenda = () => {
+    const confirmed = window.confirm(
+      `Deseja inativar ${localStudent.name}?\n\nOs horários deste aluno serão LIBERADOS na agenda para novos alunos, mas todo o histórico continuará salvo no sistema.`
+    );
+    if (!confirmed) return;
+
+    triggerHaptic("warning");
+    inactivateStudentAndReleaseAgenda(localStudent.id, true);
+    const updated: StudentProfile = {
+      ...localStudent,
+      status: "inativo",
+      paymentStatus: "cancelado",
+      todayAttendanceStatus: undefined,
+      scheduledTimeToday: undefined,
+    };
+    setLocalStudent(updated);
+    if (onStudentUpdated) onStudentUpdated(updated);
+    showToast(`${localStudent.name} inativado e horários liberados na Agenda!`);
+  };
+
+  // Reativar aluno
+  const handleReactivateStudent = () => {
+    triggerHaptic("success");
+    updateStudentProfile(localStudent.id, { status: "ativo", paymentStatus: "pago" });
+    const updated: StudentProfile = {
+      ...localStudent,
+      status: "ativo",
+      paymentStatus: "pago",
+    };
+    setLocalStudent(updated);
+    if (onStudentUpdated) onStudentUpdated(updated);
+    showToast(`${localStudent.name} reativado com sucesso!`);
+  };
+
+  // Link para cobrança educada no WhatsApp
+  const getCobrarWhatsAppLink = () => {
+    if (!localStudent.phone) return "#";
+    const cleanPhone = localStudent.phone.replace(/\D/g, "");
+    const msg = `Olá, ${localStudent.name}! Tudo bem? Passando para lembrar sobre a mensalidade do seu plano (${localStudent.plan || "Treino Personal"}), com vencimento no ${localStudent.paymentDueDate || "dia 10"}. Qualquer dúvida ou para envio do comprovante, só me mandar por aqui! 🏋️‍♂️`;
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  };
+
   // Salvar edições do aluno
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +195,8 @@ export function StudentFullProfileModal({
       goal: editGoal,
       plan: editPlan,
       status: editStatus,
+      paymentStatus: editPaymentStatus,
+      paymentDueDate: editPaymentDueDate,
       notes: editNotes.trim(),
     };
 
@@ -409,6 +486,35 @@ export function StudentFullProfileModal({
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-zinc-400">
+                    Situação da Mensalidade
+                  </label>
+                  <select
+                    value={editPaymentStatus}
+                    onChange={(e) => setEditPaymentStatus(e.target.value as any)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white"
+                  >
+                    <option value="pago">✓ Pago (Em dia)</option>
+                    <option value="atrasado">⚠️ Atrasado (Pendente cobrança)</option>
+                    <option value="pendente">🕒 Pendente (Aguardando vencimento)</option>
+                    <option value="cancelado">✕ Cancelado / Inadimplente</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-zinc-400">
+                    Dia de Vencimento
+                  </label>
+                  <input
+                    type="text"
+                    value={editPaymentDueDate}
+                    onChange={(e) => setEditPaymentDueDate(e.target.value)}
+                    placeholder="Ex: Dia 10, Dia 05..."
+                    className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-zinc-400">
                     Contato de Emergência
                   </label>
                   <input
@@ -484,8 +590,33 @@ export function StudentFullProfileModal({
                       <h3 className="text-lg sm:text-xl font-black text-white">
                         {localStudent.name}
                       </h3>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          localStudent.status === "ativo"
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                            : "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                        }`}
+                      >
                         • {localStudent.status === "ativo" ? "Ativo" : "Inativo"}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                          localStudent.paymentStatus === "pago"
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                            : localStudent.paymentStatus === "atrasado"
+                            ? "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse font-black"
+                            : localStudent.paymentStatus === "pendente"
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                            : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                        }`}
+                      >
+                        💳 {localStudent.paymentStatus === "pago"
+                          ? "Pago"
+                          : localStudent.paymentStatus === "atrasado"
+                          ? "Atrasado"
+                          : localStudent.paymentStatus === "pendente"
+                          ? "Pendente"
+                          : "Cancelado"}
                       </span>
                     </div>
 
@@ -587,6 +718,146 @@ export function StudentFullProfileModal({
                       {localStudent.lastPresence || "Hoje às 06:00"}
                     </div>
                     <div className="text-[11px] text-zinc-400 mt-1 font-medium">Última Presença</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ------------------------------------------------------------ */}
+              {/* 3.5 CONTROLE FINANCEIRO & MENSALIDADE */}
+              {/* ------------------------------------------------------------ */}
+              <div className="p-4 sm:p-5 rounded-3xl bg-zinc-900/90 border border-white/[0.08] space-y-4 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                        localStudent.paymentStatus === "pago"
+                          ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                          : localStudent.paymentStatus === "atrasado"
+                          ? "bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse"
+                          : localStudent.paymentStatus === "pendente"
+                          ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                          : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                      }`}
+                    >
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">
+                        Gestão Financeira
+                      </span>
+                      <h4 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
+                        <span>Mensalidade & Pagamento</span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            localStudent.paymentStatus === "pago"
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                              : localStudent.paymentStatus === "atrasado"
+                              ? "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse font-black"
+                              : localStudent.paymentStatus === "pendente"
+                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                              : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                          }`}
+                        >
+                          {localStudent.paymentStatus === "pago"
+                            ? "✓ Pago"
+                            : localStudent.paymentStatus === "atrasado"
+                            ? "⚠️ Atrasado"
+                            : localStudent.paymentStatus === "pendente"
+                            ? "🕒 Pendente"
+                            : "✕ Cancelado / Inadimplente"}
+                        </span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* Informações de Vencimento e Valor */}
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs flex-wrap">
+                    <div className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.06]">
+                      <span className="text-[10px] text-zinc-400 block">Vencimento</span>
+                      <span className="font-bold text-white">
+                        {localStudent.paymentDueDate || "Dia 10"}
+                      </span>
+                    </div>
+                    {localStudent.lastPaymentDate && (
+                      <div className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.06]">
+                        <span className="text-[10px] text-zinc-400 block">Último Pago</span>
+                        <span className="font-bold text-emerald-400">
+                          {localStudent.lastPaymentDate}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Botões de Ação de 1 Toque para o Professor */}
+                <div className="space-y-1.5 pt-1 border-t border-white/[0.06]">
+                  <label className="text-[10px] uppercase font-bold text-zinc-400">
+                    Definir Situação do Pagamento com 1 Toque:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {/* Marcar Pago */}
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSetPayment("pago")}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                        localStudent.paymentStatus === "pago"
+                          ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30 font-black"
+                          : "bg-white/[0.04] text-emerald-400 hover:bg-emerald-600/20 border border-emerald-500/30"
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Marcar Pago</span>
+                    </button>
+
+                    {/* Marcar Atrasado */}
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSetPayment("atrasado")}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                        localStudent.paymentStatus === "atrasado"
+                          ? "bg-rose-600 text-white shadow-md shadow-rose-600/30 font-black"
+                          : "bg-white/[0.04] text-rose-400 hover:bg-rose-600/20 border border-rose-500/30"
+                      }`}
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>Marcar Atrasado</span>
+                    </button>
+
+                    {/* Marcar Pendente */}
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSetPayment("pendente")}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                        localStudent.paymentStatus === "pendente"
+                          ? "bg-amber-600 text-white shadow-md shadow-amber-600/30 font-black"
+                          : "bg-white/[0.04] text-amber-400 hover:bg-amber-600/20 border border-amber-500/30"
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Pendente</span>
+                    </button>
+
+                    {/* Cobrança WhatsApp (se tiver telefone) */}
+                    {localStudent.phone ? (
+                      <a
+                        href={getCobrarWhatsAppLink()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition-all active:scale-95"
+                        title="Abrir WhatsApp com lembrete amigável pré-formatado"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Cobrar WhatsApp</span>
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-white/[0.02] text-zinc-500 border border-white/[0.04] cursor-not-allowed"
+                      >
+                        <span>Sem WhatsApp</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -861,6 +1132,75 @@ export function StudentFullProfileModal({
                     <span>Ver / Editar Ficha do Aluno</span>
                   </button>
                 )}
+              </div>
+
+              {/* ------------------------------------------------------------ */}
+              {/* 7. SITUAÇÃO DA MATRÍCULA & LIBERAÇÃO DE HORÁRIOS DA AGENDA */}
+              {/* ------------------------------------------------------------ */}
+              <div className="p-4 sm:p-5 rounded-3xl bg-zinc-900/80 border border-white/[0.08] space-y-3 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                        localStudent.status === "ativo"
+                          ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                          : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                      }`}
+                    >
+                      {localStudent.status === "ativo" ? (
+                        <UserX className="w-4 h-4" />
+                      ) : (
+                        <UserCheck className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400">
+                        Grade & Agenda do Personal
+                      </span>
+                      <h4 className="text-sm font-black text-white">
+                        Situação da Matrícula & Horários
+                      </h4>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-xs font-bold px-2.5 py-1 rounded-xl border self-start sm:self-auto ${
+                      localStudent.status === "ativo"
+                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                        : "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                    }`}
+                  >
+                    {localStudent.status === "ativo" ? "• Matrícula Ativa" : "✕ Matrícula Inativa"}
+                  </span>
+                </div>
+
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  {localStudent.status === "ativo"
+                    ? "Se este aluno não vai mais treinar ou cancelou o plano, você pode inativar a matrícula. Ao inativar, os horários deste aluno na agenda semanal serão desocupados imediatamente, liberando as vagas na grade para novos agendamentos, mantendo todo o histórico de presenças e treinos preservado no CRM."
+                    : "Este aluno está com a matrícula INATIVA e seus horários foram liberados na grade de horários da agenda. Para voltar a treinar com este aluno, basta reativá-lo abaixo."}
+                </p>
+
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  {localStudent.status === "ativo" ? (
+                    <button
+                      type="button"
+                      onClick={handleInactivateAndReleaseAgenda}
+                      className="py-2.5 px-4 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/35 font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-sm"
+                    >
+                      <UserX className="w-4 h-4 text-rose-400" />
+                      <span>Inativar Aluno & Liberar Horários na Agenda</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleReactivateStudent}
+                      className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-md shadow-emerald-600/30"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>Reativar Matrícula do Aluno</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </>
           )}

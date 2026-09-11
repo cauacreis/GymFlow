@@ -44,6 +44,9 @@ export interface StudentProfile {
   notes?: string;
   registeredSince?: string;
   weeklySchedule?: string[];
+  paymentStatus?: "pago" | "atrasado" | "pendente" | "cancelado";
+  paymentDueDate?: string;
+  lastPaymentDate?: string;
 }
 
 export interface CoachPlanOption {
@@ -157,6 +160,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     notesFromCoach: "Foco em cadência no agachamento e elevação pélvica.",
     plan: "Mensal VIP (R$ 55/mês)",
     status: "ativo",
+    paymentStatus: "pago",
+    paymentDueDate: "Dia 10",
+    lastPaymentDate: "10/09/2026",
     monthlyPresence: 16,
     monthlyAbsences: 1,
     monthlyDelays: 0,
@@ -184,6 +190,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     notesFromCoach: "Cargas progressivas no supino reto e terra.",
     plan: "Mensal Pro (R$ 45/mês)",
     status: "ativo",
+    paymentStatus: "pago",
+    paymentDueDate: "Dia 05",
+    lastPaymentDate: "05/09/2026",
     monthlyPresence: 14,
     monthlyAbsences: 2,
     monthlyDelays: 1,
@@ -210,6 +219,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     prescribedAt: "09/09/2026",
     plan: "Mensal Básico (R$ 35/mês)",
     status: "ativo",
+    paymentStatus: "atrasado",
+    paymentDueDate: "Dia 08",
+    lastPaymentDate: "08/08/2026",
     monthlyPresence: 12,
     monthlyAbsences: 1,
     monthlyDelays: 0,
@@ -236,6 +248,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     prescribedAt: "05/09/2026",
     plan: "Mensal Pro (R$ 45/mês)",
     status: "ativo",
+    paymentStatus: "pago",
+    paymentDueDate: "Dia 15",
+    lastPaymentDate: "15/08/2026",
     monthlyPresence: 15,
     monthlyAbsences: 0,
     monthlyDelays: 1,
@@ -262,6 +277,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     prescribedAt: "07/09/2026",
     plan: "Mensal VIP (R$ 55/mês)",
     status: "ativo",
+    paymentStatus: "pago",
+    paymentDueDate: "Dia 10",
+    lastPaymentDate: "10/09/2026",
     monthlyPresence: 11,
     monthlyAbsences: 3,
     monthlyDelays: 0,
@@ -288,6 +306,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     prescribedAt: "04/09/2026",
     plan: "Mensal Pro (R$ 45/mês)",
     status: "ativo",
+    paymentStatus: "pago",
+    paymentDueDate: "Dia 05",
+    lastPaymentDate: "05/09/2026",
     monthlyPresence: 13,
     monthlyAbsences: 1,
     monthlyDelays: 0,
@@ -314,6 +335,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     prescribedAt: "03/09/2026",
     plan: "Mensal Básico (R$ 35/mês)",
     status: "ativo",
+    paymentStatus: "pendente",
+    paymentDueDate: "Dia 12",
+    lastPaymentDate: "12/08/2026",
     monthlyPresence: 10,
     monthlyAbsences: 2,
     monthlyDelays: 2,
@@ -341,6 +365,9 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     notesFromCoach: "Foco em peitoral e deltoides.",
     plan: "Mensal VIP (R$ 55/mês)",
     status: "ativo",
+    paymentStatus: "pago",
+    paymentDueDate: "Dia 10",
+    lastPaymentDate: "10/09/2026",
     monthlyPresence: 18,
     monthlyAbsences: 1,
     monthlyDelays: 0,
@@ -491,6 +518,45 @@ export function deleteStudent(studentId: string): void {
   window.dispatchEvent(new Event(EVENT_NAME));
 
   deleteStudentFromSupabase(studentId).catch(() => {});
+}
+
+export function updateStudentPaymentStatus(
+  studentId: string,
+  paymentStatus: "pago" | "atrasado" | "pendente" | "cancelado"
+): void {
+  const updates: Partial<StudentProfile> = { paymentStatus };
+  if (paymentStatus === "pago") {
+    const todayStr = new Date().toLocaleDateString("pt-BR");
+    updates.lastPaymentDate = todayStr;
+  }
+  updateStudentProfile(studentId, updates);
+}
+
+export function inactivateStudentAndReleaseAgenda(
+  studentId: string,
+  releaseAgendaSlots: boolean = true
+): void {
+  updateStudentProfile(studentId, {
+    status: "inativo",
+    paymentStatus: "cancelado",
+    todayAttendanceStatus: undefined,
+    scheduledTimeToday: undefined,
+  });
+
+  if (releaseAgendaSlots && typeof window !== "undefined") {
+    try {
+      const rawBookings = localStorage.getItem("gymflow_bookings_v3");
+      if (rawBookings) {
+        const list = JSON.parse(rawBookings);
+        if (Array.isArray(list)) {
+          // Remove os agendamentos da grade deste aluno, liberando os horários para outros alunos
+          const filtered = list.filter((b: any) => b.studentId !== studentId);
+          localStorage.setItem("gymflow_bookings_v3", JSON.stringify(filtered));
+          window.dispatchEvent(new Event("gymflow:booking-updated"));
+        }
+      }
+    } catch {}
+  }
 }
 
 export function recordStudentAttendance(
