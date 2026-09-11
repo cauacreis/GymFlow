@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
 import Link from "next/link";
 import { Flame, Sparkles, User, GraduationCap, Dumbbell, Bell, ArrowRightLeft } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
-import { MasterAdminAuthModal } from "@/components/admin/MasterAdminAuthModal";
 
 interface HeaderProps {
   streakDays?: number;
@@ -28,63 +27,20 @@ export function Header({
   unreadNotificationsCount = 0,
   user,
 }: HeaderProps) {
-
   const isCoach = viewMode === "coach";
-
-  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
-  const flameTapCountRef = useRef(0);
-  const lastFlameTapRef = useRef(0);
-
-  // Atalho de teclado: Ctrl+Shift+A ou Cmd+Shift+A para acionar o terminal master
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
-        e.preventDefault();
-        triggerHaptic("medium");
-        setIsVaultModalOpen(true);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  const handleFlameTap = (e: React.MouseEvent) => {
-    const now = Date.now();
-    if (now - lastFlameTapRef.current > 1200) {
-      flameTapCountRef.current = 1;
-    } else {
-      flameTapCountRef.current += 1;
-    }
-    lastFlameTapRef.current = now;
-
-    // 5 toques rápidos na chama ativam o terminal secreto do Administrador
-    if (flameTapCountRef.current >= 5) {
-      e.preventDefault();
-      e.stopPropagation();
-      flameTapCountRef.current = 0;
-      triggerHaptic("heavy");
-      setIsVaultModalOpen(true);
-    }
-  };
 
   return (
     <header className="sticky top-0 z-40 w-full px-3.5 pt-2 pb-1.5 bg-gradient-to-b from-[#070709]/90 via-[#070709]/75 to-transparent backdrop-blur-md">
       <div className="flex items-center justify-between px-3 py-1.5 rounded-full bg-zinc-900/60 border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-        {/* Logo GymFlow Minimalista com Porta Secreta (5 toques na chama) */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleFlameTap}
-            className="w-7 h-7 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-90"
-            title="GymFlow"
-          >
+        {/* Logo GymFlow Minimalista */}
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-7 h-7 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <Flame className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
-          </button>
-          <Link href="/" className="text-sm font-black tracking-tight text-white group">
+          </div>
+          <span className="text-sm font-black tracking-tight text-white">
             Gym<span className="text-emerald-400">Flow</span>
-          </Link>
-        </div>
+          </span>
+        </Link>
 
         {/* Status / Ações Rápidas em Pílula Unificada */}
         <div className="flex items-center gap-1.5">
@@ -184,12 +140,6 @@ export function Header({
 
         </div>
       </div>
-
-      {/* Modal de Autenticação Secreta do Administrador Master (GymFlow Vault) */}
-      <MasterAdminAuthModal
-        isOpen={isVaultModalOpen}
-        onClose={() => setIsVaultModalOpen(false)}
-      />
     </header>
   );
 }

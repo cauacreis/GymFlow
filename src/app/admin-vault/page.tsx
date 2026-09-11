@@ -10,10 +10,10 @@ import { triggerHaptic } from "@/lib/haptic";
 export default function AdminVaultPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  
-  // Detecção de 5 toques no texto "404" para abrir a porta mestra em celulares/telas de erro
-  const tapCountRef = useRef(0);
-  const lastTapRef = useRef(0);
+
+  // Buffer de teclas digitadas para Cheat Code silencioso (digitar "vault")
+  const keystrokeBufferRef = useRef<string>("");
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -28,12 +28,42 @@ export default function AdminVaultPage() {
 
     checkAuth();
 
-    // Atalho global de teclado: Ctrl+Shift+A ou Cmd+Shift+A
+    // 1. Checagem de parâmetro direto de desbloqueio na URL (?unlock=1 ou ?vault=1)
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (
+        searchParams.get("unlock") === "1" ||
+        searchParams.get("unlock") === "true" ||
+        searchParams.get("vault") === "1" ||
+        searchParams.get("vault") === "true"
+      ) {
+        setIsAuthModalOpen(true);
+      }
+    }
+
+    // 2. Atalhos de Teclado Ultra-Secretos & Cheat Code
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
+      // Atalho rápido: Ctrl+Alt+Shift+V ou Ctrl+Shift+A
+      if (
+        ((e.ctrlKey || e.metaKey) && e.altKey && e.shiftKey && (e.key === "V" || e.key === "v")) ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a"))
+      ) {
         e.preventDefault();
         triggerHaptic("medium");
         setIsAuthModalOpen(true);
+        return;
+      }
+
+      // Cheat Code: Digitar a sequência 'vault' em qualquer lugar da tela
+      keystrokeBufferRef.current += e.key.toLowerCase();
+      if (keystrokeBufferRef.current.length > 12) {
+        keystrokeBufferRef.current = keystrokeBufferRef.current.slice(-12);
+      }
+
+      if (keystrokeBufferRef.current.endsWith("vault") || keystrokeBufferRef.current.endsWith("cofre")) {
+        triggerHaptic("heavy");
+        setIsAuthModalOpen(true);
+        keystrokeBufferRef.current = "";
       }
     };
 
@@ -41,19 +71,20 @@ export default function AdminVaultPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleDecoyTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current > 1200) {
-      tapCountRef.current = 1;
-    } else {
-      tapCountRef.current += 1;
-    }
-    lastTapRef.current = now;
+  // 3. Pressionar e Segurar (Long-Press Stealth de 2.5s no Celular)
+  const handleStartLongPress = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
 
-    if (tapCountRef.current >= 5) {
-      tapCountRef.current = 0;
+    longPressTimerRef.current = setTimeout(() => {
       triggerHaptic("heavy");
       setIsAuthModalOpen(true);
+    }, 2500); // 2.5 segundos segurando
+  };
+
+  const handleCancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
   };
 
@@ -82,16 +113,30 @@ export default function AdminVaultPage() {
   return (
     <div className="min-h-screen bg-[#070709] text-white flex flex-col items-center justify-center px-4 font-sans select-none">
       <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 border-b border-zinc-800/80 pb-8 mb-6">
+        {/* Número 404 com suporte a Long-Press secreto de 2.5s */}
         <h1
-          onClick={handleDecoyTap}
-          className="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-100 cursor-default active:text-zinc-300 transition-colors"
-          title=""
+          onMouseDown={handleStartLongPress}
+          onMouseUp={handleCancelLongPress}
+          onTouchStart={handleStartLongPress}
+          onTouchEnd={handleCancelLongPress}
+          onTouchCancel={handleCancelLongPress}
+          className="text-4xl sm:text-5xl font-extrabold tracking-tight text-zinc-100 cursor-default select-none"
         >
           404
         </h1>
         <div className="hidden sm:block h-10 w-[1px] bg-zinc-800" />
-        <p className="text-sm sm:text-base text-zinc-400 text-center sm:text-left">
-          Esta página não pôde ser encontrada.
+        <p className="text-sm sm:text-base text-zinc-400 text-center sm:text-left select-none">
+          Esta página não pôde ser encontrada
+          {/* Micro hotspot no ponto final com Long-Press */}
+          <span
+            onMouseDown={handleStartLongPress}
+            onMouseUp={handleCancelLongPress}
+            onTouchStart={handleStartLongPress}
+            onTouchEnd={handleCancelLongPress}
+            className="cursor-default"
+          >
+            .
+          </span>
         </p>
       </div>
 
@@ -105,7 +150,7 @@ export default function AdminVaultPage() {
         </Link>
       </div>
 
-      {/* Modal de Autenticação Mestra Secreta (ativado por 5 toques no 404 ou Ctrl+Shift+A) */}
+      {/* Modal de Autenticação Mestra Secreta */}
       <MasterAdminAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

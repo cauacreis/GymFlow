@@ -1,16 +1,12 @@
 /**
- * Admin Vault Security Service
- * Gerenciamento de autenticação, sessão cifrada, rate limiting e utilitários
- * para a rota e painel secreto de Super Administrador (GymFlow Vault).
+ * Admin Vault Security Service (Client & Integration Layer)
+ * Gerenciamento seguro de sessão do cofre, comunicação com endpoint server-side
+ * com proteção estrita de segredos (NENHUMA chave fica exposta no código front-end).
  */
 
 const STORAGE_KEY_VAULT_SESSION = "gymflow_vault_session_v1";
 const STORAGE_KEY_VAULT_ATTEMPTS = "gymflow_vault_lockout_v1";
 const MAX_FAILED_ATTEMPTS = 4;
-const LOCKOUT_DURATION_MS = 3 * 60 * 1000; // 3 minutos de bloqueio temporário
-
-// Chave Mestra Padrão de Fábrica (suporta override por variável de ambiente segura)
-const DEFAULT_MASTER_KEY = "55134qweRT_";
 
 export interface VaultLockoutState {
   isLocked: boolean;
@@ -18,20 +14,63 @@ export interface VaultLockoutState {
   attemptsLeft: number;
 }
 
-/**
- * Valida a chave mestra inserida pelo administrador
- */
-export function verifyMasterKey(inputKey: string): boolean {
-  if (!inputKey) return false;
-  const configuredKey =
-    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ADMIN_MASTER_KEY) ||
-    DEFAULT_MASTER_KEY;
-
-  return inputKey.trim() === configuredKey.trim();
+export interface VerifyVaultResult {
+  success: boolean;
+  error?: string;
+  isLocked?: boolean;
+  remainingSeconds?: number;
+  attemptsLeft?: number;
 }
 
 /**
- * Retorna o status de bloqueio por tentativas excessivas (Anti-Brute Force)
+ * Validação segura da chave mestra via Server-Side API Route (/api/vault/verify)
+ * Garante que a chave mestra NUNCA trafegue compilada em bundles JS do navegador.
+ */
+export async function verifyMasterKeyAsync(inputKey: string): Promise<VerifyVaultResult> {
+  if (!inputKey || !inputKey.trim()) {
+    return { success: false, error: "Insira a chave mestra de segurança." };
+  }
+
+  try {
+    const res = await fetch("/api/vault/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: inputKey.trim() }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      if (data.token) {
+        establishVaultSession(data.token, data.expiresAt);
+      }
+      clearVaultLockout();
+      return { success: true };
+    }
+
+    // Se houve erro ou bloqueio
+    if (data.isLocked) {
+      recordServerLockout(data.remainingSeconds || 180);
+    }
+
+    return {
+      success: false,
+      error: data.error || "Chave mestra inválida.",
+      isLocked: Boolean(data.isLocked),
+      remainingSeconds: data.remainingSeconds || 0,
+      attemptsLeft: data.attemptsLeft,
+    };
+  } catch (err) {
+    console.error("Falha ao comunicar com o cofre de segurança:", err);
+    return {
+      success: false,
+      error: "Falha de conexão com o servidor de segurança do cofre.",
+    };
+  }
+}
+
+/**
+ * Retorna o status de bloqueio local por tentativas excessivas (Anti-Brute Force)
  */
 export function getVaultLockoutState(): VaultLockoutState {
   if (typeof window === "undefined") {
@@ -52,7 +91,6 @@ export function getVaultLockoutState(): VaultLockoutState {
       return { isLocked: true, remainingSeconds, attemptsLeft: 0 };
     }
 
-    // Se o tempo de bloqueio expirou, limpa o estado
     if (data.lockedUntil && data.lockedUntil <= now) {
       localStorage.removeItem(STORAGE_KEY_VAULT_ATTEMPTS);
       return { isLocked: false, remainingSeconds: 0, attemptsLeft: MAX_FAILED_ATTEMPTS };
@@ -68,34 +106,21 @@ export function getVaultLockoutState(): VaultLockoutState {
 }
 
 /**
- * Registra uma tentativa falha de autenticação
+ * Registra bloqueio imposto pelo servidor
  */
-export function recordFailedVaultAttempt(): VaultLockoutState {
-  if (typeof window === "undefined") {
-    return { isLocked: false, remainingSeconds: 0, attemptsLeft: 0 };
-  }
-
+export function recordServerLockout(seconds: number): void {
+  if (typeof window === "undefined") return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_VAULT_ATTEMPTS);
-    const data = raw ? JSON.parse(raw) : { attempts: 0 };
-    data.attempts = (Number(data.attempts) || 0) + 1;
-
-    if (data.attempts >= MAX_FAILED_ATTEMPTS) {
-      data.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-      localStorage.setItem(STORAGE_KEY_VAULT_ATTEMPTS, JSON.stringify(data));
-      return { isLocked: true, remainingSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000), attemptsLeft: 0 };
-    }
-
-    localStorage.setItem(STORAGE_KEY_VAULT_ATTEMPTS, JSON.stringify(data));
-    const attemptsLeft = Math.max(0, MAX_FAILED_ATTEMPTS - data.attempts);
-    return { isLocked: false, remainingSeconds: 0, attemptsLeft };
-  } catch {
-    return { isLocked: false, remainingSeconds: 0, attemptsLeft: 0 };
-  }
+    const lockedUntil = Date.now() + seconds * 1000;
+    localStorage.setItem(
+      STORAGE_KEY_VAULT_ATTEMPTS,
+      JSON.stringify({ attempts: MAX_FAILED_ATTEMPTS, lockedUntil })
+    );
+  } catch {}
 }
 
 /**
- * Limpa o histórico de tentativas falhas após sucesso
+ * Limpa o histórico de bloqueio após autenticação bem-sucedida
  */
 export function clearVaultLockout(): void {
   if (typeof window !== "undefined") {
@@ -104,20 +129,20 @@ export function clearVaultLockout(): void {
 }
 
 /**
- * Inicializa a sessão master autenticada (armazenada em sessionStorage e cookie seguro com expiração)
+ * Inicializa a sessão master autenticada
  */
-export function establishVaultSession(): void {
+export function establishVaultSession(token?: string, expiresAtMs?: number): void {
   if (typeof window === "undefined") return;
 
+  const validToken = token || `vault_auth_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   const sessionData = {
-    token: `vault_auth_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    token: validToken,
     establishedAt: Date.now(),
-    expiresAt: Date.now() + 60 * 60 * 1000, // 1 hora de validade
+    expiresAt: expiresAtMs || Date.now() + 60 * 60 * 1000, // 1 hora de validade
   };
 
   try {
     sessionStorage.setItem(STORAGE_KEY_VAULT_SESSION, JSON.stringify(sessionData));
-    // Define cookie de controle para validação
     document.cookie = `gymflow_vault_auth=${sessionData.token}; path=/; max-age=3600; SameSite=Strict`;
     clearVaultLockout();
   } catch (err) {
@@ -126,14 +151,18 @@ export function establishVaultSession(): void {
 }
 
 /**
- * Verifica se a sessão do Super Admin está válida e ativa
+ * Verifica se a sessão do Super Admin está válida e ativa no navegador
  */
 export function isVaultSessionActive(): boolean {
   if (typeof window === "undefined") return false;
 
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY_VAULT_SESSION);
-    if (!raw) return false;
+    if (!raw) {
+      // Tenta fallback com cookie
+      const hasCookie = document.cookie.includes("gymflow_vault_auth=");
+      return hasCookie;
+    }
 
     const session = JSON.parse(raw);
     if (!session || !session.expiresAt || session.expiresAt < Date.now()) {

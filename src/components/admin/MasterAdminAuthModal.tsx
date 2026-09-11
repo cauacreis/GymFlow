@@ -14,13 +14,13 @@ import {
   Lock,
   Unlock,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
-  verifyMasterKey,
+  verifyMasterKeyAsync,
   establishVaultSession,
   getVaultLockoutState,
-  recordFailedVaultAttempt,
   VaultLockoutState,
 } from "@/lib/admin-vault";
 
@@ -41,6 +41,7 @@ export function MasterAdminAuthModal({
   const [inputKey, setInputKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [lockout, setLockout] = useState<VaultLockoutState>({
     isLocked: false,
@@ -54,6 +55,7 @@ export function MasterAdminAuthModal({
       setInputKey("");
       setErrorMsg(null);
       setIsSuccess(false);
+      setIsLoading(false);
       return;
     }
 
@@ -77,8 +79,10 @@ export function MasterAdminAuthModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isLoading || isSuccess) return;
 
     if (lockout.isLocked) {
       triggerHaptic("warning");
@@ -92,13 +96,16 @@ export function MasterAdminAuthModal({
       return;
     }
 
-    const isValid = verifyMasterKey(inputKey);
+    setIsLoading(true);
+    setErrorMsg(null);
 
-    if (isValid) {
+    const result = await verifyMasterKeyAsync(inputKey);
+    setIsLoading(false);
+
+    if (result.success) {
       triggerHaptic("success");
       setIsSuccess(true);
       setErrorMsg(null);
-      establishVaultSession();
 
       setTimeout(() => {
         onClose();
@@ -110,13 +117,18 @@ export function MasterAdminAuthModal({
       }, 700);
     } else {
       triggerHaptic("warning");
-      const nextLockout = recordFailedVaultAttempt();
-      setLockout(nextLockout);
+      const currentState = getVaultLockoutState();
+      setLockout(currentState);
 
-      if (nextLockout.isLocked) {
-        setErrorMsg(`Chave incorreta! Bloqueio ativado por ${nextLockout.remainingSeconds}s.`);
+      if (result.isLocked || currentState.isLocked) {
+        setErrorMsg(
+          `Chave incorreta! Bloqueio ativado por ${result.remainingSeconds || currentState.remainingSeconds}s.`
+        );
       } else {
-        setErrorMsg(`Chave mestra inválida! Restam ${nextLockout.attemptsLeft} tentativa(s).`);
+        setErrorMsg(
+          result.error ||
+            `Chave mestra inválida! Restam ${result.attemptsLeft ?? currentState.attemptsLeft} tentativa(s).`
+        );
       }
       setInputKey("");
       inputRef.current?.focus();
@@ -243,10 +255,15 @@ export function MasterAdminAuthModal({
 
             <button
               type="submit"
-              disabled={lockout.isLocked || isSuccess}
+              disabled={lockout.isLocked || isSuccess || isLoading}
               className="w-2/3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
             >
-              {isSuccess ? (
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Validando...</span>
+                </>
+              ) : isSuccess ? (
                 <>
                   <Unlock className="w-4 h-4" />
                   <span>Desbloqueado</span>
