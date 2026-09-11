@@ -907,6 +907,16 @@ export function getStoredCoaches(): CoachTrainer[] {
   }
 }
 
+export function saveStoredCoaches(coaches: CoachTrainer[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_COACHES, JSON.stringify(coaches));
+    window.dispatchEvent(new Event(EVENT_BOOKING));
+  } catch (err) {
+    console.error("Falha ao salvar lista de treinadores:", err);
+  }
+}
+
 // Flag de sincronização de agendamentos em memória
 let hasTriggeredBookingsSupabaseSync = false;
 
@@ -937,6 +947,16 @@ export function getStoredBookings(): BookingRequest[] {
     return parsed;
   } catch {
     return INITIAL_BOOKINGS;
+  }
+}
+
+export function saveStoredBookings(bookings: BookingRequest[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(bookings));
+    window.dispatchEvent(new Event(EVENT_BOOKING));
+  } catch (err) {
+    console.error("Falha ao salvar agendamentos:", err);
   }
 }
 
