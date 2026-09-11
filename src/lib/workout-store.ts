@@ -559,6 +559,30 @@ export function inactivateStudentAndReleaseAgenda(
   }
 }
 
+/**
+ * Aluno desvincula o personal trainer por iniciativa própria
+ * Atualiza o plano para Treino Livre, limpa agendamento do dia e grade semanal
+ */
+export function studentUnlinkCoach(studentId: string): void {
+  if (typeof window === "undefined") return;
+  const students = getStoredStudents();
+  const updated = students.map((s) => {
+    if (s.id === studentId) {
+      return {
+        ...s,
+        plan: "Treino Livre (Sem Personal)",
+        paymentStatus: "cancelado" as const,
+        scheduledTimeToday: undefined,
+        todayAttendanceStatus: undefined,
+        weeklySchedule: [],
+      };
+    }
+    return s;
+  });
+  localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+  window.dispatchEvent(new Event(EVENT_NAME));
+}
+
 export function recordStudentAttendance(
   studentId: string,
   type: "presence" | "absence" | "delay",

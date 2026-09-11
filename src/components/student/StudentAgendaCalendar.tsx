@@ -17,6 +17,8 @@ import {
   CalendarDays,
   X,
   Phone,
+  LogOut,
+  UserX,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -29,10 +31,12 @@ import {
   isSlotToday,
 } from "@/lib/booking-store";
 import { getStoredStudents, StudentProfile, subscribeToWorkoutChanges } from "@/lib/workout-store";
+import { LeaveCoachModal } from "./LeaveCoachModal";
 
 interface StudentAgendaCalendarProps {
   studentId?: string;
   onNavigateToWorkout?: () => void;
+  onNavigateToPersonal?: () => void;
 }
 
 interface CalendarDayEvent {
@@ -52,12 +56,16 @@ const DEFAULT_DAYS_CALENDAR: CalendarDayEvent[] = [];
 export function StudentAgendaCalendar({
   studentId = "student_carlos",
   onNavigateToWorkout,
+  onNavigateToPersonal,
 }: StudentAgendaCalendarProps) {
   const rescheduleDayOptions = getRescheduleDayOptions();
 
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<CalendarDayEvent[]>(DEFAULT_DAYS_CALENDAR);
+
+  // Modal para o aluno decidir sair do personal
+  const [isLeaveCoachModalOpen, setIsLeaveCoachModalOpen] = useState(false);
 
   // Modal de Solicitação de Remanejamento
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
@@ -131,6 +139,22 @@ export function StudentAgendaCalendar({
   const totalAttendedOrMissed = totalPresences + totalAbsences;
   const attendanceRate = totalAttendedOrMissed > 0 ? Math.round((totalPresences / totalAttendedOrMissed) * 100) : 100;
   const nextSession = calendarEvents.find((e) => e.status === "agendado" || e.status === "remanejamento_pendente");
+
+  // Dados do Personal Trainer Atual do Aluno
+  const myBookings = bookings.filter((b) => !studentId || b.studentId === studentId);
+  const activeCoachBooking =
+    myBookings.find((b) => b.status === "accepted" || b.status === "pending") ||
+    (myBookings.length > 0 ? myBookings[0] : null);
+
+  const hasActiveCoach =
+    !!activeCoachBooking &&
+    student?.plan !== "Treino Livre (Sem Personal)" &&
+    student?.paymentStatus !== "cancelado";
+
+  const currentCoachName =
+    activeCoachBooking?.coachName || student?.prescribedBy || "Prof. Rodrigo";
+  const currentCoachPhone = activeCoachBooking?.coachPhone || "11988887777";
+  const currentCoachId = activeCoachBooking?.coachId || "coach_principal";
 
   // Aluno solicita remanejamento
   const handleSendRescheduleRequest = (e: React.FormEvent) => {
@@ -273,6 +297,104 @@ export function StudentAgendaCalendar({
                 </div>
               </div>
             ))}
+        </div>
+      )}
+
+      {/* CARD: MEU PERSONAL TRAINER ATUAL & OPÇÃO DE DESVINCULAR */}
+      {hasActiveCoach ? (
+        <div className="p-4 rounded-3xl bg-zinc-900/90 border border-purple-500/30 shadow-xl space-y-3 relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative w-12 h-12 rounded-2xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center shrink-0 text-purple-300 font-black text-base shadow-inner">
+                {currentCoachName.charAt(0)}
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-zinc-950"
+                  title="Acompanhamento Ativo"
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
+                    Meu Personal Trainer
+                  </span>
+                  <span className="text-[9px] font-bold px-2 py-0.2 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                    • Ativo
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-white truncate mt-0.5">
+                  {currentCoachName}
+                </h4>
+                <p className="text-[11px] text-zinc-400 truncate">
+                  Plano: <span className="text-zinc-200 font-semibold">{student?.plan || "Mensal VIP"}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Ações do Aluno: WhatsApp & Sair do Personal */}
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+              {currentCoachPhone && (
+                <a
+                  href={`https://wa.me/${currentCoachPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                    `Olá, ${currentCoachName}! Aqui é o ${student?.name || "seu aluno"}. Passando para tirar uma dúvida sobre meus treinos!`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
+                  title="Falar no WhatsApp"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
+                </a>
+              )}
+
+              {/* BOTÃO PARA O ALUNO DECIDIR SAIR DO PERSONAL */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setIsLeaveCoachModalOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-rose-500/15 text-zinc-400 hover:text-rose-300 border border-white/[0.08] hover:border-rose-500/30 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
+                title="Encerrar acompanhamento com este personal trainer"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                <span>Sair do Personal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 rounded-3xl bg-zinc-900/40 border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-zinc-400 block">
+                Treino Individual
+              </span>
+              <h4 className="text-xs sm:text-sm font-bold text-zinc-200">
+                Você não possui um Personal Trainer vinculado
+              </h4>
+              <p className="text-[10px] text-zinc-400 mt-0.5">
+                Treine com as fichas livres ou contrate um treinador no salão.
+              </p>
+            </div>
+          </div>
+
+          {onNavigateToPersonal && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                onNavigateToPersonal();
+              }}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-md shadow-amber-500/20 shrink-0"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Contratar Personal</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -559,6 +681,21 @@ export function StudentAgendaCalendar({
           </div>
         </div>
       )}
+
+      {/* MODAL: ALUNO DECIDIR SE QUER OU NÃO SAIR DO PERSONAL */}
+      <LeaveCoachModal
+        isOpen={isLeaveCoachModalOpen}
+        onClose={() => setIsLeaveCoachModalOpen(false)}
+        coachName={currentCoachName}
+        coachId={currentCoachId}
+        coachPhone={currentCoachPhone}
+        currentPlan={student?.plan || "Mensal VIP (R$ 55/mês)"}
+        studentId={student?.id || studentId}
+        studentName={student?.name || "Aluno"}
+        onSuccessLeave={() => {
+          showToast(`Acompanhamento com ${currentCoachName} encerrado. Horários liberados!`);
+        }}
+      />
     </div>
   );
 }

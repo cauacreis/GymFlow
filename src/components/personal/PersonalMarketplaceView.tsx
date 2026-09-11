@@ -20,6 +20,7 @@ import {
   Search,
   Filter,
   CalendarDays,
+  LogOut,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -32,6 +33,7 @@ import {
   getCoachSlotsForDate,
 } from "@/lib/booking-store";
 import { BookingCalendarModal } from "./BookingCalendarModal";
+import { LeaveCoachModal } from "../student/LeaveCoachModal";
 
 interface PersonalMarketplaceViewProps {
   studentName?: string;
@@ -54,6 +56,8 @@ export function PersonalMarketplaceView({
   const [searchQuery, setSearchQuery] = useState("");
   const [myBookings, setMyBookings] = useState<BookingRequest[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isLeaveCoachModalOpen, setIsLeaveCoachModalOpen] = useState(false);
+  const [selectedBookingToLeave, setSelectedBookingToLeave] = useState<BookingRequest | null>(null);
 
   useEffect(() => {
     const refreshData = () => {
@@ -277,18 +281,33 @@ export function PersonalMarketplaceView({
                     </div>
                   </div>
 
-                  {/* Botão de WhatsApp direto caso aceito */}
-                  {isAccepted && (
-                    <a
-                      href={getWhatsAppLink(b)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 active:scale-98 transition-all"
+                  {/* Ações: WhatsApp & Sair do Personal */}
+                  <div className="flex items-center gap-2 pt-1">
+                    {isAccepted && (
+                      <a
+                        href={getWhatsAppLink(b)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-98 transition-all"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 fill-zinc-950" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        setSelectedBookingToLeave(b);
+                        setIsLeaveCoachModalOpen(true);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-rose-500/15 text-zinc-400 hover:text-rose-300 border border-white/[0.08] hover:border-rose-500/30 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shrink-0"
+                      title="Encerrar acompanhamento com este personal trainer"
                     >
-                      <MessageCircle className="w-3.5 h-3.5 fill-zinc-950" />
-                      <span>Falar no WhatsApp com o Personal</span>
-                    </a>
-                  )}
+                      <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Sair do Personal</span>
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -796,6 +815,26 @@ export function PersonalMarketplaceView({
             </button>
           </div>
         </div>
+      )}
+
+      {/* MODAL: ALUNO DECIDIR SE QUER OU NÃO SAIR DO PERSONAL */}
+      {selectedBookingToLeave && (
+        <LeaveCoachModal
+          isOpen={isLeaveCoachModalOpen}
+          onClose={() => {
+            setIsLeaveCoachModalOpen(false);
+            setSelectedBookingToLeave(null);
+          }}
+          coachName={selectedBookingToLeave.coachName}
+          coachId={selectedBookingToLeave.coachId}
+          coachPhone={selectedBookingToLeave.coachPhone}
+          currentPlan={`Plano ${selectedBookingToLeave.planType.toUpperCase()} (R$ ${selectedBookingToLeave.totalPrice.toFixed(2)})`}
+          studentId={selectedBookingToLeave.studentId}
+          studentName={studentName}
+          onSuccessLeave={() => {
+            setMyBookings(getStoredBookings());
+          }}
+        />
       )}
     </div>
   );

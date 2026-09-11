@@ -169,6 +169,7 @@ export default function GymFlowApp() {
                 <StudentAgendaCalendar
                   studentId={userProfile.id}
                   onNavigateToWorkout={() => setCurrentTab("treino")}
+                  onNavigateToPersonal={() => setCurrentTab("personal")}
                 />
               </div>
             )}

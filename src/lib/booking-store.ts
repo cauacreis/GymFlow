@@ -1099,6 +1099,57 @@ export function updateBookingStatus(
   window.dispatchEvent(new Event(EVENT_BOOKING));
 }
 
+/**
+ * Aluno encerra o vínculo / acompanhamento com o Personal Trainer
+ * - Remove agendamentos com aquele coach na grade (desocupando as vagas para outros alunos)
+ * - Notifica o treinador que os horários foram liberados
+ * - Notifica o aluno confirmando o encerramento do acompanhamento
+ */
+export function studentLeaveCoach(params: {
+  studentId: string;
+  studentName: string;
+  coachId?: string;
+  coachName?: string;
+  reason?: string;
+}): void {
+  if (typeof window === "undefined") return;
+
+  const bookings = getStoredBookings();
+  const filtered = bookings.filter((b) => {
+    if (params.coachId) {
+      return !(b.studentId === params.studentId && b.coachId === params.coachId);
+    }
+    return b.studentId !== params.studentId;
+  });
+
+  localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(filtered));
+
+  // Notifica o treinador
+  addNotification({
+    targetRole: "coach",
+    coachId: params.coachId,
+    type: "training_reminder",
+    title: "Desligamento de Aluno 🚪",
+    message: `${params.studentName} optou por encerrar o acompanhamento com você${
+      params.reason ? ` (Motivo: "${params.reason}")` : ""
+    }. Os horários dele foram liberados na grade da sua agenda.`,
+  });
+
+  // Notifica o aluno
+  addNotification({
+    targetRole: "student",
+    studentId: params.studentId,
+    type: "workout_updated",
+    title: "Acompanhamento Encerrado",
+    message: `Você encerrou o vínculo com ${
+      params.coachName || "o seu personal"
+    }. Seus horários foram desocupados. Você pode treinar livremente ou escolher outro personal a qualquer momento!`,
+  });
+
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+  window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
+}
+
 export function updatePaymentStatus(
   bookingId: string,
   paymentStatus: "paid" | "pending" | "overdue"
