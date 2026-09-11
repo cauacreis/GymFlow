@@ -32,7 +32,7 @@ const securityHeaders = [
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com data:;
       img-src 'self' data: https: blob:;
-      connect-src 'self' https://api.mercadopago.com https://generativelanguage.googleapis.com;
+      connect-src 'self' https://api.mercadopago.com https://generativelanguage.googleapis.com https://*.supabase.co wss://*.supabase.co;
       frame-ancestors 'none';
       base-uri 'self';
       form-action 'self';
@@ -54,6 +54,10 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "assets.aceternity.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
       },
     ],
   },
