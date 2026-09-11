@@ -42,7 +42,7 @@ export interface ExerciseInWorkout {
 }
 
 export interface WorkoutSplitTemplate {
-  id: "A" | "B" | "C" | "D";
+  id: string; // "A", "B", "C", "D", "E", "F" ou qualquer identificador de dia
   title: string;
   muscles: string;
   estimatedMinutes: number;
@@ -52,11 +52,15 @@ export interface WorkoutSplitTemplate {
 export interface PreFormedWorkoutRoutine {
   id: string;
   name: string;
-  category: "Hipertrofia" | "Definição" | "Força" | "Feminino / Glúteos" | "Iniciante";
+  category: "Hipertrofia" | "Definição" | "Força" | "Feminino / Glúteos" | "Iniciante" | string;
   difficulty: "Iniciante" | "Intermediário" | "Avançado";
   description: string;
   frequency: string;
   splits: WorkoutSplitTemplate[];
+  isCustom?: boolean;
+  createdAt?: string;
+  coachId?: string;
+  coachName?: string;
 }
 
 const CDN_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";

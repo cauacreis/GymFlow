@@ -64,7 +64,7 @@ export interface Exercise {
 }
 
 export interface WorkoutSplit {
-  id: "A" | "B" | "C" | "D";
+  id: string;
   title: string;
   muscles: string;
   estimatedMinutes: number;
