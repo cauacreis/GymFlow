@@ -20,6 +20,7 @@ import {
   Dumbbell,
   Check,
   HelpCircle,
+  Bell,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -44,6 +45,8 @@ import {
 } from "@/lib/workout-store";
 import { StudentFullProfileModal } from "./StudentFullProfileModal";
 import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
+import { CoachRemindersCenterModal } from "./CoachRemindersCenterModal";
+import { getRemindersSummary, subscribeToReminders } from "@/lib/reminders-service";
 
 interface CoachAgendaManagerProps {
   coachId?: string;
@@ -147,19 +150,26 @@ export function CoachAgendaManager({
     return () => clearInterval(timer);
   }, []);
 
+  // Central de Lembretes Inteligentes
+  const [isRemindersCenterOpen, setIsRemindersCenterOpen] = useState(false);
+  const [remindersSummary, setRemindersSummary] = useState(() => getRemindersSummary());
+
   // Carregamento e sincronização reativa com os stores
   useEffect(() => {
     const refresh = () => {
       setCoaches(getStoredCoaches());
       setBookings(getStoredBookings());
       setStudents(getStoredStudents());
+      setRemindersSummary(getRemindersSummary());
     };
     refresh();
     const unsubBookings = subscribeToBookings(refresh);
     const unsubWorkouts = subscribeToWorkoutChanges(refresh);
+    const unsubReminders = subscribeToReminders(() => setRemindersSummary(getRemindersSummary()));
     return () => {
       unsubBookings();
       unsubWorkouts();
+      unsubReminders();
     };
   }, [coachId]);
 
@@ -393,6 +403,44 @@ export function CoachAgendaManager({
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* BANNER DA CENTRAL DE LEMBRETES INTELIGENTES */}
+      <div className="rounded-2xl p-3 sm:p-3.5 bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-purple-950/40 border border-white/[0.08] flex items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <Bell className="w-4 h-4 animate-pulse" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-white">Central de Lembretes</span>
+              {remindersSummary.totalPending > 0 ? (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                  {remindersSummary.totalPending} pendência{remindersSummary.totalPending > 1 ? "s" : ""}
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Tudo em dia
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+              {remindersSummary.classesTodayCount > 0 && `${remindersSummary.classesTodayCount} aula(s) hoje • `}
+              {remindersSummary.paymentsDueCount > 0 && `${remindersSummary.paymentsDueCount} cobrança(s) • `}
+              {remindersSummary.totalPending === 0 ? "Nenhum aluno pendente de lembrete" : "Disparo no WhatsApp com 1 clique"}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            triggerHaptic("selection");
+            setIsRemindersCenterOpen(true);
+          }}
+          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 text-xs font-black shrink-0 flex items-center gap-1.5 active:scale-95 transition-all shadow-md"
+        >
+          <Bell className="w-3.5 h-3.5 fill-zinc-950" />
+          <span>Lembretes ({remindersSummary.totalPending})</span>
+        </button>
+      </div>
 
       {/* ------------------------------------------------------------------ */}
       {/* 1. TOP STATS CARDS (Estilo PilatesFlow Studio Manager) */}
@@ -1296,6 +1344,13 @@ export function CoachAgendaManager({
           scheduledDay={whatsAppStudent.scheduledDay}
         />
       )}
+
+      {/* MODAL CENTRAL DE LEMBRETES INTELIGENTES */}
+      <CoachRemindersCenterModal
+        isOpen={isRemindersCenterOpen}
+        onClose={() => setIsRemindersCenterOpen(false)}
+      />
     </div>
   );
 }
+

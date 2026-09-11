@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   Play,
   Flame,
+  Bell,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -60,6 +61,8 @@ import { getCurrentUser, saveUserProfile } from "@/lib/auth-store";
 import { ExerciseInWorkout, WorkoutSplitTemplate } from "@/lib/exercisedb";
 import { StudentFullProfileModal } from "./StudentFullProfileModal";
 import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
+import { CoachRemindersCenterModal } from "./CoachRemindersCenterModal";
+import { getRemindersSummary, subscribeToReminders } from "@/lib/reminders-service";
 
 interface CoachStudentsManagerProps {
   onPrescribeWorkoutForStudent?: (studentId: string) => void;
@@ -115,12 +118,17 @@ export function CoachStudentsManager({
   const [newStudentEmergency, setNewStudentEmergency] = useState("");
   const [newStudentIsOffline, setNewStudentIsOffline] = useState(true);
 
+  // Modal Central de Lembretes Inteligentes
+  const [isRemindersCenterOpen, setIsRemindersCenterOpen] = useState(false);
+  const [remindersSummary, setRemindersSummary] = useState(() => getRemindersSummary());
+
   // Notificação toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const load = () => {
       setStudents(getStoredStudents());
+      setRemindersSummary(getRemindersSummary());
       const loadedPlans = getStoredCoachPlans();
       setCoachPlans(loadedPlans);
       if (loadedPlans.length > 0) {
@@ -136,9 +144,11 @@ export function CoachStudentsManager({
     load();
     const unsubWorkouts = subscribeToWorkoutChanges(load);
     const unsubBookings = subscribeToBookings(load);
+    const unsubReminders = subscribeToReminders(() => setRemindersSummary(getRemindersSummary()));
     return () => {
       unsubWorkouts();
       unsubBookings();
+      unsubReminders();
     };
   }, []);
 
@@ -532,6 +542,21 @@ export function CoachStudentsManager({
 
           <div className="flex items-center gap-1.5 shrink-0">
             <button
+              onClick={() => {
+                triggerHaptic("selection");
+                setIsRemindersCenterOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all whitespace-nowrap shadow-sm"
+              title="Central de Lembretes de Aulas e Pagamentos"
+            >
+              <Bell className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Lembretes</span>
+              {remindersSummary.totalPending > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              )}
+            </button>
+
+            <button
               onClick={handleOpenManagePlans}
               className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all whitespace-nowrap"
               title="Configurar tabela de planos do personal"
@@ -555,7 +580,46 @@ export function CoachStudentsManager({
         <p className="text-xs text-zinc-400">
           Gerencie frequência, presenças, planos e fichas técnicas com sincronização instantânea.
         </p>
+
+        {/* BANNER DA CENTRAL DE LEMBRETES INTELIGENTES */}
+        <div className="rounded-2xl p-3 sm:p-3.5 bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-purple-950/40 border border-white/[0.08] flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <Bell className="w-4 h-4 animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-white">Central de Lembretes</span>
+                {remindersSummary.totalPending > 0 ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                    {remindersSummary.totalPending} pendência{remindersSummary.totalPending > 1 ? "s" : ""}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Tudo em dia
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                {remindersSummary.classesTodayCount > 0 && `${remindersSummary.classesTodayCount} aula(s) hoje • `}
+                {remindersSummary.paymentsDueCount > 0 && `${remindersSummary.paymentsDueCount} cobrança(s) • `}
+                {remindersSummary.totalPending === 0 ? "Nenhum aluno pendente de lembrete hoje" : "Disparo no WhatsApp com 1 clique"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              triggerHaptic("selection");
+              setIsRemindersCenterOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 text-xs font-black shrink-0 flex items-center gap-1.5 active:scale-95 transition-all shadow-md"
+          >
+            <Bell className="w-3.5 h-3.5 fill-zinc-950" />
+            <span>Ver Lembretes</span>
+          </button>
+        </div>
       </div>
+
 
       {/* SEÇÃO PRINCIPAL: ALUNOS AGENDADOS PARA HOJE */}
       {(() => {
@@ -2012,6 +2076,12 @@ export function CoachStudentsManager({
           monthlyPresence={whatsAppModalStudent.monthlyPresence ?? 95}
         />
       )}
+
+      {/* MODAL CENTRAL DE LEMBRETES INTELIGENTES */}
+      <CoachRemindersCenterModal
+        isOpen={isRemindersCenterOpen}
+        onClose={() => setIsRemindersCenterOpen(false)}
+      />
     </div>
   );
 }

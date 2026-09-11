@@ -18,6 +18,7 @@ import { NotificationBellModal } from "@/components/notifications/NotificationBe
 import { CoachAnalyticsDashboard } from "@/components/analytics/CoachAnalyticsDashboard";
 import { StudentAnalyticsDashboard } from "@/components/analytics/StudentAnalyticsDashboard";
 import { StudentAgendaCalendar } from "@/components/student/StudentAgendaCalendar";
+import { StudentReminderBanner } from "@/components/student/StudentReminderBanner";
 import {
   getCurrentUser,
   switchUserRole,
@@ -188,6 +189,12 @@ export default function GymFlowApp() {
           /* VISÃO DO ALUNO (STUDENT) */
           /* ------------------------------------------------------------- */
           <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+            {/* Lembretes Inteligentes de Treino Hoje & Pagamento */}
+            <StudentReminderBanner
+              studentId={userProfile.id}
+              onNavigateToAgenda={() => setCurrentTab("agenda")}
+            />
+
             {/* ABA 1 DO ALUNO: MEU TREINO (ACADEMIA & CASA COM GIFS) */}
             {currentTab === "treino" && (
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
