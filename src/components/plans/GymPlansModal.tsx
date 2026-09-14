@@ -132,22 +132,32 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
   };
 
   const handleProceedToPayment = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
     triggerHaptic("medium");
-    setCheckoutStep("payment");
     setPixStatusMessage(null);
 
     // Gera cobrança PIX no backend do Mercado Pago
     try {
       const user = getCurrentUser();
+      const idempotencyKey =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `idemp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
       const res = await fetch("/api/payment/mercadopago/pix", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify({
           planId: currentPlan.id,
           description: `GymFlow — ${currentPlan.name}`,
           payerEmail: user.email || "aluno@gymflow.com",
           payerName: user.name || "Aluno GymFlow",
           userId: user.id,
+          idempotencyKey,
         }),
       });
       const data = await res.json();
@@ -158,8 +168,12 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
           qrCodeBase64: data.pix.qr_code_base64,
         });
       }
+      setCheckoutStep("payment");
     } catch (e) {
       console.warn("PIX local fallback:", e);
+      setCheckoutStep("payment");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -174,6 +188,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
   };
 
   const handleVerifyPayment = async () => {
+    if (isProcessing) return;
     triggerHaptic("heavy");
     setIsProcessing(true);
     setPixStatusMessage(null);
@@ -183,15 +198,24 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
 
       // Fluxo Cartão de Crédito: Checkout Pro oficial do Mercado Pago
       if (paymentMethod === "card") {
+        const cardIdempotencyKey =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `idemp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
         const res = await fetch("/api/payment/mercadopago/preference", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": cardIdempotencyKey,
+          },
           body: JSON.stringify({
             planId: currentPlan.id,
             title: `GymFlow — ${currentPlan.name}`,
             payerEmail: user.email || "aluno@gymflow.com",
             payerName: user.name || "Aluno GymFlow",
             userId: user.id,
+            idempotencyKey: cardIdempotencyKey,
           }),
         });
         const data = await res.json();

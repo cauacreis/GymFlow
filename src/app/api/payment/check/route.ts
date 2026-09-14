@@ -7,6 +7,12 @@ import {
   parseExternalReference,
 } from "@/lib/mercadopago";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
+import {
+  resolvePaymentStateTransition,
+  calculateDeterministicSubscriptionExtension,
+  canApplySubscriptionCredit,
+  isValidUuid,
+} from "@/lib/idempotency";
 
 const checkSchema = z.object({
   paymentId: z.string().min(1).max(120),
@@ -17,6 +23,7 @@ const checkSchema = z.object({
  * Endpoint de Verificação e Sincronização de Pagamento (PIX / Cartão)
  * Permite ao frontend validar se um pagamento já foi compensado no Mercado Pago
  * sem depender exclusivamente de webhook quando o usuário está aguardando na tela.
+ * Totalmente blindado contra concorrência e replays com FSM e extensão determinística.
  */
 export async function GET(req: Request) {
   try {
@@ -70,8 +77,78 @@ export async function GET(req: Request) {
       const supabase = getSupabaseAdmin() || getSupabase();
       if (supabase) {
         const now = new Date();
-        const endsAt = new Date();
-        endsAt.setDate(endsAt.getDate() + 30);
+
+        // Busca registro existente para validação FSM e idempotência de crédito
+        const { data: existingPayment } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("id", `pay_${payment.id}`)
+          .maybeSingle();
+
+        const fsmCheck = resolvePaymentStateTransition(existingPayment?.status, "approved");
+        if (!fsmCheck.allowed) {
+          return NextResponse.json(
+            {
+              success: false,
+              status: existingPayment?.status || payment.status,
+              fsmRejected: true,
+              message: fsmCheck.reason || "Transição FSM inválida: pagamento não pode ser revertido para aprovado.",
+            },
+            { status: 409 }
+          );
+        }
+
+        const alreadyCredited = existingPayment?.credit_applied === true;
+        const shouldCredit = canApplySubscriptionCredit({
+          status: "approved",
+          credit_applied: alreadyCredited,
+        });
+
+        const statusHistory = Array.isArray(existingPayment?.status_history)
+          ? [...existingPayment.status_history]
+          : [];
+        if (!fsmCheck.isNoop) {
+          statusHistory.push({
+            from: existingPayment?.status || null,
+            to: "approved",
+            timestamp: now.toISOString(),
+          });
+        }
+
+        const validUserId = isValidUuid(targetUserId)
+          ? targetUserId
+          : (isValidUuid(existingPayment?.user_id) ? existingPayment.user_id : null);
+
+        let creditSuccessfullyApplied = alreadyCredited;
+
+        // Ativação do perfil com extensão determinística ANTES de setar credit_applied: true
+        if (validUserId && shouldCredit) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, subscription_ends_at")
+            .eq("id", validUserId)
+            .maybeSingle();
+
+          const { newEndsAt } = calculateDeterministicSubscriptionExtension({
+            currentEndsAt: profile?.subscription_ends_at,
+            daysToAdd: 30,
+          });
+
+          const { error: profErr } = await supabase
+            .from("profiles")
+            .update({
+              subscription_status: "active",
+              subscription_plan: official.id,
+              plan_tier: official.tier,
+              subscription_ends_at: newEndsAt.toISOString(),
+              updated_at: now.toISOString(),
+            })
+            .eq("id", validUserId);
+
+          if (!profErr) {
+            creditSuccessfullyApplied = true;
+          }
+        }
 
         // Registro de auditoria financeira
         await supabase.from("payments").upsert(
@@ -82,27 +159,15 @@ export async function GET(req: Request) {
             payment_method: payment.payment_method_id || "pix",
             amount: payment.transaction_amount || official.price,
             plan_id: official.id,
-            user_id: targetUserId && targetUserId.includes("-") ? targetUserId : null,
-            user_email: payment.payer?.email || null,
-            external_reference: extRef || null,
+            user_id: validUserId,
+            user_email: payment.payer?.email || existingPayment?.user_email || null,
+            external_reference: extRef || existingPayment?.external_reference || null,
+            credit_applied: creditSuccessfullyApplied,
+            status_history: statusHistory,
             updated_at: now.toISOString(),
           },
           { onConflict: "id" }
         );
-
-        // Ativação do perfil
-        if (targetUserId) {
-          await supabase
-            .from("profiles")
-            .update({
-              subscription_status: "active",
-              subscription_plan: official.id,
-              plan_tier: official.tier,
-              subscription_ends_at: endsAt.toISOString(),
-              updated_at: now.toISOString(),
-            })
-            .eq("id", targetUserId);
-        }
       }
 
       return NextResponse.json({

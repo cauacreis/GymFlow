@@ -45,11 +45,15 @@ export interface UserProfile {
   trialEndsAt?: string; // Data ISO do fim dos 7 dias grátis
   subscriptionEndsAt?: string; // Data ISO do fim da assinatura paga
   deviceFingerprint?: string;
+  termsAccepted?: boolean;
+  termsAcceptedAt?: string;
 }
+
 
 
 import { saveProfileToSupabase, fetchProfileFromSupabase } from "./supabase-service";
 import { getSupabase } from "./supabase";
+import { registerDeviceAccount } from "./device-lockout";
 
 const STORAGE_KEY_AUTH = "gymflow_current_user_v4";
 const EVENT_AUTH_CHANGED = "gymflow:auth-changed";
@@ -328,26 +332,77 @@ export function initAuthSession(): () => void {
   const client = getSupabase();
   if (!client) return () => {};
 
-  // 1. Inspeciona a sessão atual no Supabase
-  client.auth.getSession().then(async ({ data: { session } }) => {
-    if (session?.user) {
-      const cloudProfile = await fetchProfileFromSupabase(session.user.id);
+  const syncUserFromSession = async (user: any) => {
+    if (!user) return;
+    try {
+      const cloudProfile = await fetchProfileFromSupabase(user.id);
+      const meta = user.user_metadata || {};
+
+      let chosenRole: UserRole = (meta.role as UserRole) || "student";
+      let hadExplicitRole = false;
+      if (typeof window !== "undefined") {
+        const cachedRole = localStorage.getItem("gymflow_oauth_role") as UserRole | null;
+        if (cachedRole === "coach" || cachedRole === "student") {
+          chosenRole = cachedRole;
+          hadExplicitRole = true;
+          localStorage.removeItem("gymflow_oauth_role");
+        }
+      }
+
+      const name = meta.full_name || meta.name || user.email?.split("@")[0] || "Usuário";
+      const avatarUrl = meta.avatar_url || meta.picture || undefined;
+
+      let saved: UserProfile;
       if (cloudProfile) {
-        saveUserProfile(cloudProfile);
+        const activeRole = hadExplicitRole ? chosenRole : (cloudProfile.activeRole || chosenRole);
+        saved = saveUserProfile({
+          ...cloudProfile,
+          name: cloudProfile.name || name,
+          avatarUrl: cloudProfile.avatarUrl || avatarUrl,
+          activeRole,
+          subscriptionStatus: activeRole === "coach" ? "active" : cloudProfile.subscriptionStatus || "pending_choice",
+          termsAccepted: cloudProfile.termsAccepted ?? true,
+          termsAcceptedAt: cloudProfile.termsAcceptedAt || new Date().toISOString(),
+        });
       } else {
-        const meta = session.user.user_metadata || {};
-        saveUserProfile({
-          id: session.user.id,
-          email: session.user.email || "",
-          name: meta.name || session.user.email?.split("@")[0] || "Usuário",
-          activeRole: (meta.role as UserRole) || "student",
+        saved = saveUserProfile({
+          id: user.id,
+          email: user.email || "",
+          name,
+          avatarUrl,
+          activeRole: chosenRole,
+          enabledRoles: ["student", "coach"],
           phone: meta.phone || "",
           cref: meta.cref || undefined,
           specialty: meta.specialty || undefined,
           bio: meta.bio || undefined,
           goal: meta.goal || "Hipertrofia",
+          subscriptionStatus: chosenRole === "coach" ? "active" : "pending_choice",
+          subscriptionPlan: "trial_7d",
+          planTier: "pro",
+          termsAccepted: true,
+          termsAcceptedAt: new Date().toISOString(),
         });
       }
+
+      // 🛡️ Proteção Anti-Abuso Silenciosa: vincula o dispositivo à conta autenticada
+      if (user.email && user.id) {
+        registerDeviceAccount({
+          email: user.email,
+          userId: user.id,
+          trialUsed: false,
+          plan: saved.subscriptionPlan || "pending_choice",
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.warn("⚠️ [AuthStore] Erro ao sincronizar sessão com perfil:", err);
+    }
+  };
+
+  // 1. Inspeciona a sessão atual no Supabase
+  client.auth.getSession().then(async ({ data: { session } }) => {
+    if (session?.user) {
+      await syncUserFromSession(session.user);
     }
   }).catch(() => {});
 
@@ -355,23 +410,7 @@ export function initAuthSession(): () => void {
   const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
     if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
       if (session?.user) {
-        const cloudProfile = await fetchProfileFromSupabase(session.user.id);
-        if (cloudProfile) {
-          saveUserProfile(cloudProfile);
-        } else {
-          const meta = session.user.user_metadata || {};
-          saveUserProfile({
-            id: session.user.id,
-            email: session.user.email || "",
-            name: meta.name || session.user.email?.split("@")[0] || "Usuário",
-            activeRole: (meta.role as UserRole) || "student",
-            phone: meta.phone || "",
-            cref: meta.cref || undefined,
-            specialty: meta.specialty || undefined,
-            bio: meta.bio || undefined,
-            goal: meta.goal || "Hipertrofia",
-          });
-        }
+        await syncUserFromSession(session.user);
       }
     } else if (event === "SIGNED_OUT") {
       localStorage.removeItem(STORAGE_KEY_AUTH);

@@ -54,16 +54,18 @@ export async function canRegisterAccountOnDevice(
   const deviceId = await getDeviceFingerprint();
   const records = getStoredDeviceRecords();
 
-  // 1. Checagem de e-mail duplicado
-  const existingWithEmail = Object.values(records).find(
-    (r) => r.registeredEmail.toLowerCase() === normalizedEmail
-  );
-  if (existingWithEmail) {
-    return {
-      allowed: false,
-      reason: "Este e-mail já possui uma conta cadastrada no GymFlow. Por favor, faça login com suas credenciais.",
-      registeredEmail: existingWithEmail.registeredEmail,
-    };
+  // 1. Checagem de e-mail duplicado (apenas se e-mail foi fornecido)
+  if (normalizedEmail) {
+    const existingWithEmail = Object.values(records).find(
+      (r) => r.registeredEmail.toLowerCase() === normalizedEmail
+    );
+    if (existingWithEmail) {
+      return {
+        allowed: false,
+        reason: "Este e-mail já possui uma conta cadastrada no GymFlow. Por favor, faça login com suas credenciais.",
+        registeredEmail: existingWithEmail.registeredEmail,
+      };
+    }
   }
 
   // 2. Checagem de dispositivo já registrado
@@ -121,16 +123,17 @@ export async function registerDeviceAccount(params: {
 }): Promise<void> {
   const deviceId = await getDeviceFingerprint();
   const records = getStoredDeviceRecords();
+  const existingRecord = records[deviceId];
   const now = new Date().toISOString();
 
   const record: DeviceRecord = {
     deviceId,
-    registeredEmail: params.email.trim().toLowerCase(),
-    registeredUserId: params.userId,
-    accountCreatedAt: now,
-    trialUsed: Boolean(params.trialUsed),
-    trialUsedAt: params.trialUsed ? now : undefined,
-    subscriptionPlan: params.plan || "pending_choice",
+    registeredEmail: params.email ? params.email.trim().toLowerCase() : (existingRecord?.registeredEmail || ""),
+    registeredUserId: params.userId || existingRecord?.registeredUserId,
+    accountCreatedAt: existingRecord?.accountCreatedAt || now,
+    trialUsed: existingRecord?.trialUsed ? true : Boolean(params.trialUsed),
+    trialUsedAt: existingRecord?.trialUsedAt || (params.trialUsed ? now : undefined),
+    subscriptionPlan: params.plan || existingRecord?.subscriptionPlan || "pending_choice",
     lastLoginAt: now,
   };
 

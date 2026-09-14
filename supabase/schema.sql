@@ -151,12 +151,45 @@ CREATE TABLE IF NOT EXISTS public.payments (
   amount NUMERIC NOT NULL,
   plan_id TEXT NOT NULL,
   external_reference TEXT,
+  credit_applied BOOLEAN NOT NULL DEFAULT FALSE,
+  idempotency_key TEXT,
+  status_history JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- 10. Tabela de Chaves de Idempotência (IETF Idempotency-Key Standard)
+CREATE TABLE IF NOT EXISTS public.idempotency_keys (
+  key TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  route TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('processing', 'completed', 'failed')),
+  response_status INT,
+  response_body JSONB,
+  resource_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  locked_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now() + interval '24 hours')
+);
+
+-- 11. Tabela de Ledger de Eventos de Webhook (Event Store & Deduplicação Estrita)
+CREATE TABLE IF NOT EXISTS public.webhook_events (
+  id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL DEFAULT 'mercadopago',
+  event_type TEXT NOT NULL,
+  resource_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'processing', 'processed', 'failed', 'ignored')),
+  idempotency_key TEXT,
+  payload JSONB,
+  error_message TEXT,
+  processed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
 -- ==============================================================================
--- 10. Índices de Alta Performance
+-- 12. Índices de Alta Performance
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_students_coach_id ON public.students(coach_id);
 CREATE INDEX IF NOT EXISTS idx_students_status ON public.students(status);
@@ -164,9 +197,16 @@ CREATE INDEX IF NOT EXISTS idx_bookings_coach_id ON public.bookings(coach_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_student_id ON public.bookings(student_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_slot_day ON public.bookings(slot_day);
 CREATE INDEX IF NOT EXISTS idx_notifications_target ON public.notifications(target_role, read);
+CREATE INDEX IF NOT EXISTS idx_payments_payment_id ON public.payments(payment_id);
+CREATE INDEX IF NOT EXISTS idx_payments_credit_applied ON public.payments(credit_applied);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_expires_at ON public.idempotency_keys(expires_at);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_user_id ON public.idempotency_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_route ON public.idempotency_keys(route);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_resource ON public.webhook_events(resource_id, event_type);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_status ON public.webhook_events(status);
 
 -- ==============================================================================
--- 9. Políticas de Segurança RLS (Row Level Security)
+-- 13. Políticas de Segurança RLS (Row Level Security)
 -- ==============================================================================
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
@@ -176,6 +216,8 @@ ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.device_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.idempotency_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.webhook_events ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de Acesso Público e Autenticado (Permissivas para operação fluida)
 DROP POLICY IF EXISTS "Permitir leitura de perfis" ON public.profiles;
@@ -206,6 +248,18 @@ CREATE POLICY "Permitir leitura de pagamentos do proprio usuario" ON public.paym
 
 DROP POLICY IF EXISTS "Permitir gerenciamento de pagamentos apenas pelo servidor" ON public.payments;
 CREATE POLICY "Permitir gerenciamento de pagamentos apenas pelo servidor" ON public.payments 
+  FOR ALL 
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+DROP POLICY IF EXISTS "Permitir gerenciamento de idempotency apenas pelo servidor" ON public.idempotency_keys;
+CREATE POLICY "Permitir gerenciamento de idempotency apenas pelo servidor" ON public.idempotency_keys
+  FOR ALL 
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
+DROP POLICY IF EXISTS "Permitir gerenciamento de webhooks apenas pelo servidor" ON public.webhook_events;
+CREATE POLICY "Permitir gerenciamento de webhooks apenas pelo servidor" ON public.webhook_events
   FOR ALL 
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');

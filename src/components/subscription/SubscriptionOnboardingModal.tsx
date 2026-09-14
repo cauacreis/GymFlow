@@ -97,6 +97,7 @@ export function SubscriptionOnboardingModal({
   // 1. ATIVAR TESTE DE 7 DIAS GRÁTIS
   // --------------------------------------------------------------------------
   const handleStartFreeTrial = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     setErrorMessage(null);
     triggerHaptic("selection");
@@ -111,9 +112,17 @@ export function SubscriptionOnboardingModal({
 
       // Se Mercado Pago estiver conectado, tenta gerar a assinatura com free_trial
       try {
+        const idempotencyKey =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `sub_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
         const res = await fetch("/api/payment/mercadopago/subscription", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": idempotencyKey,
+          },
           body: JSON.stringify({
             reason: "GymFlow Pro — 7 Dias Grátis com Cobrança Posterior",
             price: 39.9,
@@ -121,6 +130,7 @@ export function SubscriptionOnboardingModal({
             freeTrialDays: 7,
             userId: currentUser.id,
             planId: "trial_7d",
+            idempotencyKey,
           }),
         });
         const data = await res.json();
@@ -152,14 +162,23 @@ export function SubscriptionOnboardingModal({
   // 2. ASSINATURA RECORRENTE NO MERCADO PAGO (CARTÃO)
   // --------------------------------------------------------------------------
   const handleStartRecurringSubscription = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     setErrorMessage(null);
     triggerHaptic("selection");
 
     try {
+      const idempotencyKey =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `sub_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
       const res = await fetch("/api/payment/mercadopago/subscription", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify({
           reason: "GymFlow Pro — Assinatura Recorrente Mensal",
           price: 39.9,
@@ -167,6 +186,7 @@ export function SubscriptionOnboardingModal({
           freeTrialDays: 0,
           userId: currentUser.id,
           planId: "monthly_recurring",
+          idempotencyKey,
         }),
       });
 
@@ -195,14 +215,23 @@ export function SubscriptionOnboardingModal({
   // 3. PAGAMENTO AVULSO SEM RECORRÊNCIA VIA PIX (MERCADO PAGO)
   // --------------------------------------------------------------------------
   const handleGeneratePixPayment = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     setErrorMessage(null);
     triggerHaptic("selection");
 
     try {
+      const idempotencyKey =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `pix_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
       const res = await fetch("/api/payment/mercadopago/pix", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify({
           amount: 45.0,
           description: "GymFlow Mensal Sem Recorrência (1 Mês Avulso)",
@@ -210,6 +239,7 @@ export function SubscriptionOnboardingModal({
           payerName: currentUser.name || "Aluno GymFlow",
           userId: currentUser.id,
           planId: "monthly_pix",
+          idempotencyKey,
         }),
       });
 
@@ -236,6 +266,7 @@ export function SubscriptionOnboardingModal({
 
   // Verificação e confirmação do PIX
   const handleConfirmPixPaid = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     setErrorMessage(null);
 

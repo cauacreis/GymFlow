@@ -242,6 +242,7 @@ export interface CreatePreferenceParams {
   planId: string;
   userId?: string;
   backUrl?: string;
+  idempotencyKey?: string;
 }
 
 export interface CreateSubscriptionParams {
@@ -252,6 +253,7 @@ export interface CreateSubscriptionParams {
   backUrl?: string;
   userId?: string;
   planId?: string;
+  idempotencyKey?: string;
 }
 
 export interface CreatePixParams {
@@ -261,6 +263,7 @@ export interface CreatePixParams {
   payerName: string;
   userId?: string;
   planId?: string;
+  idempotencyKey?: string;
 }
 
 export interface PaymentResult {
@@ -336,11 +339,16 @@ export async function createCheckoutPreference(params: CreatePreferenceParams) {
     },
   };
 
+  const idempotencyKey =
+    params.idempotencyKey ||
+    `pref_${params.userId || "guest"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
   const res = await fetch(`${MP_API_BASE}/checkout/preferences`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "X-Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify(payload),
   });
@@ -356,6 +364,7 @@ export async function createCheckoutPreference(params: CreatePreferenceParams) {
     ...data,
     isSimulated: false,
     price: validatedPrice,
+    idempotencyKey,
   };
 }
 
@@ -407,11 +416,16 @@ export async function createRecurringSubscription(params: CreateSubscriptionPara
     };
   }
 
+  const idempotencyKey =
+    params.idempotencyKey ||
+    `sub_${params.userId || "guest"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
   const res = await fetch(`${MP_API_BASE}/preapproval`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "X-Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify(payload),
   });
@@ -427,6 +441,7 @@ export async function createRecurringSubscription(params: CreateSubscriptionPara
     ...data,
     isSimulated: false,
     price: validatedPrice,
+    idempotencyKey,
   };
 }
 
@@ -441,6 +456,10 @@ export async function createDirectPixPayment(params: CreatePixParams) {
   const validatedAmount = officialPlan.price;
   const description = params.description || `GymFlow — ${officialPlan.name}`;
 
+  const idempotencyKey =
+    params.idempotencyKey ||
+    `pix_${params.userId || "guest"}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
   if (!isMercadoPagoConfigured()) {
     // Retorna payload de PIX simulado funcional
     const mockPixKey =
@@ -454,6 +473,7 @@ export async function createDirectPixPayment(params: CreatePixParams) {
       ticket_url: `${appUrl}/?payment=pix_pending`,
       isSimulated: true,
       amount: validatedAmount,
+      idempotencyKey,
     };
   }
 
@@ -475,7 +495,7 @@ export async function createDirectPixPayment(params: CreatePixParams) {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "X-Idempotency-Key": `pix_${params.userId || "user"}_${Date.now()}`,
+      "X-Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify(payload),
   });
@@ -498,6 +518,7 @@ export async function createDirectPixPayment(params: CreatePixParams) {
     ticket_url: poi?.ticket_url || "",
     isSimulated: false,
     amount: data.transaction_amount || validatedAmount,
+    idempotencyKey,
   };
 }
 

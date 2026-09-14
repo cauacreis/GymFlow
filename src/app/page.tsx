@@ -77,6 +77,10 @@ export default function GymFlowApp() {
   // Inicialização e Sincronização Contínua com Supabase Auth
   useEffect(() => {
     const unsubSession = initAuthSession();
+    const unsubAuthChanges = subscribeToAuthChanges((updatedUser) => {
+      setUserProfile(updatedUser);
+    });
+
     const handlePasswordRecovery = () => {
       setAuthInitialMode("update-password");
       setIsAuthOpen(true);
@@ -101,6 +105,7 @@ export default function GymFlowApp() {
 
     return () => {
       unsubSession();
+      unsubAuthChanges();
       window.removeEventListener("gymflow:password-recovery", handlePasswordRecovery);
     };
   }, []);
