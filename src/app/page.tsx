@@ -88,9 +88,39 @@ export default function GymFlowApp() {
 
     window.addEventListener("gymflow:password-recovery", handlePasswordRecovery);
 
-    // Checa se a URL contém indicação de redefinição de senha ou modo de autenticação
+    // Checa se a URL contém erro de autenticação OAuth, redefinição de senha ou modo de autenticação
     if (typeof window !== "undefined") {
-      if (window.location.hash.includes("type=recovery") || window.location.search.includes("recovery=true")) {
+      const url = new URL(window.location.href);
+      const searchParams = url.searchParams;
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+      const authError =
+        searchParams.get("auth_error") ||
+        searchParams.get("error_description") ||
+        searchParams.get("error") ||
+        hashParams.get("error_description") ||
+        hashParams.get("error");
+
+      if (authError) {
+        const lower = authError.toLowerCase();
+        let message = `Erro na autenticação social: ${decodeURIComponent(authError.replace(/\+/g, " "))}`;
+        if (
+          lower.includes("not enabled") ||
+          lower.includes("unsupported") ||
+          lower.includes("provider is not enabled")
+        ) {
+          message = "O login social selecionado precisa ser ativado no painel do Supabase com Client ID e Secret (Authentication > Providers).";
+        } else if (lower.includes("redirect_uri") || lower.includes("redirect_to") || lower.includes("not allowed")) {
+          message = "URL de redirecionamento não autorizada no painel do Supabase. Adicione a URL em Authentication > URL Configuration > Redirect URLs.";
+        } else if (lower.includes("access_denied") || lower.includes("cancelled")) {
+          message = "Autenticação social cancelada pelo usuário.";
+        }
+        setPaymentToast({
+          message,
+          type: "warning",
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (window.location.hash.includes("type=recovery") || window.location.search.includes("recovery=true")) {
         setAuthInitialMode("update-password");
         setIsAuthOpen(true);
       } else {

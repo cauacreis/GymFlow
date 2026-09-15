@@ -114,7 +114,9 @@ export async function GET(request: Request) {
         user.email?.split("@")[0] ||
         "Usuário";
       const avatarUrl = meta.avatar_url || meta.picture || null;
-      const explicitRole = roleParam && (roleParam === "coach" || roleParam === "student") ? roleParam : null;
+      const cookieRole = parsedCookies["gymflow_oauth_role"];
+      const rawRole = roleParam || cookieRole;
+      const explicitRole = rawRole && (rawRole === "coach" || rawRole === "student") ? rawRole : null;
       const defaultRole = (meta.role || "student") as "student" | "coach";
       const finalRole = explicitRole || defaultRole;
 
@@ -127,7 +129,7 @@ export async function GET(request: Request) {
 
       if (!existingProfile) {
         // Cria perfil inicial caso seja novo cadastro via OAuth
-        await adminClient.from("profiles").upsert(
+        const { error: upsertErr } = await adminClient.from("profiles").upsert(
           {
             id: user.id,
             name: fullName,
@@ -143,6 +145,9 @@ export async function GET(request: Request) {
           },
           { onConflict: "id" }
         );
+        if (upsertErr) {
+          console.error("❌ [OAuth Callback] Erro ao criar perfil inicial:", upsertErr.message);
+        }
       } else {
         // Se o perfil já existe (ex: criado pelo trigger handle_new_user do Supabase ou login recorrente),
         // atualiza avatar caso ausente e sincroniza papel selecionado se fornecido explicitamente no cadastro
@@ -159,7 +164,10 @@ export async function GET(request: Request) {
           }
         }
         if (Object.keys(updates).length > 1) {
-          await adminClient.from("profiles").update(updates).eq("id", user.id);
+          const { error: updateErr } = await adminClient.from("profiles").update(updates).eq("id", user.id);
+          if (updateErr) {
+            console.error("❌ [OAuth Callback] Erro ao atualizar perfil:", updateErr.message);
+          }
         }
       }
     }
@@ -174,6 +182,14 @@ export async function GET(request: Request) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
     });
+
+    // Limpa cookie temporário de papel OAuth se presente
+    if (parsedCookies["gymflow_oauth_role"]) {
+      redirectResponse.cookies.set("gymflow_oauth_role", "", {
+        path: "/",
+        maxAge: 0,
+      });
+    }
 
     // Propaga os cookies de sessão do Supabase gerados durante o exchange sem duplicação
     for (const [cookieName, cookieItem] of cookiesToSetMap.entries()) {
