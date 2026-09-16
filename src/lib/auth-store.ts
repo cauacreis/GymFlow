@@ -14,6 +14,8 @@ export interface UserProfile {
   enabledRoles: UserRole[]; // Permite que a pessoa treine E seja treinada (ambos os modos ativos)
   // Campos específicos de Aluno & Biometria Corporal
   goal?: "Hipertrofia" | "Emagrecimento" | "Força & Performance" | "Condicionamento Geral";
+  experienceLevel?: "Iniciante" | "Intermediário" | "Avançado";
+  profileCompleted?: boolean;
   matricula?: string;
   height?: number; // Altura em cm (ex: 178)
   weight?: number; // Peso corporal atual em kg (ex: 78.4)
@@ -67,6 +69,8 @@ const DEFAULT_USER: UserProfile = {
   enabledRoles: ["student", "coach"],
   avatarUrl: "",
   goal: "Hipertrofia",
+  experienceLevel: "Avançado",
+  profileCompleted: false,
   matricula: "GF-10001",
   height: 178,
   weight: 78.4,
@@ -88,6 +92,8 @@ const DEFAULT_USER: UserProfile = {
     weeklyPlan: 45,
     monthlyPlan: 55,
   },
+  termsAccepted: true,
+  termsAcceptedAt: new Date().toISOString(),
 };
 
 export function isUserAuthenticated(user?: UserProfile): boolean {
@@ -117,6 +123,69 @@ export function isUserAuthenticated(user?: UserProfile): boolean {
 }
 
 /**
+ * Extrai de forma resiliente o nome completo de metadados OAuth/Supabase,
+ * tratando casos onde provedores como Apple retornam objetos { firstName, lastName }.
+ */
+export function extractFullName(meta: any, fallbackEmail?: string): string {
+  if (!meta) return fallbackEmail ? fallbackEmail.split("@")[0] : "Usuário";
+  if (typeof meta.full_name === "string" && meta.full_name.trim()) return meta.full_name.trim();
+  if (typeof meta.name === "string" && meta.name.trim()) return meta.name.trim();
+  if (meta.full_name && typeof meta.full_name === "object") {
+    const parts = [meta.full_name.firstName, meta.full_name.lastName].filter(Boolean);
+    if (parts.length > 0) return parts.join(" ");
+  }
+  if (meta.name && typeof meta.name === "object") {
+    const parts = [meta.name.firstName, meta.name.lastName].filter(Boolean);
+    if (parts.length > 0) return parts.join(" ");
+  }
+  return fallbackEmail ? fallbackEmail.split("@")[0] : "Usuário";
+}
+
+/**
+ * Valida se o usuário autenticado concluiu a personalização do seu perfil.
+ * Novo usuário (OAuth ou cadastro sem dados completos) precisará completar:
+ * 1. Nome válido (mínimo 2 caracteres)
+ * 2. WhatsApp com DDD (obrigatório para lembretes de treinos e pagamentos, mínimo 10 dígitos e DDD válido entre 11 e 99)
+ * 3. Confirmação do papel com campos específicos (CREF/especialidade para coach ou objetivo/experiência para aluno)
+ * 4. Consentimento com Termos e LGPD
+ */
+export function isProfileComplete(user?: UserProfile): boolean {
+  const u = user || getCurrentUser();
+  if (!isUserAuthenticated(u)) return false;
+
+  // 1. Deve ter nome com pelo menos 2 caracteres
+  if (!u.name || u.name.trim().length < 2) return false;
+
+  // 2. WhatsApp com DDD obrigatório (mínimo 10 dígitos numéricos e DDD válido)
+  let phoneDigits = (u.phone || "").replace(/\D/g, "");
+  if (phoneDigits.length > 11 && phoneDigits.startsWith("55")) {
+    phoneDigits = phoneDigits.slice(2);
+  }
+  if (phoneDigits.length < 10) return false;
+
+  const ddd = parseInt(phoneDigits.slice(0, 2), 10);
+  if (ddd < 11 || ddd > 99) return false;
+
+  // Evita números compostos por dígitos repetidos (ex: 11111111111, 0000000000)
+  if (/^(\d)\1+$/.test(phoneDigits)) return false;
+
+  // 3. Validação por Papel Ativo
+  if (u.activeRole === "coach") {
+    if (!u.cref || u.cref.trim().length < 3) return false;
+    if (!u.specialty || u.specialty.trim().length < 2) return false;
+  } else {
+    if (!u.goal) return false;
+    if (!u.experienceLevel) return false;
+  }
+
+  // 4. Termos de Uso e LGPD aceitos
+  if (!u.termsAccepted) return false;
+
+  // 5. Flag explícita de conclusão
+  return Boolean(u.profileCompleted);
+}
+
+/**
  * Valida se o usuário tem direito de acesso ao aplicativo:
  * 1. Treinadores com conta cadastrada têm acesso total
  * 2. Alunos com plano 'active' (com data válida) ou trial de 7 dias válido têm acesso
@@ -124,7 +193,7 @@ export function isUserAuthenticated(user?: UserProfile): boolean {
  */
 export function hasActiveAccess(user?: UserProfile): boolean {
   const u = user || getCurrentUser();
-  if (!isUserAuthenticated()) return false;
+  if (!isUserAuthenticated(u)) return false;
   if (u.activeRole === "coach") return true;
 
   const status = u.subscriptionStatus;
@@ -281,8 +350,23 @@ export function registerNewUser(data: {
   bio?: string;
   hourlyRate?: number;
   goal?: UserProfile["goal"];
+  experienceLevel?: UserProfile["experienceLevel"];
+  height?: number;
+  weight?: number;
   id?: string;
+  profileCompleted?: boolean;
+  termsAccepted?: boolean;
 }): UserProfile {
+  const isCompleted =
+    data.profileCompleted !== undefined
+      ? data.profileCompleted
+      : Boolean(
+          data.phone &&
+          data.phone.replace(/\D/g, "").length >= 10 &&
+          (data.role === "coach" ? (data.cref && data.specialty) : (data.goal && data.experienceLevel)) &&
+          data.termsAccepted
+        );
+
   const newUser: UserProfile = {
     id: data.id || `user_${Date.now()}`,
     name: data.name,
@@ -293,10 +377,16 @@ export function registerNewUser(data: {
     enabledRoles: ["student", "coach"],
     matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
     goal: data.goal || "Hipertrofia",
+    experienceLevel: data.experienceLevel || (data.role === "student" ? "Iniciante" : undefined),
     cref: data.cref?.trim() || undefined,
     specialty: data.specialty || (data.role === "coach" ? "Musculação & Hipertrofia" : undefined),
     bio: data.bio || (data.role === "coach" ? "Treinador especialista em performance e técnica perfeita." : undefined),
     hourlyRate: data.hourlyRate || (data.role === "coach" ? 70 : undefined),
+    height: data.height,
+    weight: data.weight,
+    profileCompleted: isCompleted,
+    termsAccepted: data.termsAccepted ?? false,
+    termsAcceptedAt: data.termsAccepted ? new Date().toISOString() : undefined,
     // Status de Assinatura: Alunos novos caem em pending_choice para escolher o plano/trial
     subscriptionStatus: data.role === "coach" ? "active" : "pending_choice",
   };
@@ -349,7 +439,7 @@ export function initAuthSession(): () => void {
         }
       }
 
-      const name = meta.full_name || meta.name || user.email?.split("@")[0] || "Usuário";
+      const name = extractFullName(meta, user.email);
       const avatarUrl = meta.avatar_url || meta.picture || undefined;
 
       let saved: UserProfile;
@@ -361,8 +451,10 @@ export function initAuthSession(): () => void {
           avatarUrl: cloudProfile.avatarUrl || avatarUrl,
           activeRole,
           subscriptionStatus: activeRole === "coach" ? "active" : cloudProfile.subscriptionStatus || "pending_choice",
-          termsAccepted: cloudProfile.termsAccepted ?? true,
-          termsAcceptedAt: cloudProfile.termsAcceptedAt || new Date().toISOString(),
+          termsAccepted: cloudProfile.termsAccepted ?? Boolean(meta.terms_accepted),
+          termsAcceptedAt: cloudProfile.termsAcceptedAt || meta.terms_accepted_at,
+          profileCompleted: cloudProfile.profileCompleted ?? Boolean(meta.profile_completed),
+          experienceLevel: cloudProfile.experienceLevel || meta.experience_level,
         });
       } else {
         saved = saveUserProfile({
@@ -376,12 +468,14 @@ export function initAuthSession(): () => void {
           cref: meta.cref || undefined,
           specialty: meta.specialty || undefined,
           bio: meta.bio || undefined,
-          goal: meta.goal || "Hipertrofia",
+          goal: meta.goal || undefined,
+          experienceLevel: meta.experience_level || undefined,
+          profileCompleted: Boolean(meta.profile_completed),
           subscriptionStatus: chosenRole === "coach" ? "active" : "pending_choice",
           subscriptionPlan: "trial_7d",
           planTier: "pro",
-          termsAccepted: true,
-          termsAcceptedAt: new Date().toISOString(),
+          termsAccepted: Boolean(meta.terms_accepted),
+          termsAcceptedAt: meta.terms_accepted_at || undefined,
         });
       }
 

@@ -32,6 +32,7 @@ import {
   UserRole,
   UserProfile,
   getCurrentUser,
+  extractFullName,
 } from "@/lib/auth-store";
 import { triggerHaptic } from "@/lib/haptic";
 import { getSupabase, getAuthRedirectUrl } from "@/lib/supabase";
@@ -380,7 +381,7 @@ export function AuthModal({
               loggedUser = saveUserProfile({
                 id: data.user.id,
                 email: email.trim(),
-                name: meta.name || email.split("@")[0] || "Usuário",
+                name: extractFullName(meta, email.trim()),
                 activeRole: (meta.role as UserRole) || "student",
                 phone: meta.phone || "",
                 cref: meta.cref || undefined,
@@ -542,6 +543,7 @@ export function AuthModal({
           specialty: selectedRole === "coach" ? specialty.trim() || "Musculação & Hipertrofia" : undefined,
           bio: selectedRole === "coach" ? bio.trim() || undefined : undefined,
           goal: selectedRole === "student" ? goal : undefined,
+          termsAccepted: true,
         });
 
         // 🛡️ Vincula formalmente a conta criada a este dispositivo físico

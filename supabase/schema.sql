@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   instagram TEXT,
   location TEXT,
   pricing JSONB DEFAULT '{"basicMonthly": 35, "proMonthly": 45, "vipMonthly": 55, "dailySession": 35, "weeklyPlan": 45, "monthlyPlan": 55}'::jsonb,
+  experience_level TEXT,
+  height NUMERIC,
+  weight NUMERIC,
+  profile_completed BOOLEAN DEFAULT FALSE,
+  terms_accepted BOOLEAN DEFAULT FALSE,
+  terms_accepted_at TIMESTAMPTZ,
   subscription_status TEXT DEFAULT 'pending_choice' CHECK (subscription_status IN ('pending_choice', 'trial', 'active', 'past_due', 'expired')),
   subscription_plan TEXT DEFAULT 'trial_7d',
   plan_tier TEXT DEFAULT 'pro' CHECK (plan_tier IN ('basico', 'pro', 'vip')),
@@ -191,6 +197,7 @@ CREATE TABLE IF NOT EXISTS public.webhook_events (
 -- ==============================================================================
 -- 12. Índices de Alta Performance
 -- ==============================================================================
+CREATE INDEX IF NOT EXISTS idx_profiles_profile_completed ON public.profiles(profile_completed);
 CREATE INDEX IF NOT EXISTS idx_students_coach_id ON public.students(coach_id);
 CREATE INDEX IF NOT EXISTS idx_students_status ON public.students(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_coach_id ON public.bookings(coach_id);

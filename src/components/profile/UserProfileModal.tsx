@@ -41,9 +41,10 @@ interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenAuth?: () => void;
+  onOpenCustomization?: () => void;
 }
 
-export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileModalProps) {
+export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomization }: UserProfileModalProps) {
   const [profile, setProfile] = useState<UserProfile>(() => getCurrentUser());
   const [activeRole, setActiveRole] = useState<UserRole>(profile.activeRole);
 
@@ -57,6 +58,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
   const [email, setEmail] = useState(profile.email);
   const [phone, setPhone] = useState(profile.phone || "");
   const [goal, setGoal] = useState<UserProfile["goal"]>(profile.goal || "Hipertrofia");
+  const [experienceLevel, setExperienceLevel] = useState<UserProfile["experienceLevel"]>(
+    profile.experienceLevel || "Iniciante"
+  );
 
   // Biometria & Dados Corporais (Altura, Peso, %BF e Metas)
   const [height, setHeight] = useState(profile.height || 178);
@@ -89,6 +93,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
       setEmail(current.email);
       setPhone(current.phone || "");
       setGoal(current.goal || "Hipertrofia");
+      setExperienceLevel(current.experienceLevel || "Iniciante");
       setHeight(current.height || 178);
       setWeight(current.weight || 78.4);
       setBodyFat(current.bodyFat || 13.8);
@@ -138,6 +143,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
       activeRole,
       avatarUrl,
       goal,
+      experienceLevel,
       height: Number(height) || 178,
       weight: Number(weight) || 78.4,
       bodyFat: Number(bodyFat) || 13.8,
@@ -455,6 +461,44 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
             </div>
           </div>
 
+          {/* DADOS ESPECÍFICOS: MODO ALUNO (OBJETIVO & EXPERIÊNCIA) */}
+          {!isCoach && (
+            <div className="p-4 rounded-2xl bg-zinc-900/40 border border-white/[0.06] space-y-3">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-emerald-400" /> Objetivo & Nível de Treino
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Objetivo Principal</label>
+                  <select
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value as UserProfile["goal"])}
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                  >
+                    <option value="Hipertrofia">Hipertrofia</option>
+                    <option value="Emagrecimento">Emagrecimento</option>
+                    <option value="Força & Performance">Força & Performance</option>
+                    <option value="Condicionamento Geral">Condicionamento Geral</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase">Nível de Experiência</label>
+                  <select
+                    value={experienceLevel}
+                    onChange={(e) => setExperienceLevel(e.target.value as UserProfile["experienceLevel"])}
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                  >
+                    <option value="Iniciante">Iniciante (menos de 6 meses)</option>
+                    <option value="Intermediário">Intermediário (6 meses a 2 anos)</option>
+                    <option value="Avançado">Avançado (mais de 2 anos)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* DADOS ESPECÍFICOS: MODO PROFESSOR (CONFIGURAÇÃO DO PERFIL PÚBLICO) */}
           {isCoach && (
             <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-3">
@@ -633,6 +677,18 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth }: UserProfileMod
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>Trocar</span>
+                </button>
+              )}
+
+              {onOpenCustomization && (
+                <button
+                  type="button"
+                  onClick={onOpenCustomization}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 font-bold"
+                  title="Personalizar detalhes da conta"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Personalizar</span>
                 </button>
               )}
             </div>

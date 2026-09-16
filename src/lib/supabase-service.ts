@@ -317,7 +317,7 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
     if (!isUUID) return false;
 
-    const payload = {
+    const basePayload: any = {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -343,9 +343,32 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await client.from("profiles").upsert(payload, { onConflict: "id" });
-    return !error;
-  } catch {
+    const extendedPayload = {
+      ...basePayload,
+      profile_completed: user.profileCompleted ?? false,
+      experience_level: user.experienceLevel || null,
+      height: user.height ?? null,
+      weight: user.weight ?? null,
+      terms_accepted: user.termsAccepted ?? false,
+      terms_accepted_at: user.termsAcceptedAt || null,
+    };
+
+    const { error } = await client.from("profiles").upsert(extendedPayload, { onConflict: "id" });
+    if (error) {
+      if (error.message && (error.message.includes("does not exist") || error.message.includes("column"))) {
+        const { error: fallbackError } = await client.from("profiles").upsert(basePayload, { onConflict: "id" });
+        if (fallbackError) {
+          console.warn("⚠️ [Supabase] Erro no fallback ao salvar perfil:", fallbackError.message);
+          return false;
+        }
+        return true;
+      }
+      console.warn("⚠️ [Supabase] Erro ao salvar perfil:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("⚠️ [Supabase] Exceção ao salvar perfil:", err);
     return false;
   }
 }
@@ -375,6 +398,12 @@ export async function fetchProfileFromSupabase(userId: string): Promise<UserProf
       enabledRoles: data.enabled_roles || ["student", "coach"],
       matricula: data.matricula || `GF-${data.id.slice(0, 5)}`,
       goal: data.goal || "Hipertrofia",
+      experienceLevel: data.experience_level || undefined,
+      profileCompleted: data.profile_completed ?? false,
+      height: data.height ? Number(data.height) : undefined,
+      weight: data.weight ? Number(data.weight) : undefined,
+      termsAccepted: data.terms_accepted ?? false,
+      termsAcceptedAt: data.terms_accepted_at || undefined,
       cref: data.cref || undefined,
       specialty: data.specialty || undefined,
       bio: data.bio || undefined,

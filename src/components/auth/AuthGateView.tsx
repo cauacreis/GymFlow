@@ -25,6 +25,7 @@ import {
   UserRole,
   UserProfile,
   getCurrentUser,
+  extractFullName,
 } from "@/lib/auth-store";
 import { triggerHaptic } from "@/lib/haptic";
 import { getSupabase, getAuthRedirectUrl } from "@/lib/supabase";
@@ -190,7 +191,8 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
       }
 
       const meta = user.user_metadata || {};
-      const fullName = meta.full_name || meta.name || user.email?.split("@")[0] || "Usuário";
+      const fullName = extractFullName(meta, user.email);
+      const avatarUrl = meta.avatar_url || meta.picture || undefined;
       const cloudProfile = await fetchProfileFromSupabase(user.id);
 
       let loggedUser: UserProfile;
@@ -198,22 +200,27 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
         loggedUser = saveUserProfile({
           ...cloudProfile,
           name: cloudProfile.name || fullName,
+          avatarUrl: cloudProfile.avatarUrl || avatarUrl,
           activeRole: savedRole ? role : cloudProfile.activeRole || "student",
-          termsAccepted: cloudProfile.termsAccepted ?? true,
-          termsAcceptedAt: cloudProfile.termsAcceptedAt || new Date().toISOString(),
+          termsAccepted: cloudProfile.termsAccepted ?? Boolean(meta.terms_accepted),
+          termsAcceptedAt: cloudProfile.termsAcceptedAt || meta.terms_accepted_at,
+          profileCompleted: cloudProfile.profileCompleted ?? Boolean(meta.profile_completed),
+          experienceLevel: cloudProfile.experienceLevel || meta.experience_level,
         });
       } else {
         loggedUser = saveUserProfile({
           id: user.id,
           email: user.email || "",
           name: fullName,
+          avatarUrl,
           activeRole: role,
           enabledRoles: ["student", "coach"],
           subscriptionStatus: role === "coach" ? "active" : "pending_choice",
           subscriptionPlan: "trial_7d",
           planTier: "pro",
-          termsAccepted: true,
-          termsAcceptedAt: new Date().toISOString(),
+          termsAccepted: Boolean(meta.terms_accepted),
+          termsAcceptedAt: meta.terms_accepted_at,
+          profileCompleted: Boolean(meta.profile_completed),
         });
       }
 
@@ -398,7 +405,7 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
               loggedUser = saveUserProfile({
                 id: data.user.id,
                 email: email.trim(),
-                name: meta.name || email.split("@")[0] || "Usuário",
+                name: extractFullName(meta, email.trim()),
                 activeRole: (meta.role as UserRole) || "student",
                 phone: meta.phone || "",
                 cref: meta.cref || undefined,
@@ -494,6 +501,7 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
           cref: selectedRole === "coach" ? cref.trim() || undefined : undefined,
           specialty: selectedRole === "coach" ? specialty.trim() || "Musculação & Hipertrofia" : undefined,
           goal: selectedRole === "student" ? goal : undefined,
+          termsAccepted: true,
         });
 
         // 🛡️ Registra vínculo do dispositivo no sistema anti-abuso

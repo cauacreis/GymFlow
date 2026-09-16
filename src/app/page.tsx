@@ -20,6 +20,7 @@ import { StudentAnalyticsDashboard } from "@/components/analytics/StudentAnalyti
 import { StudentAgendaCalendar } from "@/components/student/StudentAgendaCalendar";
 import { StudentReminderBanner } from "@/components/student/StudentReminderBanner";
 import { AuthGateView } from "@/components/auth/AuthGateView";
+import { AccountCustomizationModal } from "@/components/auth/AccountCustomizationModal";
 import { SubscriptionOnboardingModal } from "@/components/subscription/SubscriptionOnboardingModal";
 import {
   getCurrentUser,
@@ -29,6 +30,7 @@ import {
   UserProfile,
   UserRole,
   isUserAuthenticated,
+  isProfileComplete,
   hasActiveAccess,
   activatePaidPlanForUser,
 } from "@/lib/auth-store";
@@ -68,6 +70,7 @@ export default function GymFlowApp() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<"login" | "signup" | "forgot" | "update-password" | "magic-link">("login");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isCustomizationOpen, setIsCustomizationOpen] = useState(false);
   const [isPlansOpen, setIsPlansOpen] = useState(false);
   const [isTimerOpen, setIsTimerOpen] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(60);
@@ -260,7 +263,7 @@ export default function GymFlowApp() {
   // 1. PORTÃO DE ENTRADA OBRIGATÓRIO (AUTH-WALL):
   // O usuário não tem opção de navegar sem login/cadastro.
   // ---------------------------------------------------------------------------
-  if (!isUserAuthenticated()) {
+  if (!isUserAuthenticated(userProfile)) {
     return (
       <AuthGateView
         onAuthenticated={(user) => {
@@ -271,7 +274,29 @@ export default function GymFlowApp() {
   }
 
   // ---------------------------------------------------------------------------
-  // 2. ONBOARDING DE ASSINATURA PÓS-CADASTRO:
+  // 2. PERSONALIZAÇÃO DE CONTA OBRIGATÓRIA PÓS-AUTH / OAUTH:
+  // Se for novo usuário ou se o perfil tiver pendência essencial (nome, WhatsApp, objetivo/CREF, LGPD),
+  // exibe o modal dedicado de personalização antes do dashboard ou paywall.
+  // ---------------------------------------------------------------------------
+  if (!isProfileComplete(userProfile)) {
+    return (
+      <AccountCustomizationModal
+        isOpen={true}
+        user={userProfile}
+        onComplete={(completedUser) => {
+          setUserProfile(completedUser);
+          if (completedUser.activeRole === "coach") {
+            setCurrentTab("alunos");
+          } else {
+            setCurrentTab("treino");
+          }
+        }}
+      />
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. ONBOARDING DE ASSINATURA PÓS-CADASTRO:
   // Alunos sem plano ativo ou sem trial devem selecionar uma opção para continuar.
   // ---------------------------------------------------------------------------
   if (!hasActiveAccess(userProfile)) {
@@ -447,7 +472,24 @@ export default function GymFlowApp() {
           setAuthInitialMode("login");
           setIsAuthOpen(true);
         }}
+        onOpenCustomization={() => {
+          setIsProfileOpen(false);
+          setIsCustomizationOpen(true);
+        }}
       />
+
+      {/* MODAL DE PERSONALIZAÇÃO DE PERFIL SOB DEMANDA */}
+      {isCustomizationOpen && (
+        <AccountCustomizationModal
+          isOpen={isCustomizationOpen}
+          user={userProfile}
+          onClose={() => setIsCustomizationOpen(false)}
+          onComplete={(completedUser) => {
+            setUserProfile(completedUser);
+            setIsCustomizationOpen(false);
+          }}
+        />
+      )}
 
       {/* MODAL DE AUTENTICAÇÃO COM SELEÇÃO DE PAPEL (ALUNO OU PROFESSOR) */}
       <AuthModal

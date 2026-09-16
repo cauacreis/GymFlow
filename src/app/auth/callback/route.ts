@@ -108,11 +108,19 @@ export async function GET(request: Request) {
       });
 
       const meta = user.user_metadata || {};
-      const fullName =
-        meta.full_name ||
-        meta.name ||
-        user.email?.split("@")[0] ||
-        "Usuário";
+      let fullName = user.email?.split("@")[0] || "Usuário";
+      if (typeof meta.full_name === "string" && meta.full_name.trim()) {
+        fullName = meta.full_name.trim();
+      } else if (typeof meta.name === "string" && meta.name.trim()) {
+        fullName = meta.name.trim();
+      } else if (meta.full_name && typeof meta.full_name === "object") {
+        const parts = [meta.full_name.firstName, meta.full_name.lastName].filter(Boolean);
+        if (parts.length > 0) fullName = parts.join(" ");
+      } else if (meta.name && typeof meta.name === "object") {
+        const parts = [meta.name.firstName, meta.name.lastName].filter(Boolean);
+        if (parts.length > 0) fullName = parts.join(" ");
+      }
+
       const avatarUrl = meta.avatar_url || meta.picture || null;
       const cookieRole = parsedCookies["gymflow_oauth_role"];
       const rawRole = roleParam || cookieRole;
@@ -137,6 +145,8 @@ export async function GET(request: Request) {
             active_role: finalRole,
             enabled_roles: ["student", "coach"],
             avatar_url: avatarUrl,
+            profile_completed: false,
+            terms_accepted: false,
             subscription_status: finalRole === "coach" ? "active" : "pending_choice",
             subscription_plan: "trial_7d",
             plan_tier: "pro",
