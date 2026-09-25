@@ -91,7 +91,10 @@ function formatOAuthErrorMessage(provider: string, rawError: string): string {
     return `O provedor ${providerName} precisa ser ativado no painel do Supabase com Client ID e Secret (Authentication > Providers > ${providerName}).`;
   }
   if (lower.includes("redirect_uri") || lower.includes("redirect_to") || lower.includes("not allowed")) {
-    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+    const origin =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_APP_URL || "https://gymflow-weld.vercel.app");
     return `URL de redirecionamento não autorizada no Supabase. Adicione '${origin}/auth/callback' em Authentication > URL Configuration > Redirect URLs.`;
   }
   if (lower.includes("invalid_client") || lower.includes("client secret") || lower.includes("bad credentials")) {
@@ -117,7 +120,10 @@ function formatOAuthCallbackError(rawError: string): string {
     return "O provedor social selecionado precisa ser ativado no painel do Supabase com Client ID e Secret (Authentication > Providers).";
   }
   if (lower.includes("redirect_uri") || lower.includes("redirect_to") || lower.includes("not allowed")) {
-    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+    const origin =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_APP_URL || "https://gymflow-weld.vercel.app");
     return `URL de redirecionamento não autorizada no Supabase. Adicione '${origin}/auth/callback' em Authentication > URL Configuration > Redirect URLs.`;
   }
   if (lower.includes("access_denied") || lower.includes("user cancelled") || lower.includes("user_denied") || lower.includes("cancelled")) {

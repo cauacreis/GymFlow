@@ -11,7 +11,15 @@ export async function GET(request: Request) {
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
 
-  const origin = requestUrl.origin;
+  // Resolução de origin resiliente para produção (Vercel Edge/Serverless com proxy reverso e CDN)
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  const defaultAppUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gymflow-weld.vercel.app";
+  const origin = forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : requestUrl.origin.includes("localhost") && process.env.NODE_ENV === "production"
+    ? defaultAppUrl
+    : requestUrl.origin;
 
   // 🛡️ Prevenção contra Open Redirect (CWE-601): Permite estritamente caminhos relativos internos seguros
   const isSafeRelativePath =
