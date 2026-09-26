@@ -154,7 +154,7 @@ export function generateIdempotencyKey(): string {
 }
 
 /**
- * Sanitiza strings para exibição segura
+ * Sanitiza strings para exibição segura (neutraliza tags HTML e scripts maliciosos)
  */
 export function sanitizeString(input: string): string {
   return input
@@ -165,3 +165,30 @@ export function sanitizeString(input: string): string {
     .replace(/'/g, "&#x27;")
     .trim();
 }
+
+export const sanitizeInput = sanitizeString;
+
+/**
+ * Sanitiza recursivamente objetos, arrays e strings contra XSS e injeção de tags maliciosas
+ */
+export function sanitizeObject<T>(obj: T): T {
+  if (typeof obj === "string") {
+    return sanitizeString(obj) as unknown as T;
+  }
+  if (obj === null || obj === undefined || typeof obj !== "object") {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeObject(item)) as unknown as T;
+  }
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Proteção contra Prototype Pollution
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      continue;
+    }
+    result[key] = sanitizeObject(value);
+  }
+  return result as T;
+}
+

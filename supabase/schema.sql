@@ -211,6 +211,10 @@ CREATE INDEX IF NOT EXISTS idx_idempotency_keys_user_id ON public.idempotency_ke
 CREATE INDEX IF NOT EXISTS idx_idempotency_keys_route ON public.idempotency_keys(route);
 CREATE INDEX IF NOT EXISTS idx_webhook_events_resource ON public.webhook_events(resource_id, event_type);
 CREATE INDEX IF NOT EXISTS idx_webhook_events_status ON public.webhook_events(status);
+CREATE INDEX IF NOT EXISTS idx_students_coach_status ON public.students(coach_id, status);
+CREATE INDEX IF NOT EXISTS idx_bookings_coach_slot ON public.bookings(coach_id, slot_day);
+CREATE INDEX IF NOT EXISTS idx_bookings_student_slot ON public.bookings(student_id, slot_day);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON public.notifications(student_id, coach_id, read);
 
 -- ==============================================================================
 -- 13. Políticas de Segurança RLS (Row Level Security)
@@ -226,27 +230,133 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.idempotency_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.webhook_events ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Acesso Público e Autenticado (Permissivas para operação fluida)
+-- Políticas de Segurança Multi-Tenant Endurecidas para Produção Real
 DROP POLICY IF EXISTS "Permitir leitura de perfis" ON public.profiles;
 CREATE POLICY "Permitir leitura de perfis" ON public.profiles FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Permitir modificação do próprio perfil" ON public.profiles;
-CREATE POLICY "Permitir modificação do próprio perfil" ON public.profiles FOR ALL USING (true);
+DROP POLICY IF EXISTS "Permitir inserção do próprio perfil" ON public.profiles;
+DROP POLICY IF EXISTS "Permitir atualização do próprio perfil" ON public.profiles;
+DROP POLICY IF EXISTS "Permitir exclusão do próprio perfil" ON public.profiles;
+
+CREATE POLICY "Permitir inserção do próprio perfil" ON public.profiles
+  FOR INSERT
+  WITH CHECK (auth.uid() = id OR auth.role() = 'service_role');
+
+CREATE POLICY "Permitir atualização do próprio perfil" ON public.profiles
+  FOR UPDATE
+  USING (auth.uid() = id OR auth.role() = 'service_role')
+  WITH CHECK (auth.uid() = id OR auth.role() = 'service_role');
+
+CREATE POLICY "Permitir exclusão do próprio perfil" ON public.profiles
+  FOR DELETE
+  USING (auth.uid() = id OR auth.role() = 'service_role');
 
 DROP POLICY IF EXISTS "Permitir acesso aos alunos" ON public.students;
-CREATE POLICY "Permitir acesso aos alunos" ON public.students FOR ALL USING (true);
+DROP POLICY IF EXISTS "Permitir leitura de alunos autorizados" ON public.students;
+DROP POLICY IF EXISTS "Permitir gerenciamento de alunos pelo treinador" ON public.students;
+
+CREATE POLICY "Permitir leitura de alunos autorizados" ON public.students
+  FOR SELECT
+  USING (
+    coach_id = auth.uid()::text OR
+    user_id = auth.uid() OR
+    auth.role() = 'service_role'
+  );
+
+CREATE POLICY "Permitir gerenciamento de alunos pelo treinador" ON public.students
+  FOR ALL
+  USING (
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  )
+  WITH CHECK (
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  );
 
 DROP POLICY IF EXISTS "Permitir acesso aos planos do professor" ON public.coach_plans;
-CREATE POLICY "Permitir acesso aos planos do professor" ON public.coach_plans FOR ALL USING (true);
+DROP POLICY IF EXISTS "Permitir leitura pública de planos de treinadores" ON public.coach_plans;
+DROP POLICY IF EXISTS "Permitir gestão de planos apenas pelo treinador" ON public.coach_plans;
+
+CREATE POLICY "Permitir leitura pública de planos de treinadores" ON public.coach_plans
+  FOR SELECT
+  USING (true);
+
+CREATE POLICY "Permitir gestão de planos apenas pelo treinador" ON public.coach_plans
+  FOR ALL
+  USING (
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  )
+  WITH CHECK (
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  );
 
 DROP POLICY IF EXISTS "Permitir acesso às fichas de treino" ON public.student_workouts;
-CREATE POLICY "Permitir acesso às fichas de treino" ON public.student_workouts FOR ALL USING (true);
+DROP POLICY IF EXISTS "Permitir leitura da ficha pelo aluno ou professor" ON public.student_workouts;
+DROP POLICY IF EXISTS "Permitir prescrição de treino pelo treinador" ON public.student_workouts;
+
+CREATE POLICY "Permitir leitura da ficha pelo aluno ou professor" ON public.student_workouts
+  FOR SELECT
+  USING (
+    student_id = auth.uid()::text OR
+    prescribed_by = auth.uid()::text OR
+    auth.role() = 'service_role'
+  );
+
+CREATE POLICY "Permitir prescrição de treino pelo treinador" ON public.student_workouts
+  FOR ALL
+  USING (
+    prescribed_by = auth.uid()::text OR
+    auth.role() = 'service_role'
+  )
+  WITH CHECK (
+    prescribed_by = auth.uid()::text OR
+    auth.role() = 'service_role'
+  );
 
 DROP POLICY IF EXISTS "Permitir acesso aos agendamentos" ON public.bookings;
-CREATE POLICY "Permitir acesso aos agendamentos" ON public.bookings FOR ALL USING (true);
+DROP POLICY IF EXISTS "Permitir leitura de agendamentos das partes" ON public.bookings;
+DROP POLICY IF EXISTS "Permitir gestão de agendamentos autorizados" ON public.bookings;
+
+CREATE POLICY "Permitir leitura de agendamentos das partes" ON public.bookings
+  FOR SELECT
+  USING (
+    student_id = auth.uid()::text OR
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  );
+
+CREATE POLICY "Permitir gestão de agendamentos autorizados" ON public.bookings
+  FOR ALL
+  USING (
+    student_id = auth.uid()::text OR
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  )
+  WITH CHECK (
+    student_id = auth.uid()::text OR
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  );
 
 DROP POLICY IF EXISTS "Permitir acesso às notificações" ON public.notifications;
-CREATE POLICY "Permitir acesso às notificações" ON public.notifications FOR ALL USING (true);
+DROP POLICY IF EXISTS "Permitir acesso a notificações próprias" ON public.notifications;
+
+CREATE POLICY "Permitir acesso a notificações próprias" ON public.notifications
+  FOR ALL
+  USING (
+    student_id = auth.uid()::text OR
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  )
+  WITH CHECK (
+    student_id = auth.uid()::text OR
+    coach_id = auth.uid()::text OR
+    auth.role() = 'service_role'
+  );
 
 DROP POLICY IF EXISTS "Permitir leitura de pagamentos do proprio usuario" ON public.payments;
 CREATE POLICY "Permitir leitura de pagamentos do proprio usuario" ON public.payments 

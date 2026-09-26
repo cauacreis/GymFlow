@@ -12,7 +12,7 @@ import { UserProfile } from "./auth-store";
 // ALUNOS (STUDENTS)
 // ============================================================================
 
-export async function fetchStudentsFromSupabase(coachId?: string): Promise<StudentProfile[] | null> {
+export async function fetchStudentsFromSupabase(coachId?: string, limit: number = 100): Promise<StudentProfile[] | null> {
   const client = getSupabase();
   if (!client) return null;
 
@@ -21,7 +21,10 @@ export async function fetchStudentsFromSupabase(coachId?: string): Promise<Stude
     if (coachId) {
       query = query.eq("coach_id", coachId);
     }
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const safeLimit = Math.min(Math.max(1, limit), 250);
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .limit(safeLimit);
 
     if (error) {
       console.warn("⚠️ [Supabase] Erro ao buscar alunos:", error.message);
@@ -178,7 +181,7 @@ export async function saveWorkoutToSupabase(workout: StudentWorkoutPackage): Pro
 // AGENDAMENTOS (BOOKINGS)
 // ============================================================================
 
-export async function fetchBookingsFromSupabase(coachId?: string, studentId?: string): Promise<BookingRequest[] | null> {
+export async function fetchBookingsFromSupabase(coachId?: string, studentId?: string, limit: number = 100): Promise<BookingRequest[] | null> {
   const client = getSupabase();
   if (!client) return null;
 
@@ -187,7 +190,10 @@ export async function fetchBookingsFromSupabase(coachId?: string, studentId?: st
     if (coachId) query = query.eq("coach_id", coachId);
     if (studentId) query = query.eq("student_id", studentId);
 
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const safeLimit = Math.min(Math.max(1, limit), 250);
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .limit(safeLimit);
     if (error || !data) return null;
 
     return data.map((b: any): BookingRequest => ({

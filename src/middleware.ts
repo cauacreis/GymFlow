@@ -33,9 +33,18 @@ function isRateLimited(key: string, maxRequests: number, windowMs: number): bool
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) {
-    return forwarded.split(",")[0].trim();
+    const firstIp = forwarded.split(",")[0].trim();
+    if (firstIp && firstIp.length <= 45) return firstIp;
   }
-  return req.ip || "127.0.0.1";
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp && realIp.length <= 45) {
+    return realIp.trim();
+  }
+  const cfConnectingIp = req.headers.get("cf-connecting-ip");
+  if (cfConnectingIp && cfConnectingIp.length <= 45) {
+    return cfConnectingIp.trim();
+  }
+  return req.ip || "edge_client";
 }
 
 export function middleware(req: NextRequest) {

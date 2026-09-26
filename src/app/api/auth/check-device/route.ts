@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabase } from "@/lib/supabase";
+import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
 
 const checkDeviceSchema = z.object({
   deviceId: z.string().min(5).max(100),
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { deviceId, email } = checkDeviceSchema.parse(body);
 
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin() || getSupabase();
     if (!supabase) {
       return NextResponse.json({ allowed: true, isLocalFallback: true });
     }

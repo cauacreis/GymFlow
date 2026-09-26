@@ -94,7 +94,15 @@ export function canonicalJsonStringify(obj: any): string {
   }
 
   const sortedKeys = Object.keys(obj)
-    .filter((key) => obj[key] !== undefined && typeof obj[key] !== "function" && typeof obj[key] !== "symbol")
+    .filter(
+      (key) =>
+        key !== "__proto__" &&
+        key !== "constructor" &&
+        key !== "prototype" &&
+        obj[key] !== undefined &&
+        typeof obj[key] !== "function" &&
+        typeof obj[key] !== "symbol"
+    )
     .sort();
 
   const pairs = sortedKeys.map(
