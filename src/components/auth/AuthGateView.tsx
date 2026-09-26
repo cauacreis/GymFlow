@@ -80,7 +80,7 @@ const signupSchema = z
 function formatOAuthErrorMessage(provider: string, rawError: string): string {
   const lower = rawError.toLowerCase();
   const providerName =
-    provider === "google" ? "Google" : provider === "facebook" ? "Facebook / Meta" : "Apple";
+    provider === "google" ? "Google" : "Facebook / Meta";
 
   if (
     lower.includes("not enabled") ||
@@ -307,8 +307,8 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
     }
   }, [client, onAuthenticated]);
 
-  // Autenticação Social via OAuth (Google, Facebook/Meta e Apple)
-  const handleOAuthSignIn = async (provider: "google" | "facebook" | "apple") => {
+  // Autenticação Social via OAuth (Google e Facebook/Meta)
+  const handleOAuthSignIn = async (provider: "google" | "facebook") => {
     setIsLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -887,8 +887,8 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
               <div className="border-t border-zinc-800/90 w-full" />
             </div>
 
-            {/* Linha Limpa de 3 Botões Sociais: [ Google ] [ Facebook / Meta ] [ Apple ] */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Linha Limpa de 2 Botões Sociais: [ Google ] [ Facebook / Meta ] */}
+            <div className="grid grid-cols-2 gap-3">
               {/* Google */}
               <button
                 type="button"
@@ -927,19 +927,6 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
               >
                 <svg className="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-              </button>
-
-              {/* Apple */}
-              <button
-                type="button"
-                onClick={() => handleOAuthSignIn("apple")}
-                disabled={isLoading}
-                title="Continuar com Apple"
-                className="h-12 rounded-xl bg-zinc-900/80 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 flex items-center justify-center transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 group"
-              >
-                <svg className="w-5 h-5 fill-current text-white" viewBox="0 0 170 170" aria-hidden="true">
-                  <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.69-7.85-12-14.43-5.6-8.59-9.98-18.06-13.13-28.41-3.16-10.35-4.73-20.2-4.73-29.56 0-13.17 3.38-24.32 10.15-33.45 6.77-9.13 15.18-13.79 25.24-13.99 4.95 0 10.45 1.25 16.5 3.76 6.05 2.51 10.02 3.82 11.91 3.92 1.5.11 5.75-1.28 12.74-4.17 6.99-2.88 12.97-4.17 17.95-3.87 13.74.87 24.32 5.76 31.75 14.67-12.08 7.39-18.02 17.4-17.82 30.02.2 9.89 3.93 18.27 11.19 25.13 7.26 6.86 16.03 10.88 26.31 12.06-2.17 6.3-4.78 12.5-7.83 18.6zM119.22 33.15c0-7.39 2.65-14.19 7.95-20.4 5.3-6.21 11.83-10.08 19.59-11.61.22 1.3.33 2.61.33 3.92 0 7.39-2.61 14.19-7.83 20.4-5.22 6.21-11.85 10.08-19.89 11.61-.05-1.3-.15-2.6-.15-3.92z" />
                 </svg>
               </button>
             </div>

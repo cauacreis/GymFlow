@@ -232,8 +232,8 @@ function AuthPageContent() {
 
   const strengthInfo = getStrengthLabel(strengthScore);
 
-  // Autenticação Social via OAuth (Google, Facebook e Apple)
-  const handleOAuthSignIn = async (provider: "google" | "facebook" | "apple") => {
+  // Autenticação Social via OAuth (Google e Facebook/Meta)
+  const handleOAuthSignIn = async (provider: "google" | "facebook") => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -272,7 +272,7 @@ function AuthPageContent() {
         });
         if (error) {
           const lower = error.message.toLowerCase();
-          const pName = provider === "google" ? "Google" : provider === "facebook" ? "Facebook / Meta" : "Apple";
+          const pName = provider === "google" ? "Google" : "Facebook / Meta";
           if (lower.includes("not enabled") || lower.includes("unsupported")) {
             throw new Error(`O login com ${pName} precisa ser ativado no painel do Supabase com Client ID e Secret.`);
           }
@@ -290,7 +290,7 @@ function AuthPageContent() {
       if (err instanceof Error) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage(`Erro ao autenticar com ${provider === "google" ? "Google" : provider === "facebook" ? "Facebook / Meta" : "Apple"}.`);
+        setErrorMessage(`Erro ao autenticar com ${provider === "google" ? "Google" : "Facebook / Meta"}.`);
       }
     } finally {
       setIsLoading(false);
@@ -1068,7 +1068,7 @@ function AuthPageContent() {
                 <div className="border-t border-white/[0.08] w-full" />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => handleOAuthSignIn("google")}
@@ -1109,24 +1109,11 @@ function AuthPageContent() {
                   </svg>
                   <span>Meta</span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleOAuthSignIn("apple")}
-                  disabled={isLoading}
-                  title="Apple"
-                  className="w-full h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] hover:border-white/[0.18] text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] disabled:opacity-50"
-                >
-                  <svg className="w-4 h-4 shrink-0 fill-current text-white" viewBox="0 0 170 170" aria-hidden="true">
-                    <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.69-7.85-12-14.43-5.6-8.59-9.98-18.06-13.13-28.41-3.16-10.35-4.73-20.2-4.73-29.56 0-13.17 3.38-24.32 10.15-33.45 6.77-9.13 15.18-13.79 25.24-13.99 4.95 0 10.45 1.25 16.5 3.76 6.05 2.51 10.02 3.82 11.91 3.92 1.5.11 5.75-1.28 12.74-4.17 6.99-2.88 12.97-4.17 17.95-3.87 13.74.87 24.32 5.76 31.75 14.67-12.08 7.39-18.02 17.4-17.82 30.02.2 9.89 3.93 18.27 11.19 25.13 7.26 6.86 16.03 10.88 26.31 12.06-2.17 6.3-4.78 12.5-7.83 18.6zM119.22 33.15c0-7.39 2.65-14.19 7.95-20.4 5.3-6.21 11.83-10.08 19.59-11.61.22 1.3.33 2.61.33 3.92 0 7.39-2.61 14.19-7.83 20.4-5.22 6.21-11.85 10.08-19.89 11.61-.05-1.3-.15-2.6-.15-3.92z"/>
-                  </svg>
-                  <span>Apple</span>
-                </button>
               </div>
 
               {mode === "signup" && (
                 <p className="text-[10px] text-zinc-400 text-center leading-relaxed mt-2">
-                  Ao continuar com Google, Meta ou Apple, você concorda com nossos{" "}
+                  Ao continuar com Google ou Meta, você concorda com nossos{" "}
                   <button
                     type="button"
                     onClick={() => {
