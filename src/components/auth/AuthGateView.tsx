@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { z } from "zod";
 import {
   Lock,
@@ -582,8 +583,15 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
         {/* Cabeçalho Minimalista com Ícone de Marca */}
         <div className="flex flex-col items-center text-center space-y-3">
           <div className="relative group">
-            <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shadow-lg shadow-black/40">
-              <Dumbbell className="w-6 h-6 text-emerald-400 stroke-[2.2]" />
+            <div className="w-14 h-14 rounded-2xl overflow-hidden border border-zinc-800/80 flex items-center justify-center shadow-xl shadow-black/50 bg-zinc-900 group-hover:border-emerald-500/30 transition-all">
+              <Image
+                src="/logo-120.png"
+                alt="GymFlow"
+                width={56}
+                height={56}
+                className="w-full h-full object-cover"
+                priority
+              />
             </div>
           </div>
 

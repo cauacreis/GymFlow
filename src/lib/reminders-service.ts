@@ -417,8 +417,8 @@ export function sendBrowserNotification(title: string, options?: NotificationOpt
     if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then((reg) => {
         reg.showNotification(title, {
-          icon: "/icon-192.svg",
-          badge: "/icon-192.svg",
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
           vibrate: [150, 50, 150],
           ...(options || {}),
         } as any);
@@ -427,7 +427,7 @@ export function sendBrowserNotification(title: string, options?: NotificationOpt
     }
 
     new Notification(title, {
-      icon: "/icon-192.svg",
+      icon: "/icon-192.png",
       ...options,
     });
     return true;

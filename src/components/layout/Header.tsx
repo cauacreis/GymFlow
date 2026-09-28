@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Flame, Sparkles, User, GraduationCap, Dumbbell, Bell, ArrowRightLeft } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 
@@ -39,10 +40,17 @@ export function Header({
   return (
     <header className="sticky top-0 z-40 w-full px-3.5 pt-2 pb-1.5 bg-gradient-to-b from-[#070709]/90 via-[#070709]/75 to-transparent backdrop-blur-md">
       <div className="flex items-center justify-between px-3 py-1.5 rounded-full bg-zinc-900/60 border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-        {/* Logo GymFlow Minimalista */}
+        {/* Logo GymFlow Oficial */}
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-            <Flame className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+          <div className="w-7 h-7 rounded-lg overflow-hidden border border-emerald-500/25 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shadow-sm shadow-emerald-500/10 bg-zinc-950">
+            <Image
+              src="/logo-120.png"
+              alt="GymFlow"
+              width={28}
+              height={28}
+              className="w-full h-full object-cover"
+              priority
+            />
           </div>
           <span className="text-sm font-black tracking-tight text-white">
             Gym<span className="text-emerald-400">Flow</span>

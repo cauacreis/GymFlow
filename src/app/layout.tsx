@@ -3,7 +3,7 @@ import "./globals.css";
 import MobileShell from "@/components/layout/MobileShell";
 
 export const metadata: Metadata = {
-  title: "GymFlow — App Oficial da Academia, Treinos & Aulas",
+  title: "GymFlow",
   description: "Check-in na catraca via QR Code, fichas de treino A/B/C interativas, reserva de aulas e acompanhamento de evolução física.",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -12,8 +12,17 @@ export const metadata: Metadata = {
     title: "GymFlow",
   },
   icons: {
-    icon: "/icon-192.png",
-    apple: "/icon-192.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/logo.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
   },
 };
 
