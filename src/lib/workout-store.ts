@@ -22,7 +22,7 @@ export interface StudentProfile {
   email: string;
   phone?: string;
   matricula: string;
-  goal: "Hipertrofia" | "Emagrecimento" | "Força & Performance" | "Condicionamento Geral";
+  goal: "Hipertrofia" | "Emagrecimento" | "Força & Performance" | "Condicionamento Geral" | (string & {});
   currentRoutineTitle: string;
   prescribedBy: string;
   prescribedAt: string;

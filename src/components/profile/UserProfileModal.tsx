@@ -68,7 +68,15 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
   const [name, setName] = useState(profile.name);
   const [email, setEmail] = useState(profile.email);
   const [phone, setPhone] = useState(profile.phone || "");
-  const [goal, setGoal] = useState<UserProfile["goal"]>(profile.goal || "Hipertrofia");
+  const isPresetGoal = ["Hipertrofia", "Emagrecimento", "Força & Performance", "Condicionamento Geral"].includes(
+    profile.goal || ""
+  );
+  const [goal, setGoal] = useState<string>(
+    profile.goal ? (isPresetGoal ? profile.goal : "Personalizado") : "Hipertrofia"
+  );
+  const [customGoalInput, setCustomGoalInput] = useState<string>(
+    profile.goal && !isPresetGoal ? profile.goal : ""
+  );
   const [experienceLevel, setExperienceLevel] = useState<UserProfile["experienceLevel"]>(
     profile.experienceLevel || "Iniciante"
   );
@@ -131,10 +139,19 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       setActiveRole(current.activeRole);
       setAvatarUrl(current.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80");
       setName(current.name);
-      setEmail(current.email);
-      setPhone(current.phone || "");
-      setGoal(current.goal || "Hipertrofia");
-      setExperienceLevel(current.experienceLevel || "Iniciante");
+      if (current.goal) {
+        const isPreset = ["Hipertrofia", "Emagrecimento", "Força & Performance", "Condicionamento Geral"].includes(current.goal);
+        if (isPreset) {
+          setGoal(current.goal);
+          setCustomGoalInput("");
+        } else {
+          setGoal("Personalizado");
+          setCustomGoalInput(current.goal);
+        }
+      } else {
+        setGoal("Hipertrofia");
+        setCustomGoalInput("");
+      }
       setHeight(current.height || 178);
       setWeight(current.weight || 78.4);
       setBodyFat(current.bodyFat || 13.8);
@@ -345,6 +362,10 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
     const cleanCity = sanitizeInput(city.trim());
     const cleanState = sanitizeInput(state.trim().toUpperCase());
     const cleanNeighborhood = sanitizeInput(neighborhood.trim());
+    const finalGoal =
+      goal === "Personalizado"
+        ? sanitizeInput(customGoalInput.trim()) || "Condicionamento Geral"
+        : goal;
 
     const updated = saveUserProfile({
       name,
@@ -352,7 +373,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       phone,
       activeRole,
       avatarUrl,
-      goal,
+      goal: finalGoal,
       experienceLevel,
       height: Number(height) || 178,
       weight: Number(weight) || 78.4,
@@ -740,14 +761,27 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   <label className="text-[10px] font-bold text-zinc-400 uppercase">Objetivo Principal</label>
                   <select
                     value={goal}
-                    onChange={(e) => setGoal(e.target.value as UserProfile["goal"])}
+                    onChange={(e) => setGoal(e.target.value)}
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
                   >
                     <option value="Hipertrofia">Hipertrofia</option>
                     <option value="Emagrecimento">Emagrecimento</option>
                     <option value="Força & Performance">Força & Performance</option>
                     <option value="Condicionamento Geral">Condicionamento Geral</option>
+                    <option value="Personalizado">Personalizado / Outro...</option>
                   </select>
+
+                  {goal === "Personalizado" && (
+                    <input
+                      type="text"
+                      required
+                      value={customGoalInput}
+                      onChange={(e) => setCustomGoalInput(e.target.value)}
+                      placeholder="Ex: Treino para TAF, Calistenia..."
+                      maxLength={80}
+                      className="w-full mt-2 p-2.5 rounded-xl bg-zinc-950 border border-emerald-500/40 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -893,28 +927,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
             </div>
           )}
 
-          {/* DADOS ESPECÍFICOS: MODO ALUNO */}
-          {!isCoach && (
-            <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
-              <h4 className="text-xs font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-emerald-400" /> Meu Objetivo de Treino (Aluno)
-              </h4>
 
-              <div>
-                <label className="text-[10px] font-bold text-zinc-400 uppercase">Meta Atual</label>
-                <select
-                  value={goal}
-                  onChange={(e) => setGoal(e.target.value as UserProfile["goal"])}
-                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
-                >
-                  <option value="Hipertrofia">Hipertrofia & Ganho de Massa</option>
-                  <option value="Emagrecimento">Emagrecimento & Definição</option>
-                  <option value="Força & Performance">Força & Performance 5×5</option>
-                  <option value="Condicionamento Geral">Condicionamento Geral</option>
-                </select>
-              </div>
-            </div>
-          )}
 
           {/* SEÇÃO: LOCALIZAÇÃO & REGIÃO GEOGRÁFICA (ALUNO E PROFESSOR) */}
           <div className="p-4 rounded-2xl bg-zinc-900/40 border border-white/[0.06] space-y-3">

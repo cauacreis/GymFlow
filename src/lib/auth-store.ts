@@ -13,7 +13,7 @@ export interface UserProfile {
   activeRole: UserRole;
   enabledRoles: UserRole[]; // Permite que a pessoa treine E seja treinada (ambos os modos ativos)
   // Campos específicos de Aluno & Biometria Corporal
-  goal?: "Hipertrofia" | "Emagrecimento" | "Força & Performance" | "Condicionamento Geral";
+  goal?: "Hipertrofia" | "Emagrecimento" | "Força & Performance" | "Condicionamento Geral" | (string & {});
   experienceLevel?: "Iniciante" | "Intermediário" | "Avançado";
   profileCompleted?: boolean;
   matricula?: string;
