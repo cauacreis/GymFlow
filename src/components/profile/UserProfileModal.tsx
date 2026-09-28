@@ -22,12 +22,17 @@ import {
   MapPin,
   Scale,
   Ruler,
+  Plus,
+  AlertCircle,
+  ArrowRight,
+  Check,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getCurrentUser,
   saveUserProfile,
   switchUserRole,
+  enableCoachRole,
   logoutUser,
   isUserAuthenticated,
   UserProfile,
@@ -84,6 +89,20 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Estado para ativação de Modo Professor a partir de conta de Aluno
+  const hasCoachRole = Boolean(profile.enabledRoles?.includes("coach") || activeRole === "coach");
+  const [isCoachUpgradeOpen, setIsCoachUpgradeOpen] = useState(false);
+  const [upgradeSpecialty, setUpgradeSpecialty] = useState(profile.specialty || "");
+  const [upgradeCref, setUpgradeCref] = useState(profile.cref || "");
+  const [upgradeBio, setUpgradeBio] = useState(profile.bio || "");
+  const [upgradeLocation, setUpgradeLocation] = useState(profile.location || "Salão Principal • Musculação");
+  const [upgradeInstagram, setUpgradeInstagram] = useState(profile.instagram || "");
+  const [upgradeBasicPrice, setUpgradeBasicPrice] = useState(profile.pricing?.basicMonthly || 35);
+  const [upgradeProPrice, setUpgradeProPrice] = useState(profile.pricing?.proMonthly || 45);
+  const [upgradeVipPrice, setUpgradeVipPrice] = useState(profile.pricing?.vipMonthly || 55);
+  const [upgradeError, setUpgradeError] = useState("");
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       const current = getCurrentUser();
@@ -109,6 +128,19 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       setBasicPrice(current.pricing?.basicMonthly || current.pricing?.dailySession || 35);
       setProPrice(current.pricing?.proMonthly || current.pricing?.weeklyPlan || 45);
       setVipPrice(current.pricing?.vipMonthly || current.pricing?.monthlyPlan || 55);
+
+      // Sincroniza campos do painel de ativação de professor
+      setUpgradeSpecialty(current.specialty || "");
+      setUpgradeCref(current.cref || "");
+      setUpgradeBio(current.bio || "");
+      setUpgradeLocation(current.location || "Salão Principal • Musculação");
+      setUpgradeInstagram(current.instagram || "");
+      setUpgradeBasicPrice(current.pricing?.basicMonthly || current.pricing?.dailySession || 35);
+      setUpgradeProPrice(current.pricing?.proMonthly || current.pricing?.weeklyPlan || 45);
+      setUpgradeVipPrice(current.pricing?.vipMonthly || current.pricing?.monthlyPlan || 55);
+      setUpgradeError("");
+      setIsCoachUpgradeOpen(false);
+      setIsUpgrading(false);
       setSavedSuccess(false);
     }
   }, [isOpen]);
@@ -121,6 +153,76 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
     setActiveRole(newRole);
     const updated = switchUserRole(newRole);
     setProfile(updated);
+  };
+
+  // Ativação do papel de professor com preenchimento das informações faltantes
+  const handleUpgradeToCoach = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpgradeError("");
+
+    const cleanSpecialty = sanitizeInput(upgradeSpecialty).trim();
+    if (!cleanSpecialty) {
+      setUpgradeError("Por favor, informe sua especialidade principal de atendimento.");
+      triggerHaptic("warning");
+      return;
+    }
+
+    setIsUpgrading(true);
+    triggerHaptic("success");
+
+    const pricingObj = {
+      basicMonthly: Number(upgradeBasicPrice) || 35,
+      proMonthly: Number(upgradeProPrice) || 45,
+      vipMonthly: Number(upgradeVipPrice) || 55,
+      dailySession: Number(upgradeBasicPrice) || 35,
+      weeklyPlan: Number(upgradeProPrice) || 45,
+      monthlyPlan: Number(upgradeVipPrice) || 55,
+    };
+
+    const cleanCref = sanitizeInput(upgradeCref).trim() || undefined;
+    const cleanBio = sanitizeInput(upgradeBio).trim() || undefined;
+    const cleanLocation = sanitizeInput(upgradeLocation).trim() || "Salão Principal";
+    const cleanInstagram = sanitizeInput(upgradeInstagram).trim() || undefined;
+
+    const updated = enableCoachRole({
+      specialty: cleanSpecialty,
+      cref: cleanCref,
+      bio: cleanBio,
+      location: cleanLocation,
+      instagram: cleanInstagram,
+      pricing: pricingObj,
+    });
+
+    // Se possui perfil no marketplace, atualiza para refletir novo personal
+    updateCoachPublicProfile(updated.id || "coach_rodrigo", {
+      name: updated.name,
+      cref: cleanCref,
+      specialty: cleanSpecialty,
+      bio: cleanBio || "",
+      phone: updated.phone || "",
+      avatarUrl: updated.avatarUrl || avatarUrl,
+      instagram: cleanInstagram || "",
+      location: cleanLocation,
+      pricing: pricingObj,
+    });
+
+    setProfile(updated);
+    setActiveRole("coach");
+    setSpecialty(cleanSpecialty);
+    if (cleanCref) setCref(cleanCref);
+    if (cleanBio) setBio(cleanBio);
+    if (cleanLocation) setLocation(cleanLocation);
+    if (cleanInstagram) setInstagram(cleanInstagram);
+    setBasicPrice(pricingObj.basicMonthly);
+    setProPrice(pricingObj.proMonthly);
+    setVipPrice(pricingObj.vipMonthly);
+
+    setIsUpgrading(false);
+    setIsCoachUpgradeOpen(false);
+    setSavedSuccess(true);
+    setTimeout(() => {
+      setSavedSuccess(false);
+    }, 3000);
   };
 
   // Salvar edições de perfil
@@ -244,52 +346,88 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
             onSelectAvatar={(url) => setAvatarUrl(url)}
           />
 
-          {/* CARD DE ALTERNÂNCIA DE MODO (TREINAR & SER TREINADO) */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-white/[0.1] shadow-lg relative overflow-hidden">
-            <div className="flex items-start justify-between gap-2 mb-2.5">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                  <ArrowRightLeft className="w-3 h-3" /> Papel na Plataforma
+          {/* SE A CONTA NÃO POSSUI PAPEL DE PROFESSOR: EXIBE CARD PARA ATIVAR COM PAINEL DE DADOS */}
+          {!hasCoachRole ? (
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20 border border-amber-500/20 shadow-lg relative overflow-hidden">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                    <GraduationCap className="w-3.5 h-3.5" /> Tornar-se Personal Trainer
+                  </span>
+                  <h3 className="text-xs font-black text-white mt-1">
+                    Ativar Perfil Profissional de Professor
+                  </h3>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  Opcional
                 </span>
-                <h3 className="text-xs font-black text-white mt-0.5">
-                  Treine ou Atenda Alunos com a Mesma Conta
-                </h3>
+              </div>
+
+              <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">
+                Sua conta está configurada como aluno. Se você também prescreve treinos ou atende alunos particulares, adicione suas informações de professor para desbloquear o modo treinador.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  setIsCoachUpgradeOpen(true);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Adicionar Informações de Professor</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-auto" />
+              </button>
+            </div>
+          ) : (
+            /* SE JÁ POSSUI PAPEL DE PROFESSOR: EXIBE O ALTERNADOR DE MODO */
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-white/[0.1] shadow-lg relative overflow-hidden">
+              <div className="flex items-start justify-between gap-2 mb-2.5">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                    <ArrowRightLeft className="w-3 h-3" /> Papel na Plataforma
+                  </span>
+                  <h3 className="text-xs font-black text-white mt-0.5">
+                    Treine ou Atenda Alunos com a Mesma Conta
+                  </h3>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">
+                Você pode prescrever treinos como <strong>Professor</strong> e também ter sua própria ficha pessoal para treinar como <strong>Aluno</strong>. Alterne com 1 toque:
+              </p>
+
+              {/* Segmented Control / Seletor de Papel */}
+              <div className="grid grid-cols-2 p-1 rounded-xl bg-zinc-950 border border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => handleSwitchRole("student")}
+                  className={`py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                    !isCoach
+                      ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/25"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Dumbbell className="w-3.5 h-3.5" />
+                  <span>Modo Aluno</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSwitchRole("coach")}
+                  className={`py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                    isCoach
+                      ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/25"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Modo Professor</span>
+                </button>
               </div>
             </div>
-
-            <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">
-              Você pode prescrever treinos como <strong>Professor</strong> e também ter sua própria ficha pessoal para treinar como <strong>Aluno</strong>. Alterne com 1 toque:
-            </p>
-
-            {/* Segmented Control / Seletor de Papel */}
-            <div className="grid grid-cols-2 p-1 rounded-xl bg-zinc-950 border border-white/[0.08]">
-              <button
-                type="button"
-                onClick={() => handleSwitchRole("student")}
-                className={`py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                  !isCoach
-                    ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/25"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                <Dumbbell className="w-3.5 h-3.5" />
-                <span>Modo Aluno</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSwitchRole("coach")}
-                className={`py-2 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                  isCoach
-                    ? "bg-amber-500 text-zinc-950 shadow-md shadow-amber-500/25"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Modo Professor</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Feedback de Salvo com Sucesso */}
           {savedSuccess && (
@@ -723,6 +861,213 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
           </div>
         </form>
       </div>
+
+      {/* MODAL / PAINEL DE ADIÇÃO DE INFORMAÇÕES DE PROFESSOR */}
+      {isCoachUpgradeOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-zinc-950 border border-amber-500/30 rounded-3xl shadow-2xl overflow-hidden text-zinc-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Topo do Painel de Upgrade */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08] bg-zinc-900/80 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Ativar Perfil de Professor</h3>
+                  <p className="text-[11px] text-zinc-400">Complete seus dados profissionais para prescrever treinos</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  setIsCoachUpgradeOpen(false);
+                }}
+                className="p-2 rounded-xl text-zinc-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-all"
+                aria-label="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Formulário do Painel */}
+            <form onSubmit={handleUpgradeToCoach} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar">
+              {upgradeError && (
+                <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{upgradeError}</span>
+                </div>
+              )}
+
+              {/* Especialidade Principal */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center justify-between">
+                  <span>Especialidade Principal *</span>
+                  <span className="text-[9px] text-amber-400">Obrigatório</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={60}
+                  value={upgradeSpecialty}
+                  onChange={(e) => setUpgradeSpecialty(sanitizeInput(e.target.value))}
+                  placeholder="Ex: Hipertrofia & Biomecânica"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+                {/* Sugestões rápidas */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[
+                    "Hipertrofia & Ganho de Massa",
+                    "Emagrecimento & Definição",
+                    "Treinamento Funcional",
+                    "Reabilitação & Postura",
+                    "Força & Performance",
+                  ].map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => setUpgradeSpecialty(sug)}
+                      className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all ${
+                        upgradeSpecialty === sug
+                          ? "bg-amber-500/20 border-amber-500 text-amber-300 font-bold"
+                          : "bg-white/[0.03] border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                      }`}
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* CREF (Opcional) */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center justify-between">
+                  <span>Registro CREF</span>
+                  <span className="text-[9px] text-zinc-500 lowercase">(opcional no GymFlow)</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={30}
+                  value={upgradeCref}
+                  onChange={(e) => setUpgradeCref(sanitizeInput(e.target.value))}
+                  placeholder="Ex: 08412-SP (opcional)"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50 font-mono"
+                />
+              </div>
+
+              {/* Local de Atendimento & Instagram */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-amber-400" /> Local de Atendimento
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={80}
+                    value={upgradeLocation}
+                    onChange={(e) => setUpgradeLocation(sanitizeInput(e.target.value))}
+                    placeholder="Ex: Salão Principal • Musculação"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-1">
+                    <Instagram className="w-3 h-3 text-pink-400" /> Instagram Profissional
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={40}
+                    value={upgradeInstagram}
+                    onChange={(e) => setUpgradeInstagram(sanitizeInput(e.target.value))}
+                    placeholder="@seu.perfil"
+                    className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Preços dos Planos Mensais */}
+              <div className="pt-2 border-t border-white/[0.06]">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">
+                  Planos Mensais para Alunos (R$/mês):
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[9px] text-zinc-400 font-bold block mb-0.5">Básico</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10000}
+                      value={upgradeBasicPrice}
+                      onChange={(e) => setUpgradeBasicPrice(Math.min(10000, Math.max(0, Number(e.target.value) || 0)))}
+                      className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-amber-400 font-bold block mb-0.5">Pro</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10000}
+                      value={upgradeProPrice}
+                      onChange={(e) => setUpgradeProPrice(Math.min(10000, Math.max(0, Number(e.target.value) || 0)))}
+                      className="w-full p-2 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-emerald-400 font-bold block mb-0.5">VIP</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10000}
+                      value={upgradeVipPrice}
+                      onChange={(e) => setUpgradeVipPrice(Math.min(10000, Math.max(0, Number(e.target.value) || 0)))}
+                      className="w-full p-2 rounded-xl bg-zinc-950 border border-emerald-500/30 text-xs text-white font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Biografia / Apresentação */}
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">
+                  Biografia & Apresentação Profissional
+                </label>
+                <textarea
+                  rows={3}
+                  maxLength={300}
+                  value={upgradeBio}
+                  onChange={(e) => setUpgradeBio(sanitizeInput(e.target.value))}
+                  placeholder="Apresente sua metodologia, experiência com alunos e diferenciais de treino..."
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+
+              {/* Botões do Rodapé do Painel */}
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setIsCoachUpgradeOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpgrading}
+                  className="px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-zinc-950 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 flex items-center gap-2 shadow-lg shadow-amber-500/25 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isUpgrading ? "Ativando..." : "Confirmar e Ativar Modo Professor"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

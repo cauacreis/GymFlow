@@ -520,7 +520,12 @@ export function AccountCustomizationModal({
         avatarUrl: avatarUrl || undefined,
         phone: formatPhone(rawPhoneDigits),
         activeRole: role,
-        enabledRoles: ["student", "coach"],
+        enabledRoles:
+          role === "coach"
+            ? ["coach", "student"]
+            : user.enabledRoles?.includes("coach")
+            ? ["student", "coach"]
+            : ["student"],
         // Localização e Região
         city: sanitizedCity,
         state: sanitizedState,

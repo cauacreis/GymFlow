@@ -411,7 +411,7 @@ export async function fetchProfileFromSupabase(userId: string): Promise<UserProf
       email: data.email || "",
       phone: data.phone || "",
       activeRole: data.active_role || "student",
-      enabledRoles: data.enabled_roles || ["student", "coach"],
+      enabledRoles: data.enabled_roles || (data.active_role === "coach" ? ["coach", "student"] : ["student"]),
       matricula: data.matricula || `GF-${data.id.slice(0, 5)}`,
       goal: data.goal || "Hipertrofia",
       experienceLevel: data.experience_level || undefined,

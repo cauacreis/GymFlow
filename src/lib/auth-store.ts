@@ -70,25 +70,25 @@ const EVENT_AUTH_CHANGED = "gymflow:auth-changed";
 
 const DEFAULT_USER: UserProfile = {
   id: "user_me",
-  name: "Treinador",
+  name: "Aluno Convidado",
   email: "",
   phone: "",
-  activeRole: "coach",
-  enabledRoles: ["student", "coach"],
+  activeRole: "student",
+  enabledRoles: ["student"],
   avatarUrl: "",
   goal: "Hipertrofia",
-  experienceLevel: "Avançado",
+  experienceLevel: "Iniciante",
   profileCompleted: false,
   matricula: "GF-10001",
-  height: 178,
-  weight: 78.4,
-  bodyFat: 13.8,
+  height: 175,
+  weight: 74.0,
+  bodyFat: 15.0,
   targetWeight: 76.0,
   targetBodyFat: 12.0,
   gender: "masculino",
   cref: "",
-  specialty: "Musculação & Hipertrofia",
-  bio: "Treinador e especialista em periodização e biomecânica.",
+  specialty: "",
+  bio: "",
   hourlyRate: 35,
   instagram: "",
   location: "Salão Principal",
@@ -313,8 +313,9 @@ export function saveUserProfile(updated: Partial<UserProfile>): UserProfile {
   const merged: UserProfile = {
     ...current,
     ...updated,
-    // Garante que o papel ativo sempre esteja na lista de papéis habilitados
-    enabledRoles: Array.from(new Set([...current.enabledRoles, ...(updated.enabledRoles || [current.activeRole])])),
+    enabledRoles: updated.enabledRoles
+      ? Array.from(new Set(updated.enabledRoles))
+      : (current.enabledRoles || [current.activeRole || "student"]),
   };
 
   if (typeof window !== "undefined") {
@@ -334,14 +335,15 @@ export function saveUserProfile(updated: Partial<UserProfile>): UserProfile {
 
 export function switchUserRole(newRole: UserRole): UserProfile {
   const current = getCurrentUser();
-  const enabledRoles = current.enabledRoles.includes(newRole)
-    ? current.enabledRoles
-    : [...current.enabledRoles, newRole];
+  // Bloqueia alternar para professor se a conta não tiver essa permissão ativada
+  if (!current.enabledRoles?.includes(newRole)) {
+    console.warn(`⚠️ [AuthStore] Não é possível alternar para ${newRole}: o papel não está habilitado para esta conta.`);
+    return current;
+  }
 
   const updated: UserProfile = {
     ...current,
     activeRole: newRole,
-    enabledRoles,
   };
 
   if (typeof window !== "undefined") {
@@ -352,6 +354,55 @@ export function switchUserRole(newRole: UserRole): UserProfile {
   // Persiste a alternância de papel no Supabase para não ser revertida na próxima sessão
   saveProfileToSupabase(updated).catch(() => {});
 
+  return updated;
+}
+
+/**
+ * Ativa o modo Professor para uma conta de Aluno após preenchimento
+ * das informações profissionais obrigatórias.
+ */
+export function enableCoachRole(data: {
+  specialty: string;
+  cref?: string;
+  bio?: string;
+  location?: string;
+  instagram?: string;
+  pricing?: {
+    basicMonthly: number;
+    proMonthly: number;
+    vipMonthly: number;
+  };
+}): UserProfile {
+  const current = getCurrentUser();
+  const enabledRoles: UserRole[] = Array.from(
+    new Set([...(current.enabledRoles || ["student"]), "coach" as UserRole])
+  );
+
+  const updated: UserProfile = {
+    ...current,
+    activeRole: "coach",
+    enabledRoles,
+    specialty: data.specialty.trim(),
+    cref: data.cref?.trim() || undefined,
+    bio: data.bio?.trim() || undefined,
+    location: data.location?.trim() || current.location || "Salão Principal",
+    instagram: data.instagram?.trim() || current.instagram,
+    pricing: data.pricing || current.pricing || {
+      basicMonthly: 35,
+      proMonthly: 45,
+      vipMonthly: 55,
+      dailySession: 35,
+      weeklyPlan: 45,
+      monthlyPlan: 55,
+    },
+  };
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: updated }));
+  }
+
+  saveProfileToSupabase(updated).catch(() => {});
   return updated;
 }
 
@@ -388,8 +439,9 @@ export function registerNewUser(data: {
     email: data.email,
     phone: data.phone || "",
     activeRole: data.role,
-    // Ao cadastrar, já habilita a flexibilidade de poder alternar para o outro modo quando desejar!
-    enabledRoles: ["student", "coach"],
+    // Se a conta for criada como aluno, enabledRoles é estritamente ["student"]!
+    // Não ganha papel de professor até que decida ativar nas configurações.
+    enabledRoles: data.role === "coach" ? ["coach", "student"] : ["student"],
     matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
     goal: data.goal || "Hipertrofia",
     experienceLevel: data.experienceLevel || (data.role === "student" ? "Iniciante" : undefined),
@@ -478,7 +530,7 @@ export function initAuthSession(): () => void {
           name,
           avatarUrl,
           activeRole: chosenRole,
-          enabledRoles: ["student", "coach"],
+          enabledRoles: chosenRole === "coach" ? ["coach", "student"] : ["student"],
           phone: meta.phone || "",
           cref: meta.cref || undefined,
           specialty: meta.specialty || undefined,

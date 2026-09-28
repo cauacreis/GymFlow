@@ -239,8 +239,14 @@ export default function GymFlowApp() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Alternar papel Aluno ⇄ Professor com 1 toque
+  // Alternar papel Aluno ⇄ Professor (apenas se a conta tiver perfil de professor ativado)
+  const canToggleRole = Boolean(userProfile.enabledRoles?.includes("coach"));
+
   const handleToggleRole = () => {
+    if (!canToggleRole && viewMode === "student") {
+      setIsProfileOpen(true);
+      return;
+    }
     const nextRole: UserRole = viewMode === "student" ? "coach" : "student";
     triggerHaptic("medium");
     const updated = switchUserRole(nextRole);
@@ -324,7 +330,7 @@ export default function GymFlowApp() {
         viewMode={viewMode}
         unreadNotificationsCount={unreadCount}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onToggleViewMode={handleToggleRole}
+        onToggleViewMode={canToggleRole ? handleToggleRole : undefined}
         onOpenProfile={() => setIsProfileOpen(true)}
         onOpenPlans={() => setIsPlansOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}

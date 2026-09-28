@@ -19,6 +19,7 @@ interface HeaderProps {
     name: string;
     email: string;
     activeRole?: "student" | "coach";
+    enabledRoles?: ("student" | "coach")[];
     avatarUrl?: string;
     planTier?: "basico" | "pro" | "vip";
     subscriptionStatus?: string;
@@ -59,8 +60,8 @@ export function Header({
 
         {/* Status / Ações Rápidas em Pílula Unificada */}
         <div className="flex items-center gap-1.5">
-          {/* Alternador Rápido de Modo (Aluno ⇄ Professor) */}
-          {onToggleViewMode && (
+          {/* Alternador Rápido de Modo (Aluno ⇄ Professor) - Só exibido se a conta possuir perfil de professor ativado */}
+          {onToggleViewMode && user?.enabledRoles?.includes("coach") && (
             <button
               onClick={() => {
                 triggerHaptic("medium");
