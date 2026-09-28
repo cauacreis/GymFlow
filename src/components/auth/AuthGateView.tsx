@@ -584,13 +584,13 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
         {/* Cabeçalho Minimalista com Ícone de Marca */}
         <div className="flex flex-col items-center text-center space-y-3">
           <div className="relative group">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden border border-zinc-800/80 flex items-center justify-center shadow-xl shadow-black/50 bg-zinc-900 group-hover:border-emerald-500/30 transition-all">
+            <div className="w-14 h-14 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo-120.png"
                 alt="GymFlow"
                 width={56}
                 height={56}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain drop-shadow-[0_4px_16px_rgba(16,185,129,0.25)]"
                 priority
               />
             </div>

@@ -43,13 +43,13 @@ export function Header({
       <div className="flex items-center justify-between px-3 py-1.5 rounded-full bg-zinc-900/60 border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
         {/* Logo GymFlow Oficial */}
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded-lg overflow-hidden border border-emerald-500/25 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shadow-sm shadow-emerald-500/10 bg-zinc-950">
+          <div className="w-7 h-7 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shrink-0">
             <Image
               src="/logo-120.png"
               alt="GymFlow"
               width={28}
               height={28}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               priority
             />
           </div>
