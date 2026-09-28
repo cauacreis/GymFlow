@@ -44,7 +44,7 @@ import {
 
 import { updateCoachPublicProfile } from "@/lib/booking-store";
 import { saveProfileToSupabase } from "@/lib/supabase-service";
-import { formatPhone, sanitizeInput } from "@/lib/security";
+import { formatPhone, sanitizeInput, maskEmail } from "@/lib/security";
 import { BRAZIL_STATES, reverseGeocode, isValidCoordinate } from "@/lib/geo";
 import { AvatarUpload } from "./AvatarUpload";
 
@@ -465,7 +465,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   {isCoach ? "Professor" : "Aluno"}
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-400 mt-0.5">{email}</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">{email ? maskEmail(email) : ""}</p>
             </div>
           </div>
 

@@ -52,7 +52,7 @@ import {
   reverseGeocode,
   isValidCoordinate,
 } from "@/lib/geo";
-import { sanitizeInput } from "@/lib/security";
+import { sanitizeInput, maskEmail } from "@/lib/security";
 
 interface AccountCustomizationModalProps {
   isOpen: boolean;
@@ -1587,66 +1587,94 @@ export function AccountCustomizationModal({
         </div>
 
         {/* ================================================================= */}
-        {/* RODAPÉ: BOTÕES DE NAVEGAÇÃO ENTRE PASSOS (VOLTAR / CONTINUAR) */}
+        {/* RODAPÉ: BOTÕES DE NAVEGAÇÃO ENTRE PASSOS & CONTA CONECTADA */}
         {/* ================================================================= */}
-        <div className="px-5 py-3.5 border-t border-zinc-800/80 bg-zinc-900/60 shrink-0 flex items-center justify-between gap-3">
-          {currentStep > 1 ? (
-            <button
-              type="button"
-              onClick={handlePrevStep}
-              disabled={isLoading || isSuccess}
-              className="px-4 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar</span>
-            </button>
-          ) : (
-            <div />
-          )}
+        <div className="px-5 py-3 border-t border-zinc-800/80 bg-zinc-900/60 shrink-0 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            {currentStep > 1 ? (
+              <button
+                type="button"
+                onClick={handlePrevStep}
+                disabled={isLoading || isSuccess}
+                className="px-4 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Voltar</span>
+              </button>
+            ) : (
+              <div />
+            )}
 
-          {currentStep < TOTAL_STEPS ? (
-            <button
-              type="button"
-              onClick={handleNextStep}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 text-zinc-950 transition-all active:scale-95 shadow-md ${
-                isCoach
-                  ? "bg-amber-500 hover:bg-amber-400 shadow-amber-500/20"
-                  : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
-              }`}
-            >
-              <span>Avançar</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleSubmitFinal()}
-              disabled={isLoading || isSuccess || !termsAccepted}
-              className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-zinc-950 flex items-center gap-2 transition-all active:scale-95 shadow-lg ${
-                !termsAccepted
-                  ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
-                  : isCoach
-                  ? "bg-amber-500 hover:bg-amber-400 shadow-amber-500/20"
-                  : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Salvando Perfil...</span>
-                </>
-              ) : isSuccess ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-zinc-950" />
-                  <span>Cadastro Concluído!</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>Concluir Cadastro & Começar</span>
-                </>
-              )}
-            </button>
+            {currentStep < TOTAL_STEPS ? (
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 text-zinc-950 transition-all active:scale-95 shadow-md ${
+                  isCoach
+                    ? "bg-amber-500 hover:bg-amber-400 shadow-amber-500/20"
+                    : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
+                }`}
+              >
+                <span>Avançar</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSubmitFinal()}
+                disabled={isLoading || isSuccess || !termsAccepted}
+                className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-zinc-950 flex items-center gap-2 transition-all active:scale-95 shadow-lg ${
+                  !termsAccepted
+                    ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                    : isCoach
+                    ? "bg-amber-500 hover:bg-amber-400 shadow-amber-500/20"
+                    : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Salvando Perfil...</span>
+                  </>
+                ) : isSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-zinc-950" />
+                    <span>Cadastro Concluído!</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>Concluir Cadastro & Começar</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Rodapé: Conta conectada com e-mail censurado e botão de logout */}
+          {user?.email && user.id !== "user_me" && (
+            <div className="pt-2 border-t border-zinc-800/50 flex items-center justify-center gap-2 text-[11px] text-zinc-400 flex-wrap">
+              <span>
+                Conectado como{" "}
+                <strong className="text-zinc-200 font-mono font-medium">
+                  {maskEmail(user.email)}
+                </strong>
+              </span>
+              <span className="text-zinc-600">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("warning");
+                  logoutUser();
+                  if (onClose) onClose();
+                  window.location.reload();
+                }}
+                className="text-rose-400 hover:text-rose-300 hover:underline font-medium transition-colors inline-flex items-center gap-1"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>Sair da conta</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

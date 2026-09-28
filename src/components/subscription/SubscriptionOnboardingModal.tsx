@@ -18,14 +18,17 @@ import {
   QrCode,
   Flame,
   AlertCircle,
+  LogOut,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getCurrentUser,
   activateTrialForUser,
   activatePaidPlanForUser,
+  logoutUser,
   UserProfile,
 } from "@/lib/auth-store";
+import { maskEmail } from "@/lib/security";
 import {
   isTrialAvailableForDevice,
   markTrialAsUsedOnDevice,
@@ -608,10 +611,36 @@ export function SubscriptionOnboardingModal({
               )}
             </div>
 
-            {/* Rodapé de Segurança */}
-            <div className="pt-2 text-center text-[11px] text-zinc-500 flex items-center justify-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Pagamentos processados com criptografia bancária via Mercado Pago.</span>
+            {/* Rodapé de Segurança & Conta Conectada */}
+            <div className="pt-2 text-center space-y-2">
+              <div className="text-[11px] text-zinc-500 flex items-center justify-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <span>Pagamentos processados com criptografia bancária via Mercado Pago.</span>
+              </div>
+
+              {currentUser?.email && currentUser.id !== "user_me" && (
+                <div className="pt-2 border-t border-zinc-800/60 flex items-center justify-center gap-2 text-xs text-zinc-400 flex-wrap">
+                  <span>
+                    Conectado como{" "}
+                    <strong className="text-zinc-200 font-mono font-medium">
+                      {maskEmail(currentUser.email)}
+                    </strong>
+                  </span>
+                  <span className="text-zinc-600">•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("warning");
+                      logoutUser();
+                      window.location.reload();
+                    }}
+                    className="text-rose-400 hover:text-rose-300 flex items-center gap-1 transition-colors font-medium hover:underline"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sair da conta</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

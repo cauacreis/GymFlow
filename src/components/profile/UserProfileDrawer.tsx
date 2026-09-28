@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
 import { Button } from "@/components/ui/Button";
 import { formatCurrency } from "@/lib/utils";
+import { maskEmail } from "@/lib/security";
 import {
   User,
   Flame,
@@ -89,7 +90,7 @@ export function UserProfileDrawer({
           </div>
           <div className="flex flex-col flex-1">
             <span className="text-sm font-bold text-white">{user?.name || "Atleta Convidado"}</span>
-            <span className="text-xs text-zinc-400">{user?.email || "atleta@gymflow.com.br"}</span>
+            <span className="text-xs text-zinc-400 font-mono">{user?.email ? maskEmail(user.email) : "atleta@gymflow.com.br"}</span>
           </div>
         </div>
 
