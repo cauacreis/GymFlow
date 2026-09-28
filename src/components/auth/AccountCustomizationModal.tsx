@@ -227,7 +227,6 @@ export function AccountCustomizationModal({
   // Estados de Imagem
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
-  const [imageCompressionInfo, setImageCompressionInfo] = useState<string | null>(null);
   const [avatarImgError, setAvatarImgError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -315,7 +314,6 @@ export function AccountCustomizationModal({
   const processUploadedFile = async (file: File) => {
     setIsProcessingImage(true);
     setErrorMessage(null);
-    setImageCompressionInfo(null);
 
     try {
       const validation = await validateImageFile(file);
@@ -333,9 +331,6 @@ export function AccountCustomizationModal({
 
       setAvatarUrl(compressed.dataUrl);
       setAvatarImgError(false);
-
-      const compKb = Math.max(1, Math.round(compressed.compressedSize / 1024));
-      setImageCompressionInfo(`Foto otimizada em WebP (${compKb}KB - ${compressed.compressionRatio}% menor).`);
       triggerHaptic("success");
     } catch (err: any) {
       console.error("Erro no processamento da imagem:", err);
@@ -892,7 +887,7 @@ export function AccountCustomizationModal({
                     {isProcessingImage && (
                       <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-emerald-400 text-[10px] font-bold">
                         <Loader2 className="w-5 h-5 animate-spin mb-1" />
-                        <span>Otimizando...</span>
+                        <span>Carregando...</span>
                       </div>
                     )}
                   </div>
@@ -922,7 +917,6 @@ export function AccountCustomizationModal({
                           type="button"
                           onClick={() => {
                             setAvatarUrl("");
-                            setImageCompressionInfo(null);
                           }}
                           className="p-1.5 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
                           title="Remover foto"
@@ -933,15 +927,8 @@ export function AccountCustomizationModal({
                     </div>
 
                     <p className="text-[10px] text-zinc-400 leading-relaxed">
-                      Formatos aceitos: JPG, PNG, WebP (até 5MB). O GymFlow compacta automaticamente sua imagem para máxima velocidade.
+                      Formatos aceitos: JPG, PNG ou WebP (até 5MB).
                     </p>
-
-                    {imageCompressionInfo && (
-                      <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium justify-center sm:justify-start">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
-                        <span>{imageCompressionInfo}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
