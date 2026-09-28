@@ -25,74 +25,7 @@ export interface BodyMetricEntry {
 const STORAGE_KEY_METRICS = "gymflow_body_metrics_v1";
 const EVENT_BODY_METRICS = "gymflow:body-metrics-updated";
 
-// Dados iniciais realistas para o aluno ter um histórico visual imediato
-export const INITIAL_BODY_METRICS: BodyMetricEntry[] = [
-  {
-    id: "metric_1",
-    date: "2026-05-15",
-    dateFormatted: "Mai",
-    weight: 82.5,
-    bodyFat: 17.2,
-    muscleMass: 36.8,
-    fatMass: 14.2,
-    waistCm: 86.0,
-    armCm: 35.5,
-    notes: "Avaliação inicial na academia",
-    createdAt: "15/05/2026",
-  },
-  {
-    id: "metric_2",
-    date: "2026-06-15",
-    dateFormatted: "Jun",
-    weight: 81.2,
-    bodyFat: 16.0,
-    muscleMass: 37.2,
-    fatMass: 13.0,
-    waistCm: 84.5,
-    armCm: 36.0,
-    notes: "Primeiro mês de treino e dieta",
-    createdAt: "15/06/2026",
-  },
-  {
-    id: "metric_3",
-    date: "2026-07-15",
-    dateFormatted: "Jul",
-    weight: 80.0,
-    bodyFat: 15.1,
-    muscleMass: 37.8,
-    fatMass: 12.1,
-    waistCm: 83.0,
-    armCm: 36.5,
-    notes: "Ajuste na carga dos treinos",
-    createdAt: "15/07/2026",
-  },
-  {
-    id: "metric_4",
-    date: "2026-08-15",
-    dateFormatted: "Ago",
-    weight: 79.1,
-    bodyFat: 14.4,
-    muscleMass: 38.2,
-    fatMass: 11.4,
-    waistCm: 81.5,
-    armCm: 37.0,
-    notes: "Recomposição acelerada",
-    createdAt: "15/08/2026",
-  },
-  {
-    id: "metric_5",
-    date: "2026-09-08",
-    dateFormatted: "Set",
-    weight: 78.4,
-    bodyFat: 13.8,
-    muscleMass: 38.6,
-    fatMass: 10.8,
-    waistCm: 80.0,
-    armCm: 37.5,
-    notes: "Medição atual em jejum",
-    createdAt: "08/09/2026",
-  },
-];
+export const INITIAL_BODY_METRICS: BodyMetricEntry[] = [];
 
 /**
  * Retorna as medições cadastradas, ordenadas por data cronológica (da mais antiga para a mais recente)
@@ -102,18 +35,20 @@ export function getStoredBodyMetrics(): BodyMetricEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_METRICS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(INITIAL_BODY_METRICS));
-      return INITIAL_BODY_METRICS;
+      return [];
     }
     const parsed: BodyMetricEntry[] = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(INITIAL_BODY_METRICS));
-      return INITIAL_BODY_METRICS;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    const cleaned = parsed.filter((m) => !/^metric_[1-5]$/.test(m.id));
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(cleaned));
     }
     // Ordena da mais antiga para a mais recente (cronológico para gráficos)
-    return parsed.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return cleaned.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   } catch {
-    return INITIAL_BODY_METRICS;
+    return [];
   }
 }
 

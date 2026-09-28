@@ -17,9 +17,7 @@ import {
 } from "recharts";
 import {
   TrendingUp,
-  TrendingDown,
   Flame,
-  Award,
   Trophy,
   Dumbbell,
   Scale,
@@ -34,7 +32,7 @@ import {
   Lock,
   Crown,
 } from "lucide-react";
-import { studentAnalyticsData } from "@/lib/analytics-data";
+import { calculateStudentAnalytics } from "@/lib/analytics-data";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getStoredBodyMetrics,
@@ -43,6 +41,8 @@ import {
   BodyMetricEntry,
 } from "@/lib/body-metrics-store";
 import { getCurrentUser, subscribeToAuth, UserProfile } from "@/lib/auth-store";
+import { getStudentWorkout, subscribeToWorkoutChanges, StudentWorkoutPackage } from "@/lib/workout-store";
+import { getStoredBookings, subscribeToBookings, BookingRequest } from "@/lib/booking-store";
 import { canAccessFeature } from "@/lib/subscription-features";
 import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
 import { NewBodyMetricModal } from "./NewBodyMetricModal";
@@ -67,12 +67,13 @@ interface StudentAnalyticsDashboardProps {
 }
 
 export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashboardProps = {}) {
-  const { kpis, strengthProgression, muscleVolumeDistribution, monthlyAttendance, personalRecords } =
-    studentAnalyticsData;
-
-  // Estado dinâmico de medições corporais & usuário
+  // Estado dinâmico de medições corporais, usuário, ficha de treino e agendamentos
   const [metrics, setMetrics] = useState<BodyMetricEntry[]>(() => getStoredBodyMetrics());
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
+  const [workoutPackage, setWorkoutPackage] = useState<StudentWorkoutPackage | null>(() =>
+    getStudentWorkout(getCurrentUser().id)
+  );
+  const [bookings, setBookings] = useState<BookingRequest[]>(() => getStoredBookings());
   const [isMounted, setIsMounted] = useState(false);
 
   // Modais de medição, histórico e gating
@@ -84,18 +85,26 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
   useEffect(() => {
     setIsMounted(true);
     const refresh = () => {
+      const user = getCurrentUser();
       setMetrics(getStoredBodyMetrics());
-      setCurrentUser(getCurrentUser());
+      setCurrentUser(user);
+      setWorkoutPackage(getStudentWorkout(user.id));
+      setBookings(getStoredBookings());
     };
+
     refresh();
     const unsubMetrics = subscribeToBodyMetrics(refresh);
     const unsubAuth = subscribeToAuth(refresh);
+    const unsubWorkouts = subscribeToWorkoutChanges(refresh);
+    const unsubBookings = subscribeToBookings(refresh);
+
     return () => {
       unsubMetrics();
       unsubAuth();
+      unsubWorkouts();
+      unsubBookings();
     };
   }, []);
-
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -103,14 +112,19 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Cálculo das métricas 100% dinâmicas baseadas no histórico real do aluno
+  const dynamicAnalytics = calculateStudentAnalytics(metrics, currentUser, workoutPackage, bookings);
+  const { kpis, strengthProgression, muscleVolumeDistribution, monthlyAttendance, personalRecords } =
+    dynamicAnalytics;
+
   // Cálculos dinâmicos com base no histórico real de medições
   const latestMetric =
     metrics.length > 0
       ? metrics[metrics.length - 1]
       : {
-          weight: currentUser.weight || 78.4,
-          bodyFat: currentUser.bodyFat || 13.8,
-          muscleMass: 38.6,
+          weight: currentUser.weight || 0,
+          bodyFat: currentUser.bodyFat || 0,
+          muscleMass: currentUser.weight ? Math.round(currentUser.weight * 0.75 * 10) / 10 : 0,
           dateFormatted: "Hoje",
         };
 
@@ -120,12 +134,21 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
   const bfChangeDiff =
     metrics.length > 1
       ? Number((latestMetric.bodyFat - firstMetric.bodyFat).toFixed(1))
-      : -3.4;
-  const bfChangeLabel = `${bfChangeDiff > 0 ? `+${bfChangeDiff}` : bfChangeDiff}% total`;
+      : null;
+
+  const bfChangeLabel =
+    bfChangeDiff !== null
+      ? `${bfChangeDiff > 0 ? `+${bfChangeDiff}` : bfChangeDiff}% total`
+      : metrics.length === 1
+      ? "1ª medição"
+      : "Sem registros";
 
   // Altura cadastrada nas configurações de perfil
   const heightCm = currentUser.height || 178;
-  const bmiData = calculateBMI(latestMetric.weight, heightCm);
+  const bmiData =
+    latestMetric.weight > 0
+      ? calculateBMI(latestMetric.weight, heightCm)
+      : { bmi: "--", category: "Não pesado", color: "text-zinc-500" };
 
   // Mapeamento dinâmico para o gráfico de Composição Corporal InBody
   const bodyCompositionChartData = metrics.map((m) => ({
@@ -135,6 +158,11 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
     gordura: m.bodyFat,
     fatMass: m.fatMass,
   }));
+
+  const hasStrengthData = strengthProgression.length > 0;
+  const hasBodyCompData = bodyCompositionChartData.length > 0;
+  const hasMuscleVolumeData = muscleVolumeDistribution.length > 0;
+  const hasAttendanceData = monthlyAttendance.length > 0;
 
   return (
     <div className="flex flex-col gap-4 text-left w-full animate-in fade-in duration-300 relative">
@@ -157,7 +185,7 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
             </span>
             <h2 className="text-lg font-black text-white mt-1">Analytics do Aluno</h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Progressão de cargas, bioimpedância periódica e consistência
+              Progressão de cargas, bioimpedância periódica e consistência real
             </p>
           </div>
 
@@ -196,7 +224,7 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
               <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                 <Dumbbell className="w-4 h-4" />
               </div>
-              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md truncate max-w-[110px]">
                 {kpis.volumeChange}
               </span>
             </div>
@@ -215,7 +243,7 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
                 <Flame className="w-4 h-4" />
               </div>
               <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
-                Ativo 🔥
+                {kpis.streakLabel}
               </span>
             </div>
             <div className="mt-2">
@@ -255,7 +283,7 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
               </div>
               <span
                 className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                  bfChangeDiff <= 0
+                  bfChangeDiff === null || bfChangeDiff <= 0
                     ? "text-emerald-400 bg-emerald-500/10"
                     : "text-amber-400 bg-amber-500/10"
                 }`}
@@ -266,9 +294,11 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
             <div className="mt-2">
               <div className="flex items-baseline gap-1">
                 <span className="text-base font-black text-white font-mono">
-                  {latestMetric.bodyFat.toFixed(1)}%
+                  {kpis.bodyFatCurrent}
                 </span>
-                <span className="text-[10px] text-zinc-400 font-mono">({latestMetric.weight.toFixed(1)}kg)</span>
+                {latestMetric.weight > 0 && (
+                  <span className="text-[10px] text-zinc-400 font-mono">({latestMetric.weight.toFixed(1)}kg)</span>
+                )}
               </div>
               <span className="text-[9px] text-zinc-400 block group-hover:text-zinc-200">
                 Gordura Corporal
@@ -291,45 +321,54 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
 
         <div className="h-52 w-full mt-2">
           {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={strengthProgression}>
-                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[60, 180]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} iconType="circle" />
-                <Line
-                  type="monotone"
-                  dataKey="supino"
-                  name="Supino Reto"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: "#10b981" }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="agachamento"
-                  name="Agachamento"
-                  stroke="#38bdf8"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: "#38bdf8" }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="terra"
-                  name="Lev. Terra"
-                  stroke="#f59e0b"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: "#f59e0b" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            !hasStrengthData ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                <Dumbbell className="w-7 h-7 text-emerald-500/30 mb-1.5" />
+                <p className="text-xs font-bold text-white">Sem histórico de cargas nos compostos</p>
+                <p className="text-[10px] text-zinc-400 max-w-xs mt-0.5">
+                  Conforme você registrar e progredir cargas nos treinos (Supino, Agachamento, Terra), a curva de força aparecerá aqui.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={strengthProgression}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={["auto", "auto"]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} iconType="circle" />
+                  <Line
+                    type="monotone"
+                    dataKey="supino"
+                    name="Supino Reto"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#10b981" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="agachamento"
+                    name="Agachamento"
+                    stroke="#38bdf8"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#38bdf8" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="terra"
+                    name="Lev. Terra"
+                    stroke="#f59e0b"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#f59e0b" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )
           ) : (
             <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
           )}
         </div>
       </div>
-
 
       {/* GRÁFICO 2: COMPOSIÇÃO CORPORAL & BIOIMPEDÂNCIA DINÂMICA */}
       {(() => {
@@ -361,7 +400,7 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
                 {/* Badge de Altura & IMC */}
                 <span
                   className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.08] text-zinc-300 flex items-center gap-1"
-                  title={`IMC: Peso ${latestMetric.weight.toFixed(1)}kg / Altura ${(heightCm / 100).toFixed(2)}m`}
+                  title={latestMetric.weight > 0 ? `IMC: Peso ${latestMetric.weight.toFixed(1)}kg / Altura ${(heightCm / 100).toFixed(2)}m` : "Sem peso cadastrado"}
                 >
                   <Ruler className="w-3 h-3 text-sky-400" />
                   <span>IMC {bmiData.bmi}</span>
@@ -409,52 +448,69 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
                   Desbloquear Bioimpedância VIP
                 </button>
               </div>
+            ) : !hasBodyCompData ? (
+              <div className="w-full h-52 flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                <HeartPulse className="w-7 h-7 text-teal-500/30 mb-1.5" />
+                <p className="text-xs font-bold text-white">Nenhuma medição corporal registrada</p>
+                <p className="text-[10px] text-zinc-400 max-w-xs mt-0.5 mb-2.5">
+                  Clique em "Nova Medição" acima para registrar sua primeira pesagem e percentual de gordura.
+                </p>
+                <button
+                  onClick={() => {
+                    triggerHaptic("medium");
+                    setIsNewMetricModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+                >
+                  + Registrar 1ª Medição
+                </button>
+              </div>
             ) : (
               <div className="h-52 w-full mt-2">
-          {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={bodyCompositionChartData}>
-                <defs>
-                  <linearGradient id="bodyWeightGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="muscleMassGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis domain={["auto", "auto"]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} iconType="circle" />
-                <Area
-                  type="monotone"
-                  dataKey="peso"
-                  name="Peso Total (kg)"
-                  stroke="#38bdf8"
-                  strokeWidth={2}
-                  fill="url(#bodyWeightGrad)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="massaMagra"
-                  name="Massa Magra (kg)"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  fill="url(#muscleMassGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
-          )}
-        </div>
-        )}
-      </div>
-    );
-  })()}
+                {isMounted ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={bodyCompositionChartData}>
+                      <defs>
+                        <linearGradient id="bodyWeightGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="muscleMassGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis domain={["auto", "auto"]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} iconType="circle" />
+                      <Area
+                        type="monotone"
+                        dataKey="peso"
+                        name="Peso Total (kg)"
+                        stroke="#38bdf8"
+                        strokeWidth={2}
+                        fill="url(#bodyWeightGrad)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="massaMagra"
+                        name="Massa Magra (kg)"
+                        stroke="#10b981"
+                        strokeWidth={2.5}
+                        fill="url(#muscleMassGrad)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* GRÁFICO 3: VOLUME SEMANAL POR GRUPO MUSCULAR */}
       <div className="rounded-3xl p-4 sm:p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg">
@@ -463,22 +519,32 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
             <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
               <Dumbbell className="w-3.5 h-3.5 text-amber-400" /> Volume de Séries Semanais por Músculo
             </h3>
-            <p className="text-[10px] text-zinc-400 mt-0.5">Séries semanais executadas vs Meta do treino</p>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Séries semanais executadas vs Meta da ficha atual</p>
           </div>
         </div>
 
         <div className="h-48 w-full mt-2">
           {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={muscleVolumeDistribution} barGap={4}>
-                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 9 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 24]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={22} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="series" name="Séries Feitas" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={22} />
-                <Bar dataKey="alvo" name="Meta Semanal" fill="#ffffff15" radius={[4, 4, 0, 0]} maxBarSize={22} />
-              </BarChart>
-            </ResponsiveContainer>
+            !hasMuscleVolumeData ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                <Dumbbell className="w-7 h-7 text-amber-500/30 mb-1.5" />
+                <p className="text-xs font-bold text-white">Nenhum treino com séries registradas</p>
+                <p className="text-[10px] text-zinc-400 max-w-xs mt-0.5">
+                  Peça ao seu treinador para cadastrar sua ficha ou configure sua rotina na aba Treino.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={muscleVolumeDistribution} barGap={4}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, "auto"]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={22} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="series" name="Séries Feitas" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                  <Bar dataKey="alvo" name="Meta Semanal" fill="#ffffff15" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                </BarChart>
+              </ResponsiveContainer>
+            )
           ) : (
             <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
           )}
@@ -495,41 +561,50 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
             <p className="text-[10px] text-zinc-400 mt-0.5">Sessões concluídas vs Meta do mês</p>
           </div>
           <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-lg">
-            92% de Aderência
+            {kpis.streakDays > 0 ? `${kpis.streakDays} sessões atendidas` : "0 sessões"}
           </span>
         </div>
 
         <div className="h-44 w-full mt-2">
           {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={monthlyAttendance}>
-                <defs>
-                  <linearGradient id="studentAttendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[10, 25]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={25} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="treinos"
-                  name="Treinos Concluídos"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  fill="url(#studentAttendGrad)"
-                  activeDot={{ r: 4, fill: "#10b981" }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            !hasAttendanceData ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                <Calendar className="w-7 h-7 text-sky-500/30 mb-1.5" />
+                <p className="text-xs font-bold text-white">Nenhuma presença computada ainda</p>
+                <p className="text-[10px] text-zinc-400 max-w-xs mt-0.5">
+                  Conforme seus treinos forem confirmados na agenda ou check-ins realizados, sua consistência aparecerá aqui.
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={monthlyAttendance}>
+                  <defs>
+                    <linearGradient id="studentAttendGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, "auto"]} tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} width={25} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="treinos"
+                    name="Treinos Concluídos"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fill="url(#studentAttendGrad)"
+                    activeDot={{ r: 4, fill: "#10b981" }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )
           ) : (
             <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">Carregando métricas...</div>
           )}
         </div>
       </div>
-
 
       {/* VITRINE DE RECORDES PESSOAIS (PRs) */}
       <div className="rounded-3xl p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg space-y-3">
@@ -538,36 +613,42 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
             <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
               <Trophy className="w-3.5 h-3.5 text-amber-400" /> Galeria de Recordes Pessoais (PRs)
             </h3>
-            <p className="text-[10px] text-zinc-400 mt-0.5">Cargas máximas históricas superadas</p>
+            <p className="text-[10px] text-zinc-400 mt-0.5">Cargas máximas históricas superadas nos treinos</p>
           </div>
           <span className="text-[9px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
-            6 Recordes Ativos
+            {personalRecords.length} {personalRecords.length === 1 ? "Recorde Ativo" : "Recordes Ativos"}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {personalRecords.map((pr, idx) => (
-            <div
-              key={idx}
-              className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between gap-2"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
-                  <Zap className="w-4 h-4" />
+        {personalRecords.length === 0 ? (
+          <div className="py-6 px-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] text-center text-xs text-zinc-400">
+            Nenhum recorde pessoal (PR) registrado ainda. Suas maiores cargas superadas nos exercícios da sua ficha aparecerão aqui!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {personalRecords.map((pr, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-white truncate block">{pr.exercise}</span>
+                    <span className="text-[10px] text-zinc-400 font-mono block">{pr.date} • {pr.reps}</span>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <span className="text-xs font-bold text-white truncate block">{pr.exercise}</span>
-                  <span className="text-[10px] text-zinc-400 font-mono block">{pr.date} • {pr.reps}</span>
-                </div>
-              </div>
 
-              <div className="text-right shrink-0">
-                <span className="text-sm font-black text-white font-mono">{pr.weight} kg</span>
-                <span className="text-[9px] font-bold text-emerald-400 block">{pr.increase}</span>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-black text-white font-mono">{pr.weight} kg</span>
+                  <span className="text-[9px] font-bold text-emerald-400 block">{pr.increase}</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Modais de Medição e Histórico */}

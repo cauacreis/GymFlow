@@ -158,11 +158,22 @@ function getStoredStudentsRaw(): StudentProfile[] {
   if (typeof window === "undefined") return INITIAL_STUDENTS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
-    if (!raw) return INITIAL_STUDENTS;
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_STUDENTS;
+    if (!Array.isArray(parsed)) return [];
+    const legacyMockIds = new Set([
+      "student_beatriz",
+      "student_lucas",
+      "student_ana",
+      "student_camila",
+      "student_mariana",
+      "student_diego",
+      "student_pedro",
+      "student_carlos",
+    ]);
+    return parsed.filter((s) => !legacyMockIds.has(s.id));
   } catch {
-    return INITIAL_STUDENTS;
+    return [];
   }
 }
 
@@ -320,243 +331,7 @@ export function deleteCoachPlan(id: string): void {
   saveCoachPlans(updated);
 }
 
-export const INITIAL_STUDENTS: StudentProfile[] = [
-  {
-    id: "student_beatriz",
-    name: "Beatriz Santos",
-    email: "beatriz.santos@email.com",
-    phone: "11987654321",
-    matricula: "GF-88412",
-    goal: "Hipertrofia",
-    currentRoutineTitle: "Treino Inferiores & Glúteo 4x",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "10/09/2026",
-    notesFromCoach: "Foco em cadência no agachamento e elevação pélvica.",
-    plan: "Mensal VIP (R$ 55/mês)",
-    status: "ativo",
-    paymentStatus: "pago",
-    paymentDueDate: "Dia 10",
-    lastPaymentDate: "10/09/2026",
-    monthlyPresence: 16,
-    monthlyAbsences: 1,
-    monthlyDelays: 0,
-    totalClasses: 17,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    age: 26,
-    lastPresence: "Hoje às 06:00",
-    todayAttendanceStatus: "presente",
-    scheduledTimeToday: "06:00",
-    registeredSince: "09/02/2024",
-    weeklySchedule: ["Segunda · 06:00", "Quarta · 06:00", "Sexta · 06:00"],
-    notes: "Aluna exemplar, foco em progressão de cargas nos exercícios de glúteos e posteriores. Sempre pontual.",
-  },
-  {
-    id: "student_lucas",
-    name: "Lucas Alves",
-    email: "lucas.alves@email.com",
-    phone: "11988887777",
-    matricula: "GF-77219",
-    goal: "Força & Performance",
-    currentRoutineTitle: "Push / Pull / Legs Avançado",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "08/09/2026",
-    notesFromCoach: "Cargas progressivas no supino reto e terra.",
-    plan: "Mensal Pro (R$ 45/mês)",
-    status: "ativo",
-    paymentStatus: "pago",
-    paymentDueDate: "Dia 05",
-    lastPaymentDate: "05/09/2026",
-    monthlyPresence: 14,
-    monthlyAbsences: 2,
-    monthlyDelays: 1,
-    totalClasses: 17,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    age: 29,
-    lastPresence: "Hoje às 07:00",
-    todayAttendanceStatus: "presente",
-    scheduledTimeToday: "07:00",
-    registeredSince: "15/01/2024",
-    weeklySchedule: ["Segunda · 07:00", "Quarta · 07:00", "Sexta · 07:00"],
-    notes: "Meta de supino 100kg até o fim do semestre. Cuidar alinhamento da coluna no levantamento terra.",
-  },
-  {
-    id: "student_ana",
-    name: "Ana Clara",
-    email: "ana.clara@email.com",
-    phone: "11977776666",
-    matricula: "GF-66120",
-    goal: "Condicionamento Geral",
-    currentRoutineTitle: "Circuito Funcional & Core",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "09/09/2026",
-    plan: "Mensal Básico (R$ 35/mês)",
-    status: "ativo",
-    paymentStatus: "atrasado",
-    paymentDueDate: "Dia 08",
-    lastPaymentDate: "08/08/2026",
-    monthlyPresence: 12,
-    monthlyAbsences: 1,
-    monthlyDelays: 0,
-    totalClasses: 13,
-    hasWorkoutSheet: true,
-    isOfflineStudent: true,
-    age: 31,
-    lastPresence: "Hoje às 08:00",
-    todayAttendanceStatus: "presente",
-    scheduledTimeToday: "08:00",
-    registeredSince: "12/03/2024",
-    weeklySchedule: ["Segunda · 08:00", "Quarta · 08:00", "Sexta · 08:00"],
-    notes: "Condicionamento físico e alinhamento postural. Aluna exemplar, nunca falta sem avisar.",
-  },
-  {
-    id: "student_camila",
-    name: "Camila Fernandes",
-    email: "camila.f@email.com",
-    phone: "11966665555",
-    matricula: "GF-55341",
-    goal: "Emagrecimento",
-    currentRoutineTitle: "Full Body Metabólico & HIIT",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "05/09/2026",
-    plan: "Mensal Pro (R$ 45/mês)",
-    status: "ativo",
-    paymentStatus: "pago",
-    paymentDueDate: "Dia 15",
-    lastPaymentDate: "15/08/2026",
-    monthlyPresence: 15,
-    monthlyAbsences: 0,
-    monthlyDelays: 1,
-    totalClasses: 16,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    age: 27,
-    lastPresence: "Hoje às 09:00",
-    todayAttendanceStatus: "presente",
-    scheduledTimeToday: "09:00",
-    registeredSince: "05/04/2024",
-    weeklySchedule: ["Terça · 09:00", "Quinta · 09:00", "Sexta · 09:00"],
-    notes: "Foco em queima calórica e tônus muscular. Treinos metabólicos rápidos com alta densidade.",
-  },
-  {
-    id: "student_mariana",
-    name: "Mariana Oliveira",
-    email: "mariana.o@email.com",
-    phone: "11955554444",
-    matricula: "GF-44982",
-    goal: "Hipertrofia",
-    currentRoutineTitle: "Upper / Lower Equilibrado",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "07/09/2026",
-    plan: "Mensal VIP (R$ 55/mês)",
-    status: "ativo",
-    paymentStatus: "pago",
-    paymentDueDate: "Dia 10",
-    lastPaymentDate: "10/09/2026",
-    monthlyPresence: 11,
-    monthlyAbsences: 3,
-    monthlyDelays: 0,
-    totalClasses: 14,
-    hasWorkoutSheet: true,
-    isOfflineStudent: true,
-    age: 24,
-    lastPresence: "Hoje às 10:00",
-    todayAttendanceStatus: "presente",
-    scheduledTimeToday: "10:00",
-    registeredSince: "20/02/2024",
-    weeklySchedule: ["Segunda · 10:00", "Quarta · 10:00", "Sexta · 10:00"],
-    notes: "Boa evolução no treino de pernas e glúteos. Manter cadência lenta na fase excêntrica.",
-  },
-  {
-    id: "student_diego",
-    name: "Diego Martins",
-    email: "diego.m@email.com",
-    phone: "11944443333",
-    matricula: "GF-33821",
-    goal: "Força & Performance",
-    currentRoutineTitle: "Força Pura 5x5",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "04/09/2026",
-    plan: "Mensal Pro (R$ 45/mês)",
-    status: "ativo",
-    paymentStatus: "pago",
-    paymentDueDate: "Dia 05",
-    lastPaymentDate: "05/09/2026",
-    monthlyPresence: 13,
-    monthlyAbsences: 1,
-    monthlyDelays: 0,
-    totalClasses: 14,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    age: 33,
-    lastPresence: "Hoje às 12:00",
-    todayAttendanceStatus: "presente",
-    scheduledTimeToday: "12:00",
-    registeredSince: "18/05/2024",
-    weeklySchedule: ["Segunda · 12:00", "Quarta · 12:00", "Quinta · 12:00"],
-    notes: "Foco em progressão de carga no agachamento livre. Intervalo de descanso completo.",
-  },
-  {
-    id: "student_pedro",
-    name: "Pedro Henrique",
-    email: "pedro.h@email.com",
-    phone: "11933332222",
-    matricula: "GF-22901",
-    goal: "Hipertrofia",
-    currentRoutineTitle: "Hipertrofia ABC Intensivo",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "03/09/2026",
-    plan: "Mensal Básico (R$ 35/mês)",
-    status: "ativo",
-    paymentStatus: "pendente",
-    paymentDueDate: "Dia 12",
-    lastPaymentDate: "12/08/2026",
-    monthlyPresence: 10,
-    monthlyAbsences: 2,
-    monthlyDelays: 2,
-    totalClasses: 14,
-    hasWorkoutSheet: true,
-    isOfflineStudent: true,
-    age: 22,
-    lastPresence: "Ontem às 07:00",
-    todayAttendanceStatus: "agendado",
-    scheduledTimeToday: "17:00",
-    registeredSince: "10/06/2024",
-    weeklySchedule: ["Terça · 07:00", "Quinta · 07:00"],
-    notes: "Aluno dedicado. Ajustar técnica no levantamento lateral e puxada pela frente.",
-  },
-  {
-    id: "student_carlos",
-    name: "Carlos Mendes",
-    email: "carlos.mendes@email.com",
-    phone: "11999998888",
-    matricula: "GF-10492",
-    goal: "Hipertrofia",
-    currentRoutineTitle: "Hipertrofia Avançada ABC",
-    prescribedBy: "Prof. Rodrigo",
-    prescribedAt: "10/09/2026",
-    notesFromCoach: "Foco em peitoral e deltoides.",
-    plan: "Mensal VIP (R$ 55/mês)",
-    status: "ativo",
-    paymentStatus: "pago",
-    paymentDueDate: "Dia 10",
-    lastPaymentDate: "10/09/2026",
-    monthlyPresence: 18,
-    monthlyAbsences: 1,
-    monthlyDelays: 0,
-    totalClasses: 19,
-    hasWorkoutSheet: true,
-    isOfflineStudent: false,
-    age: 28,
-    lastPresence: "Hoje às 18:00",
-    todayAttendanceStatus: "presente",
-    scheduledTimeToday: "18:00",
-    registeredSince: "03/01/2024",
-    weeklySchedule: ["Segunda · 18:00", "Quarta · 18:00", "Quinta · 18:00"],
-    notes: "Treina no final do dia após o trabalho. Hidratação reforçada e cargas pesadas.",
-  },
-];
+export const INITIAL_STUDENTS: StudentProfile[] = [];
 
 // Flag de sincronização inicial em memória
 let hasTriggeredInitialSupabaseSync = false;
@@ -579,24 +354,33 @@ export function getStoredStudents(): StudentProfile[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
     if (!raw) {
-      const { students: cycleInit } = checkAndUpdatePaymentCycles(INITIAL_STUDENTS);
-      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleInit));
-      return cycleInit;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      const { students: cycleInit } = checkAndUpdatePaymentCycles(INITIAL_STUDENTS);
-      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleInit));
-      return cycleInit;
+    if (!Array.isArray(parsed)) {
+      return [];
     }
-    const { students: cycleUpdated, hasChanges } = checkAndUpdatePaymentCycles(parsed);
-    if (hasChanges) {
+    const legacyMockIds = new Set([
+      "student_beatriz",
+      "student_lucas",
+      "student_ana",
+      "student_camila",
+      "student_mariana",
+      "student_diego",
+      "student_pedro",
+      "student_carlos",
+    ]);
+    const cleaned = parsed.filter((s) => !legacyMockIds.has(s.id));
+    const { students: cycleUpdated, hasChanges } = checkAndUpdatePaymentCycles(cleaned);
+    if (hasChanges || cleaned.length !== parsed.length) {
       localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleUpdated));
-      cycleUpdated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+      if (hasChanges) {
+        cycleUpdated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+      }
     }
     return cycleUpdated;
   } catch (e) {
-    return INITIAL_STUDENTS;
+    return [];
   }
 }
 

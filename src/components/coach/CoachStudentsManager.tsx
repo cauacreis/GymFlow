@@ -802,9 +802,6 @@ export function CoachStudentsManager({
             (b) => b.studentId === s.id && isSlotToday(b.slotDay)
           );
           if (matchBooking) return matchBooking.slotTime;
-          if (s.id === "student_carlos") return "18:00";
-          if (s.id === "student_lucas") return "07:00";
-          if (s.id === "student_beatriz") return "06:00";
           return "Hoje";
         };
 
