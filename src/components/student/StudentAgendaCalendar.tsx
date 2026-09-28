@@ -682,6 +682,7 @@ export function StudentAgendaCalendar({
                 </label>
                 <input
                   type="text"
+                  maxLength={150}
                   value={rescheduleReason}
                   onChange={(e) => setRescheduleReason(e.target.value)}
                   placeholder="Ex: Imprevisto no trabalho, prefiro treinar à noite..."

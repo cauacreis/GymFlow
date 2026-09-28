@@ -34,6 +34,7 @@ import { fetchProfileFromSupabase } from "@/lib/supabase-service";
 import { updateCoachPublicProfile } from "@/lib/booking-store";
 import { saveNewStudent } from "@/lib/workout-store";
 import { canRegisterAccountOnDevice, registerDeviceAccount } from "@/lib/device-lockout";
+import { formatPhone, sanitizeInput } from "@/lib/security";
 
 // ============================================================================
 // VALIDAÇÃO ZOD
@@ -679,8 +680,9 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
                   type="text"
                   placeholder="Ex: Carlos Silva"
                   required
+                  maxLength={80}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => setName(sanitizeInput(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
@@ -691,8 +693,9 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
                 <input
                   type="tel"
                   placeholder="(11) 99999-9999"
+                  maxLength={16}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
                 />
               </div>
@@ -700,12 +703,13 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
               {/* Registro CREF para Professor */}
               {selectedRole === "coach" && (
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-zinc-300">Registro CREF</label>
+                  <label className="block text-xs font-semibold text-zinc-300">Registro CREF (Opcional)</label>
                   <input
                     type="text"
+                    maxLength={30}
                     placeholder="Ex: 08412-SP"
                     value={cref}
-                    onChange={(e) => setCref(e.target.value)}
+                    onChange={(e) => setCref(sanitizeInput(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 uppercase transition-all"
                   />
                 </div>
@@ -720,8 +724,9 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
               type="email"
               placeholder="seu@email.com"
               required
+              maxLength={100}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value.slice(0, 100))}
               className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
             />
           </div>
@@ -751,6 +756,7 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   required
+                  maxLength={100}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"
@@ -776,6 +782,7 @@ export function AuthGateView({ onAuthenticated }: AuthGateViewProps) {
                   type={showPassword ? "text" : "password"}
                   placeholder="Repita sua senha"
                   required
+                  maxLength={100}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all"

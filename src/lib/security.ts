@@ -192,3 +192,36 @@ export function sanitizeObject<T>(obj: T): T {
   return result as T;
 }
 
+/**
+ * Formata telefone brasileiro com DDD no padrão (XX) XXXXX-XXXX
+ */
+export function formatPhone(value: string): string {
+  let digits = (value || "").replace(/\D/g, "");
+  if (digits.length > 11 && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
+  digits = digits.slice(0, 11);
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
+/**
+ * Limita números a um intervalo seguro [min, max]
+ */
+export function clampNumber(
+  value: number | string,
+  min: number,
+  max: number,
+  defaultValue: number = min
+): number {
+  const parsed = typeof value === "number" ? value : parseFloat(value);
+  if (isNaN(parsed) || !isFinite(parsed)) return defaultValue;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+

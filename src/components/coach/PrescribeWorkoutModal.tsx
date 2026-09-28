@@ -147,6 +147,7 @@ export function PrescribeWorkoutModal({
             </label>
             <textarea
               rows={3}
+              maxLength={500}
               value={coachNotes}
               onChange={(e) => setCoachNotes(e.target.value)}
               placeholder="Ex: Amanda, foque na fase excêntrica do agachamento. Respeite os 60s de descanso..."

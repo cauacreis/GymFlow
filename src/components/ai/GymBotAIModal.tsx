@@ -294,6 +294,7 @@ export function GymBotAIModal({ isOpen, onClose, onOpenPlans }: GymBotAIModalPro
             <div className="p-3 border-t border-white/[0.08] bg-zinc-900/60 flex items-center gap-2">
               <input
                 type="text"
+                maxLength={300}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}

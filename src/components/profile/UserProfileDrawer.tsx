@@ -178,6 +178,7 @@ export function UserProfileDrawer({
               </span>
               <input
                 type="text"
+                maxLength={20}
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 placeholder="EXCLUIR"

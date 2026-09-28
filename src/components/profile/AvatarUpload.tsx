@@ -156,6 +156,7 @@ export function AvatarUpload({
         <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.06] animate-in fade-in duration-150">
           <input
             type="url"
+            maxLength={500}
             value={customUrl}
             onChange={(e) => setCustomUrl(e.target.value)}
             placeholder="Cole o link da foto (https://...)"

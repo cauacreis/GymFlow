@@ -63,6 +63,7 @@ import { ExerciseInWorkout, WorkoutSplitTemplate } from "@/lib/exercisedb";
 import { StudentFullProfileModal } from "./StudentFullProfileModal";
 import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
 import { CoachRemindersCenterModal } from "./CoachRemindersCenterModal";
+import { formatPhone, sanitizeInput, clampNumber } from "@/lib/security";
 import { getRemindersSummary, subscribeToReminders } from "@/lib/reminders-service";
 
 interface CoachStudentsManagerProps {
@@ -184,19 +185,25 @@ export function CoachStudentsManager({
     return matchesSearch && matchesFilter;
   });
 
-  // Salvar novo aluno
+  // Salvar novo aluno com limites estritos e sanitização
   const handleCreateStudent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudentName.trim()) return;
+    const cleanName = sanitizeInput(newStudentName.trim()).slice(0, 80);
+    if (!cleanName) return;
+
+    const formattedPhone = newStudentPhone.trim() ? formatPhone(newStudentPhone.trim()) : undefined;
+    const cleanEmail = newStudentEmail.trim() ? newStudentEmail.trim().slice(0, 100).toLowerCase() : undefined;
+    const cleanEmergency = newStudentEmergency.trim() ? sanitizeInput(newStudentEmergency.trim()).slice(0, 100) : undefined;
+    const safeAge = clampNumber(newStudentAge, 10, 120, 25);
 
     const created = saveNewStudent({
-      name: newStudentName.trim(),
-      email: newStudentEmail.trim() || undefined,
-      phone: newStudentPhone.trim() || undefined,
+      name: cleanName,
+      email: cleanEmail,
+      phone: formattedPhone,
       goal: newStudentGoal,
       plan: newStudentPlan,
-      age: parseInt(newStudentAge) || 25,
-      emergencyContact: newStudentEmergency.trim() || undefined,
+      age: safeAge,
+      emergencyContact: cleanEmergency,
       isOfflineStudent: newStudentIsOffline,
     });
 
@@ -1041,6 +1048,7 @@ export function CoachStudentsManager({
           <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
+            maxLength={60}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar por nome, telefone ou objetivo..."
@@ -1391,6 +1399,7 @@ export function CoachStudentsManager({
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   value={newStudentName}
                   onChange={(e) => setNewStudentName(e.target.value)}
                   placeholder="Ex: Mariana Silva"
@@ -1404,9 +1413,10 @@ export function CoachStudentsManager({
                     Telefone / WhatsApp
                   </label>
                   <input
-                    type="text"
+                    type="tel"
+                    maxLength={16}
                     value={newStudentPhone}
-                    onChange={(e) => setNewStudentPhone(e.target.value)}
+                    onChange={(e) => setNewStudentPhone(formatPhone(e.target.value))}
                     placeholder="(11) 98888-7777"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   />
@@ -1416,8 +1426,10 @@ export function CoachStudentsManager({
                   <label className="text-[10px] font-bold text-zinc-400 uppercase">Idade</label>
                   <input
                     type="number"
+                    min={10}
+                    max={120}
                     value={newStudentAge}
-                    onChange={(e) => setNewStudentAge(e.target.value)}
+                    onChange={(e) => setNewStudentAge(e.target.value.slice(0, 3))}
                     placeholder="28"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   />
@@ -1430,6 +1442,7 @@ export function CoachStudentsManager({
                 </label>
                 <input
                   type="email"
+                  maxLength={100}
                   value={newStudentEmail}
                   onChange={(e) => setNewStudentEmail(e.target.value)}
                   placeholder="aluno@email.com"
@@ -1489,6 +1502,7 @@ export function CoachStudentsManager({
                 </label>
                 <input
                   type="text"
+                  maxLength={100}
                   value={newStudentEmergency}
                   onChange={(e) => setNewStudentEmergency(e.target.value)}
                   placeholder="Nome e telefone de familiar..."
@@ -1579,6 +1593,7 @@ export function CoachStudentsManager({
                         <div className="flex items-center gap-2 flex-1">
                           <input
                             type="text"
+                            maxLength={50}
                             value={plan.name}
                             onChange={(e) =>
                               handleUpdateEditingPlanField(plan.id, "name", e.target.value)
@@ -1621,12 +1636,13 @@ export function CoachStudentsManager({
                             <input
                               type="number"
                               min="0"
+                              max="10000"
                               value={plan.price}
                               onChange={(e) =>
                                 handleUpdateEditingPlanField(
                                   plan.id,
                                   "price",
-                                  parseFloat(e.target.value) || 0
+                                  clampNumber(e.target.value, 0, 10000, 0)
                                 )
                               }
                               className="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-amber-500/50"
@@ -1640,6 +1656,7 @@ export function CoachStudentsManager({
                           </label>
                           <input
                             type="text"
+                            maxLength={50}
                             value={plan.frequency || ""}
                             onChange={(e) =>
                               handleUpdateEditingPlanField(plan.id, "frequency", e.target.value)
@@ -1656,6 +1673,7 @@ export function CoachStudentsManager({
                         </label>
                         <input
                           type="text"
+                          maxLength={150}
                           value={plan.description || ""}
                           onChange={(e) =>
                             handleUpdateEditingPlanField(plan.id, "description", e.target.value)
@@ -1685,6 +1703,7 @@ export function CoachStudentsManager({
                     </label>
                     <input
                       type="text"
+                      maxLength={50}
                       value={newPlanName}
                       onChange={(e) => setNewPlanName(e.target.value)}
                       placeholder="Ex: Trimestral Personal VIP"
@@ -1701,6 +1720,7 @@ export function CoachStudentsManager({
                       <input
                         type="number"
                         min="0"
+                        max="10000"
                         value={newPlanPrice}
                         onChange={(e) => setNewPlanPrice(e.target.value)}
                         placeholder="Ex: 90"
@@ -1717,6 +1737,7 @@ export function CoachStudentsManager({
                     </label>
                     <input
                       type="text"
+                      maxLength={50}
                       value={newPlanFrequency}
                       onChange={(e) => setNewPlanFrequency(e.target.value)}
                       placeholder="Ex: 4x por semana presencial"
@@ -1730,6 +1751,7 @@ export function CoachStudentsManager({
                     </label>
                     <input
                       type="text"
+                      maxLength={150}
                       value={newPlanDescription}
                       onChange={(e) => setNewPlanDescription(e.target.value)}
                       placeholder="Ex: Acompanhamento de alta intensidade"
@@ -1886,6 +1908,7 @@ export function CoachStudentsManager({
                 </label>
                 <input
                   type="text"
+                  maxLength={80}
                   value={editingWorkoutData.routineTitle}
                   onChange={(e) =>
                     setEditingWorkoutData({ ...editingWorkoutData, routineTitle: e.target.value })
@@ -1902,6 +1925,7 @@ export function CoachStudentsManager({
                 </label>
                 <textarea
                   rows={2}
+                  maxLength={500}
                   value={editingWorkoutData.coachNotes || ""}
                   onChange={(e) =>
                     setEditingWorkoutData({ ...editingWorkoutData, coachNotes: e.target.value })
@@ -2045,6 +2069,7 @@ export function CoachStudentsManager({
                           </label>
                           <input
                             type="text"
+                            maxLength={80}
                             value={activeSplit.title}
                             onChange={(e) => {
                               const updated = [...editingWorkoutData.splits];
@@ -2057,15 +2082,17 @@ export function CoachStudentsManager({
 
                         <div className="sm:col-span-1">
                           <label className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">
-                            Tempo Est.
+                            Tempo Est. (min)
                           </label>
                           <input
                             type="number"
+                            min={5}
+                            max={300}
                             value={activeSplit.estimatedMinutes}
                             onChange={(e) => {
                               const updated = [...editingWorkoutData.splits];
                               updated[editingActiveSplitIndex].estimatedMinutes =
-                                parseInt(e.target.value) || 45;
+                                clampNumber(e.target.value, 5, 300, 45);
                               setEditingWorkoutData({ ...editingWorkoutData, splits: updated });
                             }}
                             className="w-full p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs font-mono font-bold text-white focus:outline-none focus:border-amber-500/50"
@@ -2128,6 +2155,7 @@ export function CoachStudentsManager({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <input
                             type="text"
+                            maxLength={80}
                             value={newExerciseName}
                             onChange={(e) => setNewExerciseName(e.target.value)}
                             placeholder="Nome (ex: Supino Inclinado c/ Halteres)"
@@ -2163,6 +2191,7 @@ export function CoachStudentsManager({
                             <span className="text-[10px] text-zinc-500">séries ×</span>
                             <input
                               type="text"
+                              maxLength={20}
                               value={newExerciseReps}
                               onChange={(e) => setNewExerciseReps(e.target.value)}
                               placeholder="10-12"

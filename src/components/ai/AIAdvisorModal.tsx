@@ -74,6 +74,8 @@ export function AIAdvisorModal({
                 <label className="text-[11px] font-semibold text-zinc-300">Peso Atual (kg)</label>
                 <input
                   type="number"
+                  min={30}
+                  max={300}
                   value={weightKg}
                   onChange={(e) => setWeightKg(Number(e.target.value))}
                   className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/50 font-bold"
@@ -84,6 +86,8 @@ export function AIAdvisorModal({
                 <label className="text-[11px] font-semibold text-zinc-300">Altura (cm)</label>
                 <input
                   type="number"
+                  min={100}
+                  max={250}
                   value={heightCm}
                   onChange={(e) => setHeightCm(Number(e.target.value))}
                   className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/50 font-bold"

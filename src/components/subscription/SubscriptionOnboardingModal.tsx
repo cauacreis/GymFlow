@@ -380,6 +380,7 @@ export function SubscriptionOnboardingModal({
               <input
                 type="text"
                 readOnly
+                maxLength={500}
                 value={pixData.qrCode}
                 className="w-full bg-transparent text-[11px] font-mono text-zinc-300 truncate focus:outline-none"
               />

@@ -462,11 +462,7 @@ export function AccountCustomizationModal({
       : sanitizeInput(specialty.trim());
 
     if (role === "coach") {
-      if (!cref.trim() || cref.trim().length < 3) {
-        setErrorMessage("O registro CREF é obrigatório para contas de Personal Trainer (ex: 12345-G/SP).");
-        triggerHaptic("warning");
-        return;
-      }
+      // CREF é opcional
       if (!finalSpecialty || finalSpecialty.length < 2) {
         setErrorMessage("Selecione ou digite sua especialidade principal.");
         triggerHaptic("warning");
@@ -1045,6 +1041,7 @@ export function AccountCustomizationModal({
               <input
                 type="tel"
                 required
+                maxLength={16}
                 value={phone}
                 onChange={(e) => setPhone(formatPhone(e.target.value))}
                 placeholder="(11) 99999-9999"
@@ -1282,22 +1279,24 @@ export function AccountCustomizationModal({
                   <span className="text-[10px] text-amber-400/80 font-mono">Modo Personal</span>
                 </div>
 
-                {/* Registro CREF */}
+                {/* Registro CREF (Opcional) */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-zinc-300">
-                    Registro CREF <span className="text-amber-400">*</span>
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-zinc-300">
+                      Registro CREF
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-normal">Opcional</span>
+                  </div>
                   <input
                     type="text"
-                    required
                     value={cref}
                     onChange={(e) => setCref(e.target.value.toUpperCase())}
-                    placeholder="Ex: 12345-G/SP"
+                    placeholder="Ex: 12345-G/SP (Opcional)"
                     maxLength={30}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs sm:text-sm text-white font-mono uppercase placeholder-zinc-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition-all"
                   />
                   <p className="text-[10px] text-zinc-400">
-                    Garante sua credibilidade perante alunos e academias parceiras no GymFlow.
+                    Opcional. Se possuir, informe para exibir selo de credibilidade para os alunos.
                   </p>
                 </div>
 

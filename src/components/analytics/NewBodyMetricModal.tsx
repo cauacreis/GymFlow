@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { addBodyMetric } from "@/lib/body-metrics-store";
+import { sanitizeInput } from "@/lib/security";
 
 interface NewBodyMetricModalProps {
   isOpen: boolean;
@@ -133,8 +134,9 @@ export function NewBodyMetricModal({
             <input
               type="date"
               required
-              value={date}
+              min="2020-01-01"
               max={todayStr}
+              value={date}
               onChange={(e) => setDate(e.target.value)}
               className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
             />
@@ -273,6 +275,8 @@ export function NewBodyMetricModal({
                   <input
                     type="number"
                     step="0.5"
+                    min="30"
+                    max="250"
                     value={waistCm}
                     onChange={(e) => setWaistCm(e.target.value)}
                     placeholder="Ex: 80.0"
@@ -285,6 +289,8 @@ export function NewBodyMetricModal({
                   <input
                     type="number"
                     step="0.5"
+                    min="10"
+                    max="100"
                     value={armCm}
                     onChange={(e) => setArmCm(e.target.value)}
                     placeholder="Ex: 37.5"
@@ -297,6 +303,8 @@ export function NewBodyMetricModal({
                   <input
                     type="number"
                     step="0.5"
+                    min="40"
+                    max="250"
                     value={chestCm}
                     onChange={(e) => setChestCm(e.target.value)}
                     placeholder="Ex: 102.0"
@@ -309,6 +317,8 @@ export function NewBodyMetricModal({
                   <input
                     type="number"
                     step="0.5"
+                    min="15"
+                    max="150"
                     value={thighCm}
                     onChange={(e) => setThighCm(e.target.value)}
                     placeholder="Ex: 58.0"
@@ -326,8 +336,9 @@ export function NewBodyMetricModal({
             </label>
             <input
               type="text"
+              maxLength={250}
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => setNotes(sanitizeInput(e.target.value))}
               placeholder="Ex: Medição em jejum pela manhã, após 8h de sono..."
               className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
             />

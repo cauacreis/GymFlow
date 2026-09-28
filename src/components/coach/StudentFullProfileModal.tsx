@@ -44,6 +44,7 @@ import {
   updateAttendanceStatus,
   updateBookingNotes,
 } from "@/lib/booking-store";
+import { formatPhone, clampNumber, sanitizeInput } from "@/lib/security";
 import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
 
 interface StudentFullProfileModalProps {
@@ -386,8 +387,9 @@ export function StudentFullProfileModal({
                   <input
                     type="text"
                     required
+                    maxLength={80}
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
+                    onChange={(e) => setEditName(sanitizeInput(e.target.value))}
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
                   />
                 </div>
@@ -398,9 +400,10 @@ export function StudentFullProfileModal({
                   </label>
                   <input
                     type="text"
+                    maxLength={16}
                     value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    placeholder="11987654321"
+                    onChange={(e) => setEditPhone(formatPhone(e.target.value))}
+                    placeholder="(11) 98765-4321"
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
                   />
                 </div>
@@ -411,8 +414,9 @@ export function StudentFullProfileModal({
                   </label>
                   <input
                     type="email"
+                    maxLength={100}
                     value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
+                    onChange={(e) => setEditEmail(e.target.value.slice(0, 100))}
                     placeholder="aluno@email.com"
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
                   />
@@ -424,8 +428,13 @@ export function StudentFullProfileModal({
                   </label>
                   <input
                     type="number"
+                    min={10}
+                    max={120}
                     value={editAge}
-                    onChange={(e) => setEditAge(e.target.value)}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setEditAge(isNaN(val) ? "" : String(clampNumber(val, 10, 120, val)));
+                    }}
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
                   />
                 </div>
@@ -508,8 +517,9 @@ export function StudentFullProfileModal({
                   </label>
                   <input
                     type="text"
+                    maxLength={30}
                     value={editPaymentDueDate}
-                    onChange={(e) => setEditPaymentDueDate(e.target.value)}
+                    onChange={(e) => setEditPaymentDueDate(sanitizeInput(e.target.value))}
                     placeholder="Ex: Dia 10, Dia 05..."
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
                   />
@@ -521,8 +531,9 @@ export function StudentFullProfileModal({
                   </label>
                   <input
                     type="text"
+                    maxLength={100}
                     value={editEmergency}
-                    onChange={(e) => setEditEmergency(e.target.value)}
+                    onChange={(e) => setEditEmergency(sanitizeInput(e.target.value))}
                     placeholder="Nome e telefone de familiar..."
                     className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
                   />
@@ -535,8 +546,9 @@ export function StudentFullProfileModal({
                 </label>
                 <textarea
                   rows={3}
+                  maxLength={500}
                   value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
+                  onChange={(e) => setEditNotes(sanitizeInput(e.target.value))}
                   placeholder="Anotações sobre lesões, pontualidade, preferências ou metas..."
                   className="w-full p-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
                 />
@@ -970,8 +982,9 @@ export function StudentFullProfileModal({
                     <div className="flex gap-2">
                       <input
                         type="text"
+                        maxLength={200}
                         value={bookingNotes}
-                        onChange={(e) => setBookingNotes(e.target.value)}
+                        onChange={(e) => setBookingNotes(sanitizeInput(e.target.value))}
                         placeholder="Ex: Treinou bem costas, sentiu leve cansaço no final..."
                         className="flex-1 py-2 px-3 rounded-xl bg-zinc-950 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
                       />

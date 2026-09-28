@@ -294,6 +294,7 @@ export function CoachRemindersCenterModal({
             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              maxLength={80}
               placeholder="Buscar aluno ou plano..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

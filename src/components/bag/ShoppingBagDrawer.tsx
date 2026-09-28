@@ -135,6 +135,7 @@ export function ShoppingBagDrawer({
             <Tag className="w-4 h-4 text-emerald-400 ml-2 shrink-0" />
             <input
               type="text"
+              maxLength={30}
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
               placeholder="Cupom: GYMFLOW10"

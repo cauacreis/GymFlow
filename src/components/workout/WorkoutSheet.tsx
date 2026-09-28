@@ -790,6 +790,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     type="text"
+                    maxLength={80}
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
                     placeholder="Buscar no banco (ex: Supino, Puxada, Crossover...)"

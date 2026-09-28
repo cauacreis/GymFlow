@@ -270,6 +270,7 @@ export function CoachWhatsAppModal({
             <div className="relative">
               <textarea
                 rows={4}
+                maxLength={1000}
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 placeholder="Digite sua mensagem personalizada..."

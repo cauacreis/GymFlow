@@ -159,6 +159,7 @@ export function MercadoPagoModal({
                   type="text"
                   placeholder="4242 •••• •••• 4242"
                   disabled
+                  maxLength={50}
                   value="4242 4242 4242 4242 (Cartão de Teste MP)"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-200 outline-none"
                 />
@@ -171,6 +172,7 @@ export function MercadoPagoModal({
                     type="text"
                     placeholder="12/28"
                     disabled
+                    maxLength={10}
                     value="12/28"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-200 outline-none"
                   />
@@ -181,6 +183,7 @@ export function MercadoPagoModal({
                     type="text"
                     placeholder="123"
                     disabled
+                    maxLength={5}
                     value="123"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-200 outline-none"
                   />

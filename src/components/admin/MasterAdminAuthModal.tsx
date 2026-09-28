@@ -208,6 +208,7 @@ export function MasterAdminAuthModal({
               <input
                 ref={inputRef}
                 type={showKey ? "text" : "password"}
+                maxLength={128}
                 disabled={lockout.isLocked || isSuccess}
                 value={inputKey}
                 onChange={(e) => {

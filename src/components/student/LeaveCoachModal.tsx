@@ -193,6 +193,7 @@ export function LeaveCoachModal({
             </label>
             <textarea
               rows={2}
+              maxLength={300}
               value={customFeedback}
               onChange={(e) => setCustomFeedback(e.target.value)}
               placeholder="Ex: Muito obrigado pelas aulas! Estou com imprevisto no trabalho..."

@@ -1067,6 +1067,7 @@ export function CoachAgendaManager({
                 </label>
                 <textarea
                   rows={2}
+                  maxLength={300}
                   value={agendaNoteInput}
                   onChange={(e) => setAgendaNoteInput(e.target.value)}
                   placeholder="Notas sobre a aula de hoje..."
@@ -1297,6 +1298,8 @@ export function CoachAgendaManager({
                 <label className="text-[10px] uppercase font-bold text-zinc-400">Novo Horário:</label>
                 <input
                   type="time"
+                  min="05:00"
+                  max="23:59"
                   value={rescheduleTime}
                   onChange={(e) => setRescheduleTime(e.target.value)}
                   className="w-full py-2 px-2.5 rounded-xl bg-zinc-950 border border-white/10 text-xs text-white"
@@ -1311,6 +1314,7 @@ export function CoachAgendaManager({
               </label>
               <input
                 type="text"
+                maxLength={150}
                 value={rescheduleReason}
                 onChange={(e) => setRescheduleReason(e.target.value)}
                 placeholder="Ex: Sala de musculação em manutenção às 18h..."

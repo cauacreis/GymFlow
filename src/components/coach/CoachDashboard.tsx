@@ -57,6 +57,7 @@ import {
   subscribeToCoachRoutines,
   CoachWorkoutRoutine,
 } from "@/lib/coach-routines-store";
+import { sanitizeInput } from "@/lib/security";
 
 import { CoachAgendaManager } from "./CoachAgendaManager";
 import { CoachStudentsManager } from "./CoachStudentsManager";
@@ -801,8 +802,9 @@ export function CoachDashboard({
                   <input
                     type="text"
                     required
+                    maxLength={80}
                     value={builderRoutineName}
-                    onChange={(e) => setBuilderRoutineName(e.target.value)}
+                    onChange={(e) => setBuilderRoutineName(sanitizeInput(e.target.value))}
                     placeholder="Ex: Hipertrofia Glúteos & Pernas ABCD (4 Dias)"
                     className="w-full p-2.5 rounded-xl bg-zinc-950 border border-white/[0.1] text-xs font-bold text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
                   />
@@ -848,8 +850,9 @@ export function CoachDashboard({
                     </label>
                     <input
                       type="text"
+                      maxLength={50}
                       value={builderFrequency}
-                      onChange={(e) => setBuilderFrequency(e.target.value)}
+                      onChange={(e) => setBuilderFrequency(sanitizeInput(e.target.value))}
                       placeholder="Ex: 4 dias na semana"
                       className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.1] text-xs font-bold text-white focus:outline-none focus:border-emerald-500/50"
                     />
@@ -862,8 +865,9 @@ export function CoachDashboard({
                   </label>
                   <textarea
                     rows={2}
+                    maxLength={250}
                     value={builderDescription}
-                    onChange={(e) => setBuilderDescription(e.target.value)}
+                    onChange={(e) => setBuilderDescription(sanitizeInput(e.target.value))}
                     placeholder="Ex: Foco no aumento de volume semanal com intervalo de descanso entre treinos pesados..."
                     className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
                   />
@@ -981,9 +985,10 @@ export function CoachDashboard({
                           </label>
                           <input
                             type="text"
+                            maxLength={80}
                             value={currentSplit.title}
                             onChange={(e) => {
-                              const val = e.target.value;
+                              const val = sanitizeInput(e.target.value);
                               setCustomSplits((prev) =>
                                 prev.map((s) => (s.id === currentSplit.id ? { ...s, title: val } : s))
                               );
@@ -999,9 +1004,10 @@ export function CoachDashboard({
                           </label>
                           <input
                             type="text"
+                            maxLength={120}
                             value={currentSplit.muscles}
                             onChange={(e) => {
-                              const val = e.target.value;
+                              const val = sanitizeInput(e.target.value);
                               setCustomSplits((prev) =>
                                 prev.map((s) => (s.id === currentSplit.id ? { ...s, muscles: val } : s))
                               );
@@ -1093,6 +1099,7 @@ export function CoachDashboard({
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                     <input
                       type="text"
+                      maxLength={80}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder={`Buscar exercício para o Treino ${activeSplitId} (ex: Supino, Puxada, Leg Press...)`}
@@ -1269,8 +1276,9 @@ export function CoachDashboard({
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   value={newStudentName}
-                  onChange={(e) => setNewStudentName(e.target.value)}
+                  onChange={(e) => setNewStudentName(sanitizeInput(e.target.value))}
                   placeholder="Ex: Amanda Albuquerque"
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white"
                 />
@@ -1281,8 +1289,9 @@ export function CoachDashboard({
                 <input
                   type="email"
                   required
+                  maxLength={100}
                   value={newStudentEmail}
-                  onChange={(e) => setNewStudentEmail(e.target.value)}
+                  onChange={(e) => setNewStudentEmail(e.target.value.slice(0, 100))}
                   placeholder="aluno@email.com"
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white"
                 />
@@ -1401,8 +1410,9 @@ export function CoachDashboard({
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   value={customExName}
-                  onChange={(e) => setCustomExName(e.target.value)}
+                  onChange={(e) => setCustomExName(sanitizeInput(e.target.value))}
                   placeholder="Ex: Tríceps Francês na Polia com Barra W"
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
                 />
@@ -1464,8 +1474,9 @@ export function CoachDashboard({
                   <label className="text-[10px] font-bold text-zinc-400 uppercase">Reps</label>
                   <input
                     type="text"
+                    maxLength={20}
                     value={customExReps}
-                    onChange={(e) => setCustomExReps(e.target.value)}
+                    onChange={(e) => setCustomExReps(sanitizeInput(e.target.value))}
                     placeholder="10-12"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
                   />
@@ -1475,8 +1486,9 @@ export function CoachDashboard({
                   <input
                     type="number"
                     min={0}
+                    max={1000}
                     value={customExWeight}
-                    onChange={(e) => setCustomExWeight(Number(e.target.value))}
+                    onChange={(e) => setCustomExWeight(Math.min(1000, Math.max(0, Number(e.target.value) || 0)))}
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white text-center font-mono"
                   />
                 </div>
@@ -1486,8 +1498,9 @@ export function CoachDashboard({
                 <label className="text-[10px] font-bold text-zinc-400 uppercase">Observações / Dica Técnica</label>
                 <input
                   type="text"
+                  maxLength={200}
                   value={customExNotes}
-                  onChange={(e) => setCustomExNotes(e.target.value)}
+                  onChange={(e) => setCustomExNotes(sanitizeInput(e.target.value))}
                   placeholder="Ex: Segurar 2s no pico de contração"
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500"
                 />

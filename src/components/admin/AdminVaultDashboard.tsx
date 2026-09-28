@@ -492,6 +492,7 @@ export function AdminVaultDashboard() {
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                 <input
                   type="text"
+                  maxLength={80}
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
                   placeholder="Buscar por nome, email, telefone ou matrícula..."
@@ -984,6 +985,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">Nome Completo:</label>
                 <input
                   type="text"
+                  maxLength={80}
                   value={editingStudent.name}
                   onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white"
@@ -995,6 +997,7 @@ export function AdminVaultDashboard() {
                   <label className="text-zinc-400 font-bold block mb-1">E-mail:</label>
                   <input
                     type="email"
+                    maxLength={100}
                     value={editingStudent.email || ""}
                     onChange={(e) => setEditingStudent({ ...editingStudent, email: e.target.value })}
                     className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
@@ -1004,6 +1007,7 @@ export function AdminVaultDashboard() {
                   <label className="text-zinc-400 font-bold block mb-1">Telefone / WhatsApp:</label>
                   <input
                     type="text"
+                    maxLength={16}
                     value={editingStudent.phone || ""}
                     onChange={(e) => setEditingStudent({ ...editingStudent, phone: e.target.value })}
                     className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
@@ -1028,8 +1032,10 @@ export function AdminVaultDashboard() {
                   <label className="text-zinc-400 font-bold block mb-1">Presença (%):</label>
                   <input
                     type="number"
+                    min={0}
+                    max={100}
                     value={editingStudent.monthlyPresence ?? 95}
-                    onChange={(e) => setEditingStudent({ ...editingStudent, monthlyPresence: Number(e.target.value) })}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, monthlyPresence: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
                     className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
                   />
                 </div>
@@ -1037,8 +1043,10 @@ export function AdminVaultDashboard() {
                   <label className="text-zinc-400 font-bold block mb-1">Faltas no Mês:</label>
                   <input
                     type="number"
+                    min={0}
+                    max={31}
                     value={editingStudent.monthlyAbsences ?? 0}
-                    onChange={(e) => setEditingStudent({ ...editingStudent, monthlyAbsences: Number(e.target.value) })}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, monthlyAbsences: Math.min(31, Math.max(0, Number(e.target.value) || 0)) })}
                     className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
                   />
                 </div>
@@ -1048,6 +1056,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">Plano Atual:</label>
                 <input
                   type="text"
+                  maxLength={50}
                   value={editingStudent.plan || ""}
                   onChange={(e) => setEditingStudent({ ...editingStudent, plan: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white"
@@ -1058,6 +1067,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">Observações do Treinador:</label>
                 <textarea
                   rows={3}
+                  maxLength={500}
                   value={editingStudent.notesFromCoach || ""}
                   onChange={(e) => setEditingStudent({ ...editingStudent, notesFromCoach: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white"
@@ -1118,6 +1128,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">Nome:</label>
                 <input
                   type="text"
+                  maxLength={80}
                   value={editingCoach.name}
                   onChange={(e) => setEditingCoach({ ...editingCoach, name: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white"
@@ -1128,6 +1139,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">CREF:</label>
                 <input
                   type="text"
+                  maxLength={30}
                   value={editingCoach.cref || ""}
                   onChange={(e) => setEditingCoach({ ...editingCoach, cref: e.target.value })}
                   placeholder="Ex: 012345-G/SP (opcional)"
@@ -1139,6 +1151,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">Especialidade:</label>
                 <input
                   type="text"
+                  maxLength={80}
                   value={editingCoach.specialty}
                   onChange={(e) => setEditingCoach({ ...editingCoach, specialty: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white"
@@ -1149,6 +1162,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">Telefone WhatsApp:</label>
                 <input
                   type="text"
+                  maxLength={16}
                   value={editingCoach.phone}
                   onChange={(e) => setEditingCoach({ ...editingCoach, phone: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
@@ -1160,11 +1174,13 @@ export function AdminVaultDashboard() {
                   <label className="text-zinc-400 font-bold block mb-1">Plano Básico (R$):</label>
                   <input
                     type="number"
+                    min={0}
+                    max={10000}
                     value={editingCoach.pricing.basicMonthly}
                     onChange={(e) =>
                       setEditingCoach({
                         ...editingCoach,
-                        pricing: { ...editingCoach.pricing, basicMonthly: Number(e.target.value) },
+                        pricing: { ...editingCoach.pricing, basicMonthly: Math.min(10000, Math.max(0, Number(e.target.value) || 0)) },
                       })
                     }
                     className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
@@ -1174,11 +1190,13 @@ export function AdminVaultDashboard() {
                   <label className="text-zinc-400 font-bold block mb-1">Plano Pro (R$):</label>
                   <input
                     type="number"
+                    min={0}
+                    max={10000}
                     value={editingCoach.pricing.proMonthly}
                     onChange={(e) =>
                       setEditingCoach({
                         ...editingCoach,
-                        pricing: { ...editingCoach.pricing, proMonthly: Number(e.target.value) },
+                        pricing: { ...editingCoach.pricing, proMonthly: Math.min(10000, Math.max(0, Number(e.target.value) || 0)) },
                       })
                     }
                     className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
@@ -1188,11 +1206,13 @@ export function AdminVaultDashboard() {
                   <label className="text-zinc-400 font-bold block mb-1">Plano VIP (R$):</label>
                   <input
                     type="number"
+                    min={0}
+                    max={10000}
                     value={editingCoach.pricing.vipMonthly}
                     onChange={(e) =>
                       setEditingCoach({
                         ...editingCoach,
-                        pricing: { ...editingCoach.pricing, vipMonthly: Number(e.target.value) },
+                        pricing: { ...editingCoach.pricing, vipMonthly: Math.min(10000, Math.max(0, Number(e.target.value) || 0)) },
                       })
                     }
                     className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white font-mono"
@@ -1204,6 +1224,7 @@ export function AdminVaultDashboard() {
                 <label className="text-zinc-400 font-bold block mb-1">Biografia:</label>
                 <textarea
                   rows={3}
+                  maxLength={500}
                   value={editingCoach.bio}
                   onChange={(e) => setEditingCoach({ ...editingCoach, bio: e.target.value })}
                   className="w-full p-2.5 rounded-xl bg-zinc-900 border border-white/10 text-white"

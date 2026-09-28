@@ -186,7 +186,7 @@ export function isProfileComplete(user?: UserProfile): boolean {
 
   // 3. Validação por Papel Ativo
   if (u.activeRole === "coach") {
-    if (!u.cref || u.cref.trim().length < 3) return false;
+    // CREF é opcional
     if (!u.specialty || u.specialty.trim().length < 2) return false;
   } else {
     if (!u.goal) return false;
@@ -378,7 +378,7 @@ export function registerNewUser(data: {
       : Boolean(
           data.phone &&
           data.phone.replace(/\D/g, "").length >= 10 &&
-          (data.role === "coach" ? (data.cref && data.specialty) : (data.goal && data.experienceLevel)) &&
+          (data.role === "coach" ? Boolean(data.specialty) : Boolean(data.goal && data.experienceLevel)) &&
           data.termsAccepted
         );
 

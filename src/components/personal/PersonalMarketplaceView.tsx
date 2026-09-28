@@ -709,6 +709,7 @@ export function PersonalMarketplaceView({
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
+            maxLength={80}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar personal por nome, especialidade ou cidade..."

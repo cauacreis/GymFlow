@@ -35,6 +35,7 @@ import {
 } from "@/lib/auth-store";
 
 import { updateCoachPublicProfile } from "@/lib/booking-store";
+import { formatPhone, sanitizeInput } from "@/lib/security";
 import { AvatarUpload } from "./AvatarUpload";
 
 interface UserProfileModalProps {
@@ -310,8 +311,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                 <input
                   type="text"
                   required
+                  maxLength={80}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => setName(sanitizeInput(e.target.value))}
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
                 />
               </div>
@@ -321,8 +323,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                 <input
                   type="email"
                   required
+                  maxLength={100}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value.slice(0, 100))}
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
                 />
               </div>
@@ -333,10 +336,11 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                 </label>
                 <input
                   type="text"
+                  maxLength={16}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ex: 11991234567"
-                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
+                  placeholder="(11) 99123-4567"
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50 font-mono"
                 />
               </div>
 
@@ -345,6 +349,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                 <input
                   type="text"
                   disabled
+                  maxLength={40}
                   value={profile.matricula || "GF-84920"}
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950/50 border border-white/[0.04] text-xs text-zinc-500 font-mono cursor-not-allowed"
                 />
@@ -517,8 +522,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   </label>
                   <input
                     type="text"
+                    maxLength={30}
                     value={cref}
-                    onChange={(e) => setCref(e.target.value)}
+                    onChange={(e) => setCref(sanitizeInput(e.target.value))}
                     placeholder="Ex: 08412-SP (opcional)"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50 font-mono"
                   />
@@ -530,8 +536,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   </label>
                   <input
                     type="text"
+                    maxLength={60}
                     value={specialty}
-                    onChange={(e) => setSpecialty(e.target.value)}
+                    onChange={(e) => setSpecialty(sanitizeInput(e.target.value))}
                     placeholder="Ex: Hipertrofia, Biomecânica & Força"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   />
@@ -543,8 +550,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   </label>
                   <input
                     type="text"
+                    maxLength={40}
                     value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
+                    onChange={(e) => setInstagram(sanitizeInput(e.target.value))}
                     placeholder="@seu.perfil"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50 font-mono"
                   />
@@ -556,8 +564,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   </label>
                   <input
                     type="text"
+                    maxLength={80}
                     value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    onChange={(e) => setLocation(sanitizeInput(e.target.value))}
                     placeholder="Ex: Salão Principal • Musculação"
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   />
@@ -573,8 +582,10 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                       <label className="text-[9px] text-zinc-400 font-bold block mb-0.5">Básico (R$/mês)</label>
                       <input
                         type="number"
+                        min={0}
+                        max={10000}
                         value={basicPrice}
-                        onChange={(e) => setBasicPrice(Number(e.target.value))}
+                        onChange={(e) => setBasicPrice(Math.min(10000, Math.max(0, Number(e.target.value) || 0)))}
                         className="w-full p-2 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white font-mono"
                       />
                     </div>
@@ -582,8 +593,10 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                       <label className="text-[9px] text-amber-400 font-bold block mb-0.5">Pro (R$/mês)</label>
                       <input
                         type="number"
+                        min={0}
+                        max={10000}
                         value={proPrice}
-                        onChange={(e) => setProPrice(Number(e.target.value))}
+                        onChange={(e) => setProPrice(Math.min(10000, Math.max(0, Number(e.target.value) || 0)))}
                         className="w-full p-2 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs text-white font-mono"
                       />
                     </div>
@@ -591,8 +604,10 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                       <label className="text-[9px] text-emerald-400 font-bold block mb-0.5">VIP (R$/mês)</label>
                       <input
                         type="number"
+                        min={0}
+                        max={10000}
                         value={vipPrice}
-                        onChange={(e) => setVipPrice(Number(e.target.value))}
+                        onChange={(e) => setVipPrice(Math.min(10000, Math.max(0, Number(e.target.value) || 0)))}
                         className="w-full p-2 rounded-xl bg-zinc-950 border border-emerald-500/30 text-xs text-white font-mono"
                       />
                     </div>
@@ -605,8 +620,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   </label>
                   <textarea
                     rows={2}
+                    maxLength={300}
                     value={bio}
-                    onChange={(e) => setBio(e.target.value)}
+                    onChange={(e) => setBio(sanitizeInput(e.target.value))}
                     placeholder="Conte sobre sua metodologia de treino e experiência com os alunos..."
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   />
