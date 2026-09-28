@@ -14,6 +14,7 @@ import {
   saveCoachPlanToSupabase,
 } from "./supabase-service";
 import { isSlotToday } from "./booking-store";
+import { getCurrentUser, saveUserProfile } from "./auth-store";
 
 export interface StudentProfile {
   id: string;
@@ -71,7 +72,180 @@ export interface StudentWorkoutPackage {
 const STORAGE_KEY_STUDENTS = "gymflow_students_v3";
 const STORAGE_KEY_WORKOUTS = "gymflow_student_workouts_v2";
 const STORAGE_KEY_COACH_PLANS = "gymflow_coach_plans_v2";
+const STORAGE_KEY_DEFAULT_DUE_DAY = "gymflow_coach_default_due_day";
 const EVENT_NAME = "gymflow:workout-updated";
+
+export function parseDueDay(dueDateStr?: string, defaultDay: number = 10): number {
+  if (!dueDateStr) return defaultDay;
+  const match = dueDateStr.match(/(\d{1,2})/);
+  if (match && match[1]) {
+    const val = parseInt(match[1], 10);
+    if (val >= 1 && val <= 31) return val;
+  }
+  return defaultDay;
+}
+
+export function formatDueDayString(day: number): string {
+  const clamped = Math.min(31, Math.max(1, Math.round(day) || 10));
+  return `Dia ${String(clamped).padStart(2, "0")}`;
+}
+
+export function parseDateSafe(dateStr?: string): Date | null {
+  if (!dateStr) return null;
+  const trimmed = dateStr.trim();
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(trimmed)) {
+    const parts = trimmed.split("/");
+    const d = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const y = parseInt(parts[2], 10);
+    if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+      return new Date(y, m - 1, d);
+    }
+  }
+  const parsed = new Date(trimmed);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function getCoachDefaultDueDay(): number {
+  if (typeof window === "undefined") return 10;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_DEFAULT_DUE_DAY);
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (parsed >= 1 && parsed <= 31) return parsed;
+    }
+    const user = getCurrentUser();
+    if (user?.defaultPaymentDueDay && user.defaultPaymentDueDay >= 1 && user.defaultPaymentDueDay <= 31) {
+      return user.defaultPaymentDueDay;
+    }
+  } catch {}
+  return 10;
+}
+
+export function setCoachDefaultDueDay(
+  day: number,
+  applyToAllExistingStudents: boolean = false
+): { updatedCount: number; newDay: number } {
+  const validDay = Math.min(31, Math.max(1, Math.round(day) || 10));
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY_DEFAULT_DUE_DAY, String(validDay));
+  }
+  
+  saveUserProfile({ defaultPaymentDueDay: validDay });
+
+  let updatedCount = 0;
+  if (applyToAllExistingStudents) {
+    const formatted = formatDueDayString(validDay);
+    const students = getStoredStudentsRaw();
+    const updated = students.map((s) => {
+      updatedCount++;
+      return {
+        ...s,
+        paymentDueDate: formatted,
+      };
+    });
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+      window.dispatchEvent(new Event(EVENT_NAME));
+    }
+    updated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+  }
+
+  return { updatedCount, newDay: validDay };
+}
+
+function getStoredStudentsRaw(): StudentProfile[] {
+  if (typeof window === "undefined") return INITIAL_STUDENTS;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
+    if (!raw) return INITIAL_STUDENTS;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_STUDENTS;
+  } catch {
+    return INITIAL_STUDENTS;
+  }
+}
+
+/**
+ * Verifica e atualiza automaticamente o ciclo de faturamento e vencimento das mensalidades de cada aluno.
+ */
+export function checkAndUpdatePaymentCycles(studentsList?: StudentProfile[]): {
+  students: StudentProfile[];
+  hasChanges: boolean;
+  changedCount: number;
+} {
+  const students = studentsList || getStoredStudentsRaw();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDay = now.getDate();
+  const defaultDueDay = getCoachDefaultDueDay();
+
+  let changedCount = 0;
+
+  const updatedStudents = students.map((student) => {
+    if (student.paymentStatus === "cancelado") {
+      return student;
+    }
+
+    const dueDay = parseDueDay(student.paymentDueDate, defaultDueDay);
+    const lastPayDate = parseDateSafe(student.lastPaymentDate);
+
+    let nextStatus = student.paymentStatus || "pendente";
+
+    if (student.paymentStatus === "pago") {
+      if (lastPayDate) {
+        // Início do ciclo de cobrança do mês corrente (com margem de 2 dias de antecedência)
+        const startOfCurrentBillingCycle = new Date(currentYear, currentMonth, Math.max(1, dueDay - 2), 0, 0, 0);
+
+        if (currentDay > dueDay) {
+          // O dia do vencimento deste mês já passou sem quitação para o ciclo atual
+          if (lastPayDate < startOfCurrentBillingCycle) {
+            nextStatus = "atrasado";
+          }
+        } else if (currentDay === dueDay) {
+          // Hoje é o dia de vencimento e não há quitação registrada neste mês
+          if (lastPayDate < startOfCurrentBillingCycle) {
+            nextStatus = "pendente";
+          }
+        }
+      }
+    } else if (student.paymentStatus === "pendente") {
+      // Se a fatura está pendente e o dia de hoje já ultrapassou o vencimento, vira atrasado!
+      if (currentDay > dueDay) {
+        nextStatus = "atrasado";
+      }
+    }
+
+    if (nextStatus !== student.paymentStatus) {
+      changedCount++;
+      return {
+        ...student,
+        paymentStatus: nextStatus,
+      };
+    }
+
+    return student;
+  });
+
+  return {
+    students: updatedStudents,
+    hasChanges: changedCount > 0,
+    changedCount,
+  };
+}
+
+export function refreshStudentPaymentCycles(): { updatedCount: number } {
+  if (typeof window === "undefined") return { updatedCount: 0 };
+  const current = getStoredStudentsRaw();
+  const { students: updated, hasChanges, changedCount } = checkAndUpdatePaymentCycles(current);
+  if (hasChanges) {
+    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+    window.dispatchEvent(new Event(EVENT_NAME));
+    updated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+  }
+  return { updatedCount: changedCount };
+}
 
 export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
   {
@@ -395,7 +569,8 @@ export function getStoredStudents(): StudentProfile[] {
     hasTriggeredInitialSupabaseSync = true;
     fetchStudentsFromSupabase().then((remoteStudents) => {
       if (remoteStudents && remoteStudents.length > 0) {
-        localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(remoteStudents));
+        const { students: cycleUpdated } = checkAndUpdatePaymentCycles(remoteStudents);
+        localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleUpdated));
         window.dispatchEvent(new Event(EVENT_NAME));
       }
     }).catch(() => {});
@@ -404,15 +579,22 @@ export function getStoredStudents(): StudentProfile[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(INITIAL_STUDENTS));
-      return INITIAL_STUDENTS;
+      const { students: cycleInit } = checkAndUpdatePaymentCycles(INITIAL_STUDENTS);
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleInit));
+      return cycleInit;
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(INITIAL_STUDENTS));
-      return INITIAL_STUDENTS;
+      const { students: cycleInit } = checkAndUpdatePaymentCycles(INITIAL_STUDENTS);
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleInit));
+      return cycleInit;
     }
-    return parsed;
+    const { students: cycleUpdated, hasChanges } = checkAndUpdatePaymentCycles(parsed);
+    if (hasChanges) {
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleUpdated));
+      cycleUpdated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+    }
+    return cycleUpdated;
   } catch (e) {
     return INITIAL_STUDENTS;
   }
@@ -429,6 +611,7 @@ export function saveNewStudent(studentData: {
   emergencyContact?: string;
   avatarUrl?: string;
   isOfflineStudent?: boolean;
+  paymentDueDate?: string;
 }): StudentProfile {
   const students = getStoredStudents();
   const existingIndex = students.findIndex(
@@ -451,6 +634,7 @@ export function saveNewStudent(studentData: {
       emergencyContact: studentData.emergencyContact !== undefined ? studentData.emergencyContact : existing.emergencyContact,
       avatarUrl: studentData.avatarUrl !== undefined ? studentData.avatarUrl : existing.avatarUrl,
       isOfflineStudent: studentData.isOfflineStudent !== undefined ? studentData.isOfflineStudent : existing.isOfflineStudent,
+      paymentDueDate: studentData.paymentDueDate !== undefined ? studentData.paymentDueDate : existing.paymentDueDate,
     };
     students[existingIndex] = targetStudent;
   } else {
@@ -463,6 +647,8 @@ export function saveNewStudent(studentData: {
       goal: studentData.goal,
       plan: studentData.plan || "Mensal VIP Presencial",
       status: "ativo",
+      paymentStatus: "pendente",
+      paymentDueDate: studentData.paymentDueDate || formatDueDayString(getCoachDefaultDueDay()),
       monthlyPresence: 0,
       monthlyAbsences: 0,
       totalClasses: 0,

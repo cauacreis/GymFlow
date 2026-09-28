@@ -38,6 +38,8 @@ import {
   inactivateStudentAndReleaseAgenda,
   getStoredCoachPlans,
   CoachPlanOption,
+  parseDueDay,
+  formatDueDayString,
 } from "@/lib/workout-store";
 import {
   BookingRequest,
@@ -82,6 +84,10 @@ export function StudentFullProfileModal({
   const [editPaymentDueDate, setEditPaymentDueDate] = useState("Dia 10");
   const [editNotes, setEditNotes] = useState("");
 
+  // Seletor rápido de dia de vencimento individual
+  const [isEditingDueDay, setIsEditingDueDay] = useState(false);
+  const [quickDueDay, setQuickDueDay] = useState<number>(10);
+
   // Observações da aula atual
   const [bookingNotes, setBookingNotes] = useState(currentBooking?.notes || "");
   const [coachPlans, setCoachPlans] = useState<CoachPlanOption[]>([]);
@@ -100,8 +106,27 @@ export function StudentFullProfileModal({
       setEditPaymentStatus(student.paymentStatus || "pago");
       setEditPaymentDueDate(student.paymentDueDate || "Dia 10");
       setEditNotes(student.notes || student.notesFromCoach || "");
+      setQuickDueDay(parseDueDay(student.paymentDueDate, 10));
+      setIsEditingDueDay(false);
     }
   }, [student]);
+
+  const handleQuickChangeDueDay = (newDayNumber: number) => {
+    if (!localStudent) return;
+    const formatted = formatDueDayString(newDayNumber);
+    triggerHaptic("medium");
+    updateStudentProfile(localStudent.id, { paymentDueDate: formatted });
+    const updated: StudentProfile = {
+      ...localStudent,
+      paymentDueDate: formatted,
+    };
+    setLocalStudent(updated);
+    setEditPaymentDueDate(formatted);
+    setQuickDueDay(newDayNumber);
+    if (onStudentUpdated) onStudentUpdated(updated);
+    setIsEditingDueDay(false);
+    showToast(`Vencimento alterado para ${formatted}!`);
+  };
 
   useEffect(() => {
     if (currentBooking) {
@@ -512,17 +537,41 @@ export function StudentFullProfileModal({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-zinc-400">
-                    Dia de Vencimento
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase text-zinc-400">
+                      Dia de Vencimento
+                    </label>
+                    <span className="text-[9px] text-amber-400/80">Ciclo mensal</span>
+                  </div>
                   <input
                     type="text"
                     maxLength={30}
                     value={editPaymentDueDate}
                     onChange={(e) => setEditPaymentDueDate(sanitizeInput(e.target.value))}
                     placeholder="Ex: Dia 10, Dia 05..."
-                    className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
                   />
+                  {/* Chips de dias rápidos */}
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {[1, 5, 8, 10, 15, 20, 25, 30].map((d) => {
+                      const str = formatDueDayString(d);
+                      const isSel = editPaymentDueDate === str || editPaymentDueDate === `Dia ${d}`;
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setEditPaymentDueDate(str)}
+                          className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border transition-all ${
+                            isSel
+                              ? "bg-amber-500/25 text-amber-300 border-amber-500"
+                              : "bg-white/[0.03] text-zinc-400 hover:text-white border-white/[0.08]"
+                          }`}
+                        >
+                          {String(d).padStart(2, "0")}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -786,11 +835,81 @@ export function StudentFullProfileModal({
 
                   {/* Informações de Vencimento e Valor */}
                   <div className="flex items-center gap-2 sm:gap-3 text-xs flex-wrap">
-                    <div className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.06]">
-                      <span className="text-[10px] text-zinc-400 block">Vencimento</span>
-                      <span className="font-bold text-white">
-                        {localStudent.paymentDueDate || "Dia 10"}
-                      </span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingDueDay(!isEditingDueDay)}
+                        className="px-3 py-1.5 rounded-xl bg-zinc-950 hover:bg-zinc-900 border border-white/[0.08] hover:border-amber-500/40 text-left transition-all group flex items-center gap-2 cursor-pointer"
+                        title="Clique para alterar o dia de vencimento deste aluno"
+                      >
+                        <div>
+                          <span className="text-[10px] text-zinc-400 group-hover:text-amber-300 block flex items-center gap-1">
+                            <span>Vencimento</span>
+                            <Edit3 className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 text-amber-400" />
+                          </span>
+                          <span className="font-bold text-white group-hover:text-amber-400 font-mono">
+                            {localStudent.paymentDueDate || "Dia 10"}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Popover / Seletor Rápido de Dia de Vencimento */}
+                      {isEditingDueDay && (
+                        <div
+                          className="absolute left-0 top-full mt-1.5 z-30 p-3 rounded-2xl bg-zinc-950 border border-amber-500/40 shadow-2xl w-64 animate-in fade-in zoom-in-95 duration-150"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-bold text-white flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-amber-400" /> Alterar Vencimento
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingDueDay(false)}
+                              className="text-zinc-400 hover:text-white p-0.5"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <span className="text-[9px] text-zinc-400 block mb-1.5">Escolha um dia rápido:</span>
+                          <div className="grid grid-cols-4 gap-1.5 mb-2.5">
+                            {[1, 5, 8, 10, 15, 20, 25, 30].map((d) => (
+                              <button
+                                key={d}
+                                type="button"
+                                onClick={() => handleQuickChangeDueDay(d)}
+                                className={`py-1 text-xs font-mono font-bold rounded-lg border transition-all ${
+                                  parseDueDay(localStudent.paymentDueDate) === d
+                                    ? "bg-amber-500 text-zinc-950 border-amber-400 shadow-sm"
+                                    : "bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] border-white/10"
+                                }`}
+                              >
+                                {String(d).padStart(2, "0")}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.06]">
+                            <label className="text-[10px] text-zinc-400 shrink-0">Outro Dia:</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={31}
+                              value={quickDueDay}
+                              onChange={(e) => setQuickDueDay(Math.min(31, Math.max(1, Number(e.target.value) || 1)))}
+                              className="w-14 py-1 px-2 rounded-lg bg-zinc-900 border border-white/10 text-xs font-mono text-center text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleQuickChangeDueDay(quickDueDay)}
+                              className="flex-1 py-1 px-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow transition-all"
+                            >
+                              Aplicar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {localStudent.lastPaymentDate && (
                       <div className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-white/[0.06]">

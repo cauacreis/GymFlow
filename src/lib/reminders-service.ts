@@ -18,6 +18,7 @@ import {
   getStoredStudents,
   StudentProfile,
   getStoredCoachPlans,
+  checkAndUpdatePaymentCycles,
 } from "./workout-store";
 import { getCurrentUser } from "./auth-store";
 
@@ -243,6 +244,11 @@ export function computeDailyReminders(): SmartReminderItem[] {
         isSent,
         sentAt: sentLog[reminderId],
       });
+      return;
+    }
+
+    // Se o aluno já quitou a mensalidade do ciclo atual, não envia cobrança
+    if (student.paymentStatus === "pago") {
       return;
     }
 

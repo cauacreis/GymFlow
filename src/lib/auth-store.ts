@@ -48,6 +48,7 @@ export interface UserProfile {
     weeklyPlan?: number;
     monthlyPlan?: number;
   };
+  defaultPaymentDueDay?: number; // Dia de vencimento padrão para alunos do personal (1 a 31, ex: 10)
   // Gestão de Assinatura & Acesso Paywall
   subscriptionStatus?: "trial" | "active" | "past_due" | "expired" | "pending_choice";
   subscriptionPlan?: "trial_7d" | "monthly_recurring" | "monthly_pix" | "annual_pro" | "basico" | "pro" | "vip" | string;
@@ -107,6 +108,7 @@ const DEFAULT_USER: UserProfile = {
     weeklyPlan: 45,
     monthlyPlan: 55,
   },
+  defaultPaymentDueDay: 10,
   termsAccepted: true,
   termsAcceptedAt: new Date().toISOString(),
 };

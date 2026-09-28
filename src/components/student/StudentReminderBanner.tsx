@@ -103,7 +103,7 @@ export function StudentReminderBanner({
 
   const todayDate = new Date().getDate();
   let isDueToday = false;
-  if (student?.paymentDueDate) {
+  if (student?.paymentDueDate && student?.paymentStatus !== "pago") {
     const match = student.paymentDueDate.match(/(\d{1,2})/);
     if (match && match[1] && parseInt(match[1], 10) === todayDate) {
       isDueToday = true;
