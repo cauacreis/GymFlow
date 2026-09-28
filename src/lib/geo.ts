@@ -118,7 +118,7 @@ export interface ReverseGeocodeResult {
 
 /**
  * Consulta de geocodificação reversa defensiva (coordenadas -> cidade/estado/bairro)
- * com timeout estrito de 3.5 segundos e fallback silencioso.
+ * com multi-provider fallback (API interna / BigDataCloud / OpenStreetMap).
  */
 export async function reverseGeocode(
   lat: number,
@@ -126,70 +126,89 @@ export async function reverseGeocode(
 ): Promise<ReverseGeocodeResult | null> {
   if (!isValidCoordinate(lat, lng)) return null;
 
+  // 1. Tenta endpoint interno do GymFlow (/api/geo/reverse)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=pt-BR`;
-    const response = await fetch(url, {
+    const apiRes = await fetch(`/api/geo/reverse?lat=${lat}&lng=${lng}`, {
       signal: controller.signal,
-      headers: {
-        "User-Agent": "GymFlow-FitnessApp/1.0",
-      },
     });
-
     clearTimeout(timeoutId);
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const address = data?.address;
-    if (!address) return null;
-
-    // Extração inteligente de cidade
-    const city =
-      address.city ||
-      address.town ||
-      address.municipality ||
-      address.village ||
-      address.county ||
-      "";
-
-    // Extração de estado (UF)
-    let state = "";
-    if (address["ISO3166-2-lvl4"]) {
-      state = address["ISO3166-2-lvl4"].replace("BR-", "").toUpperCase();
-    } else if (address.state) {
-      const match = BRAZIL_STATES.find(
-        (s) => s.name.toLowerCase() === address.state.toLowerCase()
-      );
-      state = match ? match.uf : address.state.slice(0, 2).toUpperCase();
+    if (apiRes.ok) {
+      const json = await apiRes.json();
+      if (json.ok && json.data) {
+        return json.data as ReverseGeocodeResult;
+      }
     }
-
-    // Extração de bairro / região
-    const neighborhood =
-      address.suburb ||
-      address.neighbourhood ||
-      address.quarter ||
-      address.city_district ||
-      "";
-
-    const sanitizeText = (val: string) =>
-      val ? val.replace(/<[^>]*>?/gm, "").replace(/["'`\\;]/g, "").trim() : "";
-
-    const cleanCity = sanitizeText(city);
-    const cleanState = sanitizeText(state).toUpperCase().slice(0, 2);
-    const cleanNeighborhood = sanitizeText(neighborhood);
-    const cleanDisplayName = sanitizeText(data.display_name || "");
-
-    return {
-      city: cleanCity || undefined,
-      state: cleanState || undefined,
-      neighborhood: cleanNeighborhood || undefined,
-      displayName: cleanDisplayName || undefined,
-    };
   } catch {
-    // Falhas de rede ou timeout não quebram o fluxo do usuário
-    return null;
+    // Fallback silencioso para consulta client-side
   }
+
+  // 2. Fallback direto via BigDataCloud client API (CORS liberado e sem restrições de headers)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`;
+    const bdcRes = await fetch(bdcUrl, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (bdcRes.ok) {
+      const data = await bdcRes.json();
+      const adminList = Array.isArray(data.localityInfo?.administrative)
+        ? data.localityInfo.administrative
+        : [];
+
+      const municipalObj =
+        adminList.find((a: any) => a.adminLevel === 8) ||
+        adminList.find((a: any) => a.adminLevel === 7);
+
+      let city = municipalObj?.name || "";
+      if (!city && data.city && !data.city.startsWith("Região")) {
+        city = data.city;
+      }
+      if (!city && data.locality) {
+        city = data.locality;
+      }
+
+      let state = (data.principalSubdivisionCode || "").replace("BR-", "").toUpperCase();
+      if (!state && data.principalSubdivision) {
+        const match = BRAZIL_STATES.find(
+          (s) =>
+            s.name.toLowerCase() === data.principalSubdivision.toLowerCase() ||
+            s.uf.toLowerCase() === data.principalSubdivision.toLowerCase()
+        );
+        if (match) state = match.uf;
+      }
+
+      let neighborhood = "";
+      if (data.locality && data.locality !== city) {
+        neighborhood = data.locality;
+      }
+
+      const sanitizeText = (val: string) =>
+        val ? val.replace(/<[^>]*>?/gm, "").replace(/["'`\\;]/g, "").trim() : "";
+
+      const cleanCity = sanitizeText(city);
+      const cleanState = sanitizeText(state).toUpperCase().slice(0, 2);
+      const cleanNeighborhood = sanitizeText(neighborhood);
+
+      if (cleanCity || cleanState) {
+        return {
+          city: cleanCity || undefined,
+          state: cleanState || undefined,
+          neighborhood: cleanNeighborhood || undefined,
+          displayName: [cleanNeighborhood, cleanCity, cleanState].filter(Boolean).join(", "),
+        };
+      }
+    }
+  } catch {
+    // Continua para o próximo fallback se houver falha de rede
+  }
+
+  return null;
 }

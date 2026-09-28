@@ -370,15 +370,16 @@ export function AccountCustomizationModal({
         // Tenta enriquecer com nome da cidade e estado via geocodificação reversa
         try {
           const geo = await reverseGeocode(lat, lng);
-          if (geo) {
+          if (geo && (geo.city || geo.state)) {
             if (geo.city) setCity(geo.city);
             if (geo.state) setState(geo.state);
             if (geo.neighborhood) setNeighborhood(geo.neighborhood);
+            const detectedLabel = [geo.neighborhood, geo.city, geo.state].filter(Boolean).join(" - ");
             setLocationNotice(
-              `Localização identificada: ${geo.neighborhood ? geo.neighborhood + ", " : ""}${geo.city || ""} - ${geo.state || ""}`
+              `📍 Localização identificada: ${detectedLabel}. Se algo estiver incorreto, você pode corrigir nos campos abaixo.`
             );
           } else {
-            setLocationNotice("GPS ativo com sucesso! Confirme sua cidade e estado abaixo.");
+            setLocationNotice("📍 GPS ativo com sucesso! Por favor, confirme ou preencha sua cidade e estado abaixo.");
           }
         } catch {
           setLocationNotice("GPS ativo! Confirme sua cidade e estado abaixo.");

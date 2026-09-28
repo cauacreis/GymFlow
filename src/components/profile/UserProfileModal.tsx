@@ -26,6 +26,9 @@ import {
   AlertCircle,
   ArrowRight,
   Check,
+  Navigation,
+  Loader2,
+  Globe,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -40,7 +43,9 @@ import {
 } from "@/lib/auth-store";
 
 import { updateCoachPublicProfile } from "@/lib/booking-store";
+import { saveProfileToSupabase } from "@/lib/supabase-service";
 import { formatPhone, sanitizeInput } from "@/lib/security";
+import { BRAZIL_STATES, reverseGeocode, isValidCoordinate } from "@/lib/geo";
 import { AvatarUpload } from "./AvatarUpload";
 
 interface UserProfileModalProps {
@@ -81,6 +86,22 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
   const [bio, setBio] = useState(profile.bio || "");
   const [instagram, setInstagram] = useState(profile.instagram || "@rodrigo.gymflow");
   const [location, setLocation] = useState(profile.location || "Salão Principal • Musculação");
+
+  // Localização Geográfica (Cidade, Estado, Bairro e GPS)
+  const [state, setState] = useState<string>(profile.state || "SP");
+  const [city, setCity] = useState<string>(profile.city || "");
+  const [neighborhood, setNeighborhood] = useState<string>(profile.neighborhood || "");
+  const [latitude, setLatitude] = useState<number | undefined>(profile.latitude);
+  const [longitude, setLongitude] = useState<number | undefined>(profile.longitude);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [locationSuccess, setLocationSuccess] = useState<boolean>(
+    Boolean(profile.latitude && profile.longitude)
+  );
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [serviceModality, setServiceModality] = useState<"presencial" | "online" | "hibrido">(
+    profile.serviceModality || "presencial"
+  );
+  const [operatingRadiusKm, setOperatingRadiusKm] = useState<number>(profile.operatingRadiusKm || 15);
 
   // Preços Mensais do Personal (35, 45, 55)
   const [basicPrice, setBasicPrice] = useState(profile.pricing?.basicMonthly || profile.pricing?.dailySession || 35);
@@ -125,6 +146,18 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       setBio(current.bio || "");
       setInstagram(current.instagram || "@rodrigo.gymflow");
       setLocation(current.location || "Salão Principal • Musculação");
+      
+      // Sincroniza localização
+      setState(current.state || "SP");
+      setCity(current.city || "");
+      setNeighborhood(current.neighborhood || "");
+      setLatitude(current.latitude);
+      setLongitude(current.longitude);
+      setLocationSuccess(Boolean(current.latitude && current.longitude));
+      setLocationNotice(null);
+      setServiceModality(current.serviceModality || "presencial");
+      setOperatingRadiusKm(current.operatingRadiusKm || 15);
+
       setBasicPrice(current.pricing?.basicMonthly || current.pricing?.dailySession || 35);
       setProPrice(current.pricing?.proMonthly || current.pricing?.weeklyPlan || 45);
       setVipPrice(current.pricing?.vipMonthly || current.pricing?.monthlyPlan || 55);
@@ -144,6 +177,75 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       setSavedSuccess(false);
     }
   }, [isOpen]);
+
+  // Detecção e geocodificação reversa de localização
+  const handleDetectLocation = () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      setLocationNotice("Geolocalização não suportada no seu navegador. Você pode preencher manualmente abaixo.");
+      triggerHaptic("warning");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationNotice(null);
+    triggerHaptic("selection");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        if (!isValidCoordinate(lat, lng)) {
+          setIsLocating(false);
+          setLocationNotice("Coordenadas de GPS inválidas. Preencha sua região manualmente.");
+          triggerHaptic("warning");
+          return;
+        }
+
+        setLatitude(lat);
+        setLongitude(lng);
+        setLocationSuccess(true);
+        triggerHaptic("success");
+
+        try {
+          const geo = await reverseGeocode(lat, lng);
+          if (geo && (geo.city || geo.state)) {
+            if (geo.city) setCity(geo.city);
+            if (geo.state) setState(geo.state);
+            if (geo.neighborhood) setNeighborhood(geo.neighborhood);
+            const detectedLabel = [geo.neighborhood, geo.city, geo.state].filter(Boolean).join(" - ");
+            setLocationNotice(
+              `📍 Localização identificada: ${detectedLabel}. Se algo estiver incorreto, você pode corrigir nos campos abaixo.`
+            );
+          } else {
+            setLocationNotice("📍 GPS ativo com sucesso! Confirme sua cidade e estado abaixo.");
+          }
+        } catch {
+          setLocationNotice("📍 GPS ativo! Confirme sua cidade e estado abaixo.");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        let msg = "Não foi possível obter sua localização. Por favor, preencha manualmente.";
+        if (err.code === 1) {
+          msg = "Permissão de localização não concedida. Preencha sua cidade e estado manualmente.";
+        } else if (err.code === 2) {
+          msg = "Sinal de GPS indisponível no momento. Preencha sua cidade manualmente.";
+        } else if (err.code === 3) {
+          msg = "Tempo esgotado ao buscar sinal do GPS. Preencha sua cidade manualmente.";
+        }
+        setLocationNotice(msg);
+        triggerHaptic("warning");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 60000,
+      }
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -239,6 +341,11 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       monthlyPlan: Number(vipPrice) || 55,
     };
 
+    const validCoords = isValidCoordinate(latitude, longitude);
+    const cleanCity = sanitizeInput(city.trim());
+    const cleanState = sanitizeInput(state.trim().toUpperCase());
+    const cleanNeighborhood = sanitizeInput(neighborhood.trim());
+
     const updated = saveUserProfile({
       name,
       email,
@@ -258,8 +365,18 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       bio,
       instagram,
       location,
+      city: cleanCity || undefined,
+      state: cleanState || undefined,
+      neighborhood: cleanNeighborhood || undefined,
+      latitude: validCoords ? latitude : undefined,
+      longitude: validCoords ? longitude : undefined,
+      serviceModality,
+      operatingRadiusKm,
       pricing: pricingObj,
     });
+
+    // Salva de forma assíncrona no Supabase
+    saveProfileToSupabase(updated);
 
     // Se for professor, atualiza os dados públicos no marketplace
     if (isCoach) {
@@ -271,7 +388,14 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
         phone,
         avatarUrl,
         instagram,
-        location,
+        location: location || `${cleanCity || "Salão Principal"} - ${cleanState || "SP"}`,
+        city: cleanCity || undefined,
+        state: cleanState || undefined,
+        neighborhood: cleanNeighborhood || undefined,
+        latitude: validCoords ? latitude : undefined,
+        longitude: validCoords ? longitude : undefined,
+        serviceModality,
+        operatingRadiusKm,
         pricing: pricingObj,
       });
     }
@@ -791,6 +915,174 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
               </div>
             </div>
           )}
+
+          {/* SEÇÃO: LOCALIZAÇÃO & REGIÃO GEOGRÁFICA (ALUNO E PROFESSOR) */}
+          <div className="p-4 rounded-2xl bg-zinc-900/40 border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className={`w-3.5 h-3.5 ${isCoach ? "text-amber-400" : "text-emerald-400"}`} />
+                <span>{isCoach ? "Região & Modalidade de Atendimento" : "Localização & Região"}</span>
+              </h4>
+              <span className="text-[9px] text-zinc-400 font-mono">
+                {city ? `${city} - ${state}` : "Não configurada"}
+              </span>
+            </div>
+
+            <p className="text-[10px] text-zinc-400">
+              {isCoach
+                ? "Defina onde você atende. Seu perfil será priorizado para alunos que buscam personais na sua cidade ou proximidades."
+                : "Sua localização é usada para encontrar personais trainers próximos de você por proximidade em tempo real."}
+            </p>
+
+            {/* Botão de Localização Automática via GPS */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={isLocating}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
+                  locationSuccess
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-sm shadow-emerald-500/10"
+                    : isCoach
+                    ? "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30"
+                    : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                }`}
+              >
+                {isLocating ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Detectando GPS...</span>
+                  </>
+                ) : locationSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Localização GPS Ativa</span>
+                  </>
+                ) : (
+                  <>
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Usar Minha Localização Atual</span>
+                  </>
+                )}
+              </button>
+
+              {locationSuccess && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLatitude(undefined);
+                    setLongitude(undefined);
+                    setLocationSuccess(false);
+                    setLocationNotice(null);
+                    triggerHaptic("light");
+                  }}
+                  className="text-[10px] text-zinc-500 hover:text-rose-400 underline transition-colors px-1"
+                >
+                  Desativar GPS
+                </button>
+              )}
+            </div>
+
+            {locationNotice && (
+              <div
+                className={`p-2.5 rounded-xl text-xs flex items-start gap-2 animate-in fade-in ${
+                  locationSuccess
+                    ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                    : "bg-zinc-800/80 text-zinc-300 border border-zinc-700/60"
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span className="flex-1 text-[11px] leading-relaxed">{locationNotice}</span>
+              </div>
+            )}
+
+            {/* Inputs: Estado e Cidade */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">
+                  Estado (UF) <span className={isCoach ? "text-amber-400" : "text-emerald-400"}>*</span>
+                </label>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                >
+                  {BRAZIL_STATES.map((s) => (
+                    <option key={s.uf} value={s.uf}>
+                      {s.uf} - {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">
+                  Cidade <span className={isCoach ? "text-amber-400" : "text-emerald-400"}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={city}
+                  onChange={(e) => setCity(sanitizeInput(e.target.value))}
+                  placeholder="Ex: São Paulo, Rio de Janeiro, Curitiba..."
+                  maxLength={80}
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase">
+                  Bairro / Região (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(sanitizeInput(e.target.value))}
+                  placeholder="Ex: Jardins, Copacabana, Savassi, Batel..."
+                  maxLength={80}
+                  className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                />
+              </div>
+
+              {/* Configurações extras para Professor */}
+              {isCoach && (
+                <>
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] font-bold text-amber-400 uppercase">
+                      Modalidade de Atendimento
+                    </label>
+                    <select
+                      value={serviceModality}
+                      onChange={(e) => setServiceModality(e.target.value as any)}
+                      className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs text-white focus:outline-none focus:border-amber-500/50"
+                    >
+                      <option value="presencial">Presencial (na minha cidade/bairro)</option>
+                      <option value="online">100% Online / Consultoria Remota</option>
+                      <option value="hibrido">Híbrido (Presencial + Acompanhamento Online)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-amber-400 uppercase">
+                      Raio Máximo (km)
+                    </label>
+                    <select
+                      value={operatingRadiusKm}
+                      onChange={(e) => setOperatingRadiusKm(Number(e.target.value))}
+                      className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-amber-500/30 text-xs text-white focus:outline-none focus:border-amber-500/50"
+                    >
+                      <option value={5}>Até 5 km</option>
+                      <option value={10}>Até 10 km</option>
+                      <option value={15}>Até 15 km</option>
+                      <option value={25}>Até 25 km</option>
+                      <option value={50}>Até 50 km</option>
+                      <option value={100}>Até 100 km</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
 
           {/* Botões de Ação */}
           <div className="pt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] flex-wrap">
