@@ -1038,13 +1038,22 @@ export function getStoredCoaches(): CoachTrainer[] {
       return INITIAL_COACHES;
     }
     const list: CoachTrainer[] = JSON.parse(raw);
-    // Normalização defensiva: garante que os preços 35/45/55 sejam aplicados
+    // Normalização defensiva: garante preços 35/45/55 e migra dados geográficos de INITIAL_COACHES
     const normalized = list.map((c) => {
+      const initial = INITIAL_COACHES.find((ic) => ic.id === c.id);
       const basic = c.pricing?.basicMonthly && c.pricing.basicMonthly <= 60 ? c.pricing.basicMonthly : 35;
       const pro = c.pricing?.proMonthly && c.pricing.proMonthly <= 75 ? c.pricing.proMonthly : 45;
       const vip = c.pricing?.vipMonthly && c.pricing.vipMonthly <= 90 ? c.pricing.vipMonthly : 55;
       return {
+        ...initial,
         ...c,
+        city: c.city || initial?.city,
+        state: c.state || initial?.state,
+        neighborhood: c.neighborhood || initial?.neighborhood,
+        latitude: c.latitude ?? initial?.latitude,
+        longitude: c.longitude ?? initial?.longitude,
+        operatingRadiusKm: c.operatingRadiusKm ?? initial?.operatingRadiusKm,
+        serviceModality: c.serviceModality || initial?.serviceModality || "presencial",
         pricing: {
           basicMonthly: basic,
           proMonthly: pro,

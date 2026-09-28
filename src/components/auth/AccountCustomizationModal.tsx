@@ -198,6 +198,7 @@ export function AccountCustomizationModal({
 
   // Estados de Imagem
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [imageCompressionInfo, setImageCompressionInfo] = useState<string | null>(null);
   const [avatarImgError, setAvatarImgError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -267,10 +268,7 @@ export function AccountCustomizationModal({
   if (!isOpen) return null;
 
   // Processamento e conversão de foto para WebP com validação binária anti-hacking
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processUploadedFile = async (file: File) => {
     setIsProcessingImage(true);
     setErrorMessage(null);
     setImageCompressionInfo(null);
@@ -303,7 +301,40 @@ export function AccountCustomizationModal({
       triggerHaptic("warning");
     } finally {
       setIsProcessingImage(false);
-      e.target.value = "";
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processUploadedFile(file);
+    e.target.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isProcessingImage) {
+      setIsDraggingImage(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingImage(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingImage(false);
+    if (isProcessingImage) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      triggerHaptic("selection");
+      await processUploadedFile(file);
     }
   };
 
@@ -524,6 +555,12 @@ export function AccountCustomizationModal({
       // 1. Atualiza os metadados do Supabase Auth se conectado
       const client = getSupabase();
       if (client) {
+        // Se a foto for um data: URI muito longo, não incluímos no JWT de sessão para prevenir estouro de cookies (HTTP 431)
+        const safeAvatarMeta =
+          updatedUserPayload.avatarUrl && updatedUserPayload.avatarUrl.length > 2048
+            ? undefined
+            : updatedUserPayload.avatarUrl;
+
         client.auth.updateUser({
           data: {
             name: updatedUserPayload.name,
@@ -542,7 +579,7 @@ export function AccountCustomizationModal({
             cref: updatedUserPayload.cref,
             specialty: updatedUserPayload.specialty,
             bio: updatedUserPayload.bio,
-            avatar_url: updatedUserPayload.avatarUrl,
+            ...(safeAvatarMeta ? { avatar_url: safeAvatarMeta } : {}),
             profile_completed: true,
             terms_accepted: true,
             terms_accepted_at: updatedUserPayload.termsAcceptedAt,
@@ -671,12 +708,28 @@ export function AccountCustomizationModal({
                 <span className="text-[10px] text-zinc-500">Passo 1 de 5</span>
               </div>
 
-              {/* Avatar & Ações */}
-              <div className="flex items-center gap-4">
+              {/* Avatar & Ações com Suporte Completo a Drag-and-Drop */}
+              <div
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`relative flex items-center gap-4 p-3 rounded-2xl border transition-all ${
+                  isDraggingImage
+                    ? isCoach
+                      ? "border-amber-400 border-dashed bg-amber-500/10 ring-2 ring-amber-400/40"
+                      : "border-emerald-400 border-dashed bg-emerald-500/10 ring-2 ring-emerald-400/40"
+                    : "border-transparent bg-transparent"
+                }`}
+              >
                 <div className="relative shrink-0 group">
                   <div
                     className={`w-18 h-18 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 flex items-center justify-center bg-zinc-900 shadow-xl transition-all ${
-                      isCoach
+                      isDraggingImage
+                        ? isCoach
+                          ? "border-amber-400 scale-105"
+                          : "border-emerald-400 scale-105"
+                        : isCoach
                         ? "border-amber-500/60 shadow-amber-500/10"
                         : "border-emerald-500/60 shadow-emerald-500/10"
                     }`}
@@ -712,7 +765,7 @@ export function AccountCustomizationModal({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
                     className="hidden"
                     onChange={handleFileUpload}
                   />
@@ -754,7 +807,13 @@ export function AccountCustomizationModal({
                   </div>
 
                   <p className="text-[10px] text-zinc-400">
-                    JPG, PNG ou WebP até 5MB. As imagens são verificadas e convertidas para WebP ultraleve.
+                    {isDraggingImage ? (
+                      <strong className={isCoach ? "text-amber-300" : "text-emerald-300"}>
+                        Solte a imagem aqui para converter e otimizar!
+                      </strong>
+                    ) : (
+                      "Arraste uma foto aqui ou clique em Carregar (JPG, PNG, WebP até 5MB). Conversão automática para WebP."
+                    )}
                   </p>
 
                   {imageCompressionInfo && (

@@ -11,6 +11,8 @@ import {
   BRAZIL_STATES,
 } from "../src/lib/geo";
 import { sanitizeInput, sanitizeString, sanitizeObject } from "../src/lib/security";
+import { getCurrentUser } from "../src/lib/auth-store";
+import { getStoredCoaches } from "../src/lib/booking-store";
 
 let passCount = 0;
 let failCount = 0;
@@ -113,7 +115,29 @@ async function runTests() {
   const resLarge = await validateImageFile(largeFile);
   assert(!resLarge.valid && (resLarge.error || "").includes("5MB"), "Arquivo de 5.5MB rejeitado por estourar o limite de 5MB");
 
-  // 1.8 Arquivo vazio (Bloqueio)
+  // 1.8 JPEG com MIME image/jpg e image/pjpeg (Compatibilidade de browsers móveis)
+  const validJpegJpg = new MockFile(validJpegBuffer, "foto.jpg", { type: "image/jpg" }) as unknown as File;
+  const resJpg = await validateImageFile(validJpegJpg);
+  assert(resJpg.valid && resJpg.format === "jpeg", "JPEG com MIME alternativo image/jpg aceito com sucesso");
+
+  const validJpegPjpeg = new MockFile(validJpegBuffer, "foto.jpg", { type: "image/pjpeg" }) as unknown as File;
+  const resPjpeg = await validateImageFile(validJpegPjpeg);
+  assert(resPjpeg.valid && resPjpeg.format === "jpeg", "JPEG com MIME alternativo image/pjpeg aceito com sucesso");
+
+  // 1.9 Arquivo com MIME vazio mas com magic bytes autênticos (Drag-and-Drop de certos gerenciadores)
+  const validNoMime = new MockFile(validPngBuffer, "arrastado.png", { type: "" }) as unknown as File;
+  const resNoMime = await validateImageFile(validNoMime);
+  assert(resNoMime.valid && resNoMime.format === "png", "Arquivo arrastado com MIME vazio mas magic bytes válidos aceito");
+
+  // 1.10 Polyglot com data:text/html ou expression( (Bloqueio)
+  const polyglotExpr = Buffer.concat([
+    Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    Buffer.from("style='behavior:expression(alert(1))' data:text/html"),
+  ]);
+  const resPolyExpr = await validateImageFile(new MockFile(polyglotExpr, "xss.jpg", { type: "image/jpeg" }) as unknown as File);
+  assert(!resPolyExpr.valid, "Arquivo contendo data:text/html ou expression( foi BLOQUEADO");
+
+  // 1.11 Arquivo vazio (Bloqueio)
   const emptyFile = new MockFile(Buffer.alloc(0), "empty.jpg", { type: "image/jpeg" }) as unknown as File;
   const resEmpty = await validateImageFile(emptyFile);
   assert(!resEmpty.valid, "Arquivo vazio de 0 bytes rejeitado");
@@ -249,6 +273,28 @@ async function runTests() {
   // Validação da lista de estados brasileiros
   assert(BRAZIL_STATES.length === 27, "Lista completa de 27 estados da federação (26 UFs + DF) cadastrada");
   assert(BRAZIL_STATES.some((s) => s.uf === "SP" && s.name === "São Paulo"), "Estado de SP devidamente mapeado");
+
+  // -------------------------------------------------------------------------
+  // 5. TESTES DE PRIVACIDADE & NÃO-SPOOFING DE GPS DEFAULT
+  // -------------------------------------------------------------------------
+  console.log("\n🔹 5. Testando Não-Spoofing de GPS e Migração de Treinadores...");
+
+  const defaultUser = getCurrentUser();
+  assert(
+    defaultUser.latitude === undefined && defaultUser.longitude === undefined,
+    "Usuário padrão não possui coordenadas mockadas (não induz falso GPS ativo)"
+  );
+
+  const storedCoaches = getStoredCoaches();
+  const rodrigo = storedCoaches.find((c) => c.id === "coach_rodrigo");
+  assert(
+    Boolean(rodrigo && rodrigo.city === "São Paulo" && rodrigo.latitude && rodrigo.longitude),
+    "Treinadores padrão possuem coordenadas geográficas válidas preenchidas"
+  );
+  assert(
+    Boolean(rodrigo && rodrigo.serviceModality === "hibrido"),
+    "Treinadores padrão possuem modalidade de atendimento definida (híbrido/presencial/online)"
+  );
 
   // -------------------------------------------------------------------------
   // RESULTADO FINAL

@@ -174,11 +174,19 @@ export async function reverseGeocode(
       address.city_district ||
       "";
 
+    const sanitizeText = (val: string) =>
+      val ? val.replace(/<[^>]*>?/gm, "").replace(/["'`\\;]/g, "").trim() : "";
+
+    const cleanCity = sanitizeText(city);
+    const cleanState = sanitizeText(state).toUpperCase().slice(0, 2);
+    const cleanNeighborhood = sanitizeText(neighborhood);
+    const cleanDisplayName = sanitizeText(data.display_name || "");
+
     return {
-      city: city ? city.trim() : undefined,
-      state: state ? state.trim() : undefined,
-      neighborhood: neighborhood ? neighborhood.trim() : undefined,
-      displayName: data.display_name,
+      city: cleanCity || undefined,
+      state: cleanState || undefined,
+      neighborhood: cleanNeighborhood || undefined,
+      displayName: cleanDisplayName || undefined,
     };
   } catch {
     // Falhas de rede ou timeout não quebram o fluxo do usuário

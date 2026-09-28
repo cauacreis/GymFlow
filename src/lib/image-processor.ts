@@ -21,7 +21,14 @@ export interface CompressedImageResult {
 }
 
 const MAX_RAW_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/pjpeg",
+  "image/png",
+  "image/x-png",
+  "image/webp",
+];
 
 // Assinaturas canônicas de Magic Bytes
 const MAGIC_BYTES = {
@@ -34,9 +41,9 @@ const MAGIC_BYTES = {
 /**
  * Validação rigorosa de arquivo de imagem antes de qualquer processamento:
  * 1. Tamanho máximo (5MB)
- * 2. MIME type declarado
+ * 2. MIME type declarado (com tolerância a mimes vazios se os magic bytes forem autênticos)
  * 3. Inspeção de Magic Bytes do cabeçalho binário (previne extensão falsa)
- * 4. Scan de primeiros 2048 bytes contra scripts embutidos (SVG/HTML polyglots)
+ * 4. Scan binário aprofundado (até 8KB) contra scripts embutidos (SVG/HTML polyglots)
  */
 export async function validateImageFile(file: File): Promise<ImageValidationResult> {
   // 1. Limite de tamanho de arquivo
@@ -54,7 +61,7 @@ export async function validateImageFile(file: File): Promise<ImageValidationResu
 
   // 2. MIME Type informado
   const normalizedMime = (file.type || "").toLowerCase().trim();
-  if (!ALLOWED_MIME_TYPES.includes(normalizedMime)) {
+  if (normalizedMime && !ALLOWED_MIME_TYPES.includes(normalizedMime)) {
     return {
       valid: false,
       error: "Formato de imagem não suportado. Utilize apenas fotos nos formatos JPG, PNG ou WebP.",
@@ -101,8 +108,9 @@ export async function validateImageFile(file: File): Promise<ImageValidationResu
     }
 
     // 4. Scan contra Polyglot / Injeção de Tags maliciosas (Stored XSS)
-    // Lê os primeiros 2048 bytes procurando tags executáveis disfarçadas
-    const textSampleBuffer = await file.slice(0, 2048).arrayBuffer();
+    // Lê até os primeiros 8192 bytes procurando tags executáveis disfarçadas
+    const scanSize = Math.min(file.size, 8192);
+    const textSampleBuffer = await file.slice(0, scanSize).arrayBuffer();
     const textDecoder = new TextDecoder("utf-8", { fatal: false });
     const textSample = textDecoder.decode(textSampleBuffer).toLowerCase();
 
@@ -117,6 +125,8 @@ export async function validateImageFile(file: File): Promise<ImageValidationResu
       "onload=",
       "onerror=",
       "javascript:",
+      "expression(",
+      "data:text/html",
     ];
 
     for (const pattern of dangerousPatterns) {
@@ -179,6 +189,11 @@ export async function processAndCompressImageToWebP(
           throw new Error("Dimensões de imagem inválidas.");
         }
 
+        // Defesa contra Pixel Flood / Image Decompression Bomb (limite de 16 Megapixels / 8192px)
+        if (width > 8192 || height > 8192 || (width * height) > 16777216) {
+          throw new Error("A resolução da imagem excede os limites de segurança permitidos (máx 16 Megapixels).");
+        }
+
         // Calcula proporção para não ultrapassar maxDim (mantém aspect ratio)
         if (width > maxDim || height > maxDim) {
           if (width > height) {
@@ -213,6 +228,10 @@ export async function processAndCompressImageToWebP(
           // Fallback caso o navegador não suporte exportação WebP em canvas
           dataUrl = canvas.toDataURL("image/jpeg", quality);
           format = "jpeg";
+        }
+
+        if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+          throw new Error("Falha na geração do arquivo WebP comprimido.");
         }
 
         // Estima o tamanho comprimido em bytes a partir do Base64

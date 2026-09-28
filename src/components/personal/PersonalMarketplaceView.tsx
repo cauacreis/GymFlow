@@ -766,7 +766,7 @@ export function PersonalMarketplaceView({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
             {/* Filtro por Estado (UF) */}
             <div className="space-y-1">
               <label className="block text-[10px] font-bold text-zinc-400 uppercase">
@@ -787,6 +787,23 @@ export function PersonalMarketplaceView({
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Filtro por Cidade */}
+            <div className="space-y-1">
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase">
+                Cidade
+              </label>
+              <input
+                type="text"
+                value={selectedCity}
+                onChange={(e) => {
+                  setSelectedCity(e.target.value);
+                }}
+                placeholder="Ex: São Paulo, Rio..."
+                maxLength={50}
+                className="w-full px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-all"
+              />
             </div>
 
             {/* Filtro por Modalidade */}
@@ -908,14 +925,21 @@ export function PersonalMarketplaceView({
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/[0.08]">
-                      <Image
-                        src={coach.avatarUrl}
-                        alt={coach.name}
-                        fill
-                        className="object-cover"
-                        sizes="48px"
-                      />
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/[0.08] bg-zinc-800">
+                      {coach.avatarUrl ? (
+                        <Image
+                          src={coach.avatarUrl}
+                          alt={coach.name}
+                          fill
+                          unoptimized
+                          className="object-cover"
+                          sizes="48px"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center font-black text-sm text-zinc-300">
+                          {coach.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">

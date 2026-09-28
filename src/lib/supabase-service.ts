@@ -7,6 +7,7 @@ import { getSupabase, isSupabaseConfigured } from "./supabase";
 import { StudentProfile, CoachPlanOption, StudentWorkoutPackage } from "./workout-store";
 import { BookingRequest, CoachTrainer, AppNotification } from "./booking-store";
 import { UserProfile } from "./auth-store";
+import { isValidCoordinate } from "./geo";
 
 // ============================================================================
 // ALUNOS (STUDENTS)
@@ -349,6 +350,8 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
       updated_at: new Date().toISOString(),
     };
 
+    const validCoords = isValidCoordinate(user.latitude, user.longitude);
+
     const extendedPayload = {
       ...basePayload,
       profile_completed: user.profileCompleted ?? false,
@@ -358,8 +361,8 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
       city: user.city || null,
       state: user.state || null,
       neighborhood: user.neighborhood || null,
-      latitude: user.latitude ?? null,
-      longitude: user.longitude ?? null,
+      latitude: validCoords ? user.latitude : null,
+      longitude: validCoords ? user.longitude : null,
       operating_radius_km: user.operatingRadiusKm ?? null,
       service_modality: user.serviceModality || null,
       terms_accepted: user.termsAccepted ?? false,

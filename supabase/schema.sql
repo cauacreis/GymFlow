@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url TEXT,
   instagram TEXT,
   location TEXT,
+  city TEXT,
+  state TEXT,
+  neighborhood TEXT,
+  latitude NUMERIC,
+  longitude NUMERIC,
+  operating_radius_km NUMERIC,
+  service_modality TEXT,
   pricing JSONB DEFAULT '{"basicMonthly": 35, "proMonthly": 45, "vipMonthly": 55, "dailySession": 35, "weeklyPlan": 45, "monthlyPlan": 55}'::jsonb,
   experience_level TEXT,
   height NUMERIC,
@@ -39,6 +46,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+CREATE INDEX IF NOT EXISTS idx_profiles_location_coords ON public.profiles(latitude, longitude);
+CREATE INDEX IF NOT EXISTS idx_profiles_city_state ON public.profiles(city, state);
 
 -- 3. Tabela de Alunos do Treinador (Students)
 CREATE TABLE IF NOT EXISTS public.students (
