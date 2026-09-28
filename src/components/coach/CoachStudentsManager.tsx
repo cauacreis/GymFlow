@@ -22,6 +22,7 @@ import {
   MessageCircle,
   AlertCircle,
   Trash2,
+  Copy,
   Edit3,
   Tag,
   RefreshCw,
@@ -473,6 +474,98 @@ export function CoachStudentsManager({
       );
       setEditingWorkoutData({ ...editingWorkoutData, splits: updatedSplits });
     }
+  };
+
+  // Adicionar nova divisão (split) ilimitada à ficha em edição
+  const handleAddSplitToEditingWorkout = () => {
+    if (!editingWorkoutData) return;
+    triggerHaptic("selection");
+
+    // Gerar próximo identificador de letra (A, B, C, D, E, F... Z, D27, D28...)
+    const existingIds = new Set(
+      editingWorkoutData.splits.map((s) => s.id.toUpperCase().trim())
+    );
+    let nextId = "";
+    for (let i = 0; i < 26; i++) {
+      const letter = String.fromCharCode(65 + i);
+      if (!existingIds.has(letter)) {
+        nextId = letter;
+        break;
+      }
+    }
+    if (!nextId) {
+      nextId = `D${editingWorkoutData.splits.length + 1}`;
+    }
+
+    const newSplit: WorkoutSplitTemplate = {
+      id: nextId,
+      title: `Treino ${nextId} — Divisão ${editingWorkoutData.splits.length + 1}`,
+      muscles: "Foco Muscular Específico",
+      estimatedMinutes: 45,
+      exercises: [],
+    };
+
+    const updated = [...editingWorkoutData.splits, newSplit];
+    setEditingWorkoutData({ ...editingWorkoutData, splits: updated });
+    setEditingActiveSplitIndex(updated.length - 1);
+    showToast(`Divisão Treino ${nextId} adicionada com sucesso! ✨`);
+  };
+
+  // Remover divisão (split) da ficha em edição
+  const handleRemoveSplitFromEditingWorkout = (splitIdx: number) => {
+    if (!editingWorkoutData) return;
+    if (editingWorkoutData.splits.length <= 1) {
+      showToast("A ficha precisa ter pelo menos 1 divisão de treino!");
+      return;
+    }
+    triggerHaptic("warning");
+    const splitToRemove = editingWorkoutData.splits[splitIdx];
+    const updated = editingWorkoutData.splits.filter((_, i) => i !== splitIdx);
+    setEditingWorkoutData({ ...editingWorkoutData, splits: updated });
+    const nextIdx = Math.max(0, Math.min(splitIdx, updated.length - 1));
+    setEditingActiveSplitIndex(nextIdx);
+    showToast(`Divisão Treino ${splitToRemove.id} removida.`);
+  };
+
+  // Duplicar divisão existente com seus exercícios
+  const handleDuplicateSplitInEditingWorkout = (splitIdx: number) => {
+    if (!editingWorkoutData) return;
+    triggerHaptic("selection");
+    const sourceSplit = editingWorkoutData.splits[splitIdx];
+    if (!sourceSplit) return;
+
+    const existingIds = new Set(
+      editingWorkoutData.splits.map((s) => s.id.toUpperCase().trim())
+    );
+    let nextId = "";
+    for (let i = 0; i < 26; i++) {
+      const letter = String.fromCharCode(65 + i);
+      if (!existingIds.has(letter)) {
+        nextId = letter;
+        break;
+      }
+    }
+    if (!nextId) {
+      nextId = `${sourceSplit.id}_COPIA`;
+    }
+
+    const duplicatedExercises: ExerciseInWorkout[] = sourceSplit.exercises.map((ex) => ({
+      ...ex,
+      id: `ex_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    }));
+
+    const newSplit: WorkoutSplitTemplate = {
+      id: nextId,
+      title: `${sourceSplit.title} (Cópia)`,
+      muscles: sourceSplit.muscles,
+      estimatedMinutes: sourceSplit.estimatedMinutes,
+      exercises: duplicatedExercises,
+    };
+
+    const updated = [...editingWorkoutData.splits, newSplit];
+    setEditingWorkoutData({ ...editingWorkoutData, splits: updated });
+    setEditingActiveSplitIndex(updated.length - 1);
+    showToast(`Divisão ${sourceSplit.id} duplicada como Treino ${nextId}! ✨`);
   };
 
   // Desvincular ficha
@@ -1818,18 +1911,29 @@ export function CoachStudentsManager({
                 />
               </div>
 
-              {/* Divisões de Treino (Splits A, B, C...) */}
+              {/* Divisões de Treino (Splits A, B, C... Ilimitadas) */}
               <div className="space-y-3 pt-1 border-t border-white/[0.06]">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase block">
-                    Divisões de Treino (Splits)
-                  </label>
-                  <span className="text-[10px] text-zinc-500">
-                    {editingWorkoutData.splits.length} divisões cadastradas
-                  </span>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase block">
+                      Divisões de Treino (Splits)
+                    </label>
+                    <span className="text-[10px] text-zinc-500">
+                      {editingWorkoutData.splits.length} divisões cadastradas
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddSplitToEditingWorkout}
+                    className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-black flex items-center gap-1 active:scale-95 transition-all shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Adicionar Divisão</span>
+                  </button>
                 </div>
 
-                {/* Abas dos Splits */}
+                {/* Abas dos Splits com Botão de Adição Rápida */}
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                   {editingWorkoutData.splits.map((split, sIdx) => (
                     <button
@@ -1839,7 +1943,7 @@ export function CoachStudentsManager({
                         triggerHaptic("selection");
                         setEditingActiveSplitIndex(sIdx);
                       }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
                         editingActiveSplitIndex === sIdx
                           ? "bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20"
                           : "bg-white/[0.04] text-zinc-400 hover:text-white"
@@ -1849,7 +1953,7 @@ export function CoachStudentsManager({
                       <span
                         className={`text-[9px] font-mono px-1 py-0.2 rounded-full ${
                           editingActiveSplitIndex === sIdx
-                            ? "bg-zinc-950 text-amber-300"
+                            ? "bg-zinc-950 text-amber-300 font-bold"
                             : "bg-white/10 text-zinc-400"
                         }`}
                       >
@@ -1857,6 +1961,17 @@ export function CoachStudentsManager({
                       </span>
                     </button>
                   ))}
+
+                  {/* Botão + inline nas abas para criar divisões ilimitadas */}
+                  <button
+                    type="button"
+                    onClick={handleAddSplitToEditingWorkout}
+                    title="Adicionar nova divisão de treino à ficha"
+                    className="h-7 px-2.5 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95 transition-all"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Nova Divisão</span>
+                  </button>
                 </div>
 
                 {/* Conteúdo do Split Ativo */}
@@ -1866,9 +1981,65 @@ export function CoachStudentsManager({
 
                   return (
                     <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/[0.08] space-y-3">
-                      {/* Editor de Nome do Split e Minutos */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="col-span-2">
+                      {/* Topo do Split com Opções de Gestão (Duplicar / Excluir) */}
+                      <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
+                            Treino {activeSplit.id}
+                          </span>
+                          <span className="text-[10px] text-zinc-500">
+                            ({activeSplit.exercises.length} exercícios configurados)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {/* Botão Duplicar Split */}
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateSplitInEditingWorkout(editingActiveSplitIndex)}
+                            className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 border border-white/[0.08] text-[10px] font-semibold flex items-center gap-1 transition-all active:scale-95"
+                            title="Duplicar esta divisão e todos os seus exercícios"
+                          >
+                            <Copy className="w-3 h-3 text-zinc-400" />
+                            <span className="hidden sm:inline">Duplicar</span>
+                          </button>
+
+                          {/* Botão Excluir Split (quando há mais de 1 divisão) */}
+                          {editingWorkoutData.splits.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSplitFromEditingWorkout(editingActiveSplitIndex)}
+                              className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold flex items-center gap-1 transition-all active:scale-95"
+                              title="Excluir este split da ficha"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-400" />
+                              <span>Excluir Split</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Editor de Identificador, Nome do Split e Minutos */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div className="sm:col-span-1">
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">
+                            Letra / ID
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={4}
+                            value={activeSplit.id}
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase().trim();
+                              const updated = [...editingWorkoutData.splits];
+                              updated[editingActiveSplitIndex].id = val || activeSplit.id;
+                              setEditingWorkoutData({ ...editingWorkoutData, splits: updated });
+                            }}
+                            className="w-full p-2 rounded-lg bg-zinc-950 border border-white/[0.08] text-xs font-mono font-black text-amber-400 text-center uppercase focus:outline-none focus:border-amber-500/50"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
                           <label className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">
                             Foco do Split
                           </label>
@@ -1884,7 +2055,7 @@ export function CoachStudentsManager({
                           />
                         </div>
 
-                        <div>
+                        <div className="sm:col-span-1">
                           <label className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">
                             Tempo Est.
                           </label>
