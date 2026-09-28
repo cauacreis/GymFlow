@@ -40,6 +40,7 @@ import { fetchProfileFromSupabase } from "@/lib/supabase-service";
 import { updateCoachPublicProfile } from "@/lib/booking-store";
 import { saveNewStudent } from "@/lib/workout-store";
 import { canRegisterAccountOnDevice, registerDeviceAccount } from "@/lib/device-lockout";
+import { TermsOfServiceModal } from "./TermsOfServiceModal";
 
 // ============================================================================
 // SCHEMAS ZOD ESTREITOS (ANTI-INJEÇÃO & SEGURANÇA)
@@ -1349,95 +1350,17 @@ export function AuthModal({
         </div>
       </Drawer>
 
-      {/* ==================================================================== */}
-      {/* MODAL / DRAWER DE TERMOS DE USO & POLÍTICA DE PRIVACIDADE LGPD       */}
-      {/* ==================================================================== */}
-      {showTermsModal && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setShowTermsModal(false)}
-        >
-          <div
-            className="relative w-full max-w-lg max-h-[85vh] flex flex-col bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-zinc-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Topo do Termos */}
-            <div className="flex items-center justify-between p-4 border-b border-white/[0.08] bg-zinc-900/60">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-black text-white">Termos de Uso & Privacidade (LGPD)</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTermsModal(false)}
-                className="p-1.5 rounded-xl text-zinc-400 hover:text-white bg-white/[0.04] transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Conteúdo com Scroll */}
-            <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto text-xs text-zinc-300 leading-relaxed no-scrollbar">
-              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
-                <p className="font-bold flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 shrink-0" /> Compromisso GymFlow de Privacidade Absoluta
-                </p>
-                <p className="text-[11px] text-emerald-200/90 mt-1">
-                  Seus dados de saúde, treinos, biometria corporal e contatos são confidenciais e nunca são comercializados com terceiros.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-white uppercase text-[11px] mb-1">1. Coleta e Finalidade dos Dados</h4>
-                <p className="text-[11px] text-zinc-400">
-                  O GymFlow coleta dados cadastrais (nome, e-mail, telefone/WhatsApp) e biometria opcional (peso corporal, altura, objetivo de treino) exclusivamente para a prescrição, execução de rotinas e agendamento de sessões com personal trainers parceiros.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-white uppercase text-[11px] mb-1">2. Direitos do Titular (LGPD - Lei 13.709/2018)</h4>
-                <p className="text-[11px] text-zinc-400">
-                  Você possui o direito inalienável de:
-                </p>
-                <ul className="list-disc pl-4 mt-1 space-y-1 text-[11px] text-zinc-400">
-                  <li><strong>Acesso e Portabilidade:</strong> Exportar todos os seus dados em formato JSON através de nosso endpoint dedicado (<code>/api/export-data</code>).</li>
-                  <li><strong>Direito ao Esquecimento:</strong> Excluir sua conta e todo histórico associado imediatamente via configurações ou endpoint seguro (<code>/api/delete-account</code>).</li>
-                  <li><strong>Revogação de Consentimento:</strong> Desconectar seu perfil a qualquer momento sem custos adicionais.</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-white uppercase text-[11px] mb-1">3. Segurança e Criptografia</h4>
-                <p className="text-[11px] text-zinc-400">
-                  Todas as comunicações são trafegadas sob protocolo TLS 1.3 com cabeçalhos HSTS (Strict-Transport-Security), Content Security Policy (CSP) restritivo e armazenamento criptografado no Supabase.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-white uppercase text-[11px] mb-1">4. Regras para Personal Trainers</h4>
-                <p className="text-[11px] text-zinc-400">
-                  Profissionais que atuam prescrevendo treinos devem possuir registro profissional válido (CREF) e atuar em conformidade com as diretrizes do Conselho Federal de Educação Física (CONFEF).
-                </p>
-              </div>
-            </div>
-
-            {/* Rodapé de Fechamento */}
-            <div className="p-3 border-t border-white/[0.08] bg-zinc-900/60 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("selection");
-                  setTermsAccepted(true);
-                  setShowTermsModal(false);
-                }}
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-md transition-all active:scale-95"
-              >
-                Entendi e Aceito os Termos
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de Termos de Uso e LGPD com leitura obrigatória e portal */}
+      <TermsOfServiceModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => {
+          setTermsAccepted(true);
+          setShowTermsModal(false);
+          setErrorMessage(null);
+        }}
+        hasAlreadyAccepted={termsAccepted}
+      />
     </>
   );
 }

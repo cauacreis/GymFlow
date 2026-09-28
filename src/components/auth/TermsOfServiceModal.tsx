@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   FileText,
   ShieldCheck,
@@ -30,9 +31,14 @@ export function TermsOfServiceModal({
   onAccept,
   hasAlreadyAccepted = false,
 }: TermsOfServiceModalProps) {
+  const [mounted, setMounted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [hasReachedBottom, setHasReachedBottom] = useState(hasAlreadyAccepted);
   const [scrollProgress, setScrollProgress] = useState(hasAlreadyAccepted ? 100 : 0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sincroniza estado inicial se já foi aceito anteriormente
   useEffect(() => {
@@ -45,16 +51,15 @@ export function TermsOfServiceModal({
   // Trava a rolagem do body de fundo enquanto o modal estiver aberto
   useEffect(() => {
     if (isOpen) {
+      const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
+      return () => {
+        document.body.style.overflow = prevOverflow || "unset";
+      };
     }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const handleScroll = () => {
     const el = contentRef.current;
@@ -97,9 +102,15 @@ export function TermsOfServiceModal({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col rounded-3xl bg-zinc-950 border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
+      onClick={() => onClose()}
+    >
+      <div
+        className="relative w-full max-w-3xl max-h-[88vh] sm:max-h-[90vh] my-auto flex flex-col rounded-3xl bg-zinc-950 border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden text-zinc-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* ================================================================= */}
         {/* CABEÇALHO DO MODAL */}
@@ -427,4 +438,6 @@ export function TermsOfServiceModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

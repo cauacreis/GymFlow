@@ -38,6 +38,7 @@ import { fetchProfileFromSupabase } from "@/lib/supabase-service";
 import { updateCoachPublicProfile } from "@/lib/booking-store";
 import { saveNewStudent } from "@/lib/workout-store";
 import { canRegisterAccountOnDevice, registerDeviceAccount } from "@/lib/device-lockout";
+import { TermsOfServiceModal } from "@/components/auth/TermsOfServiceModal";
 
 // ============================================================================
 // SCHEMAS DE VALIDAÇÃO ZOD
@@ -1181,68 +1182,17 @@ function AuthPageContent() {
         </div>
       </div>
 
-      {/* Modal de Termos & Privacidade */}
-      {showTermsModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
-          onClick={() => setShowTermsModal(false)}
-        >
-          <div
-            className="relative w-full max-w-lg max-h-[85vh] flex flex-col bg-zinc-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden text-zinc-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-white/[0.08] bg-zinc-900/60">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-black text-white">Termos de Uso & Privacidade (LGPD)</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTermsModal(false)}
-                className="p-1.5 rounded-xl text-zinc-400 hover:text-white bg-white/[0.04]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-3.5 overflow-y-auto text-xs text-zinc-300 leading-relaxed no-scrollbar">
-              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
-                <p className="font-bold flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 shrink-0" /> Compromisso GymFlow de Privacidade Absoluta
-                </p>
-                <p className="text-[11px] text-emerald-200/90 mt-1">
-                  Seus dados de saúde, treinos, biometria corporal e contatos são confidenciais e nunca são comercializados com terceiros.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-bold text-white uppercase text-[11px] mb-1">1. Coleta e Finalidade</h4>
-                <p className="text-[11px] text-zinc-400">
-                  O GymFlow coleta dados cadastrais exclusivamente para a prescrição, execução de rotinas e agendamento com personais parceiros.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-bold text-white uppercase text-[11px] mb-1">2. Direitos do Titular (LGPD)</h4>
-                <ul className="list-disc pl-4 mt-1 space-y-1 text-[11px] text-zinc-400">
-                  <li><strong>Exportação:</strong> Baixe todos os dados em JSON (/api/export-data).</li>
-                  <li><strong>Direito ao Esquecimento:</strong> Exclua sua conta e histórico (/api/delete-account).</li>
-                </ul>
-              </div>
-            </div>
-            <div className="p-3 border-t border-white/[0.08] bg-zinc-900/60 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic("selection");
-                  setTermsAccepted(true);
-                  setShowTermsModal(false);
-                }}
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-md transition-all active:scale-95"
-              >
-                Aceitar e Continuar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de Termos & Privacidade com leitura obrigatória e portal */}
+      <TermsOfServiceModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => {
+          setTermsAccepted(true);
+          setShowTermsModal(false);
+          setErrorMessage(null);
+        }}
+        hasAlreadyAccepted={termsAccepted}
+      />
     </div>
   );
 }
