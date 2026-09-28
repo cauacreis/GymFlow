@@ -32,6 +32,14 @@ export interface UserProfile {
   avatarUrl?: string;
   instagram?: string;
   location?: string;
+  // Localização geográfica e atuação regional (Aluno & Personal)
+  city?: string;
+  state?: string;
+  neighborhood?: string;
+  latitude?: number;
+  longitude?: number;
+  operatingRadiusKm?: number;
+  serviceModality?: "presencial" | "online" | "hibrido";
   pricing?: {
     basicMonthly: number;
     proMonthly: number;
@@ -84,6 +92,13 @@ const DEFAULT_USER: UserProfile = {
   hourlyRate: 35,
   instagram: "",
   location: "Salão Principal",
+  city: "São Paulo",
+  state: "SP",
+  neighborhood: "Jardins",
+  latitude: -23.5617,
+  longitude: -46.656,
+  operatingRadiusKm: 15,
+  serviceModality: "hibrido",
   pricing: {
     basicMonthly: 35,
     proMonthly: 45,
