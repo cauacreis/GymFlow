@@ -10,6 +10,75 @@ import { UserProfile } from "./auth-store";
 import { isValidCoordinate } from "./geo";
 
 // ============================================================================
+// ALTA PERFORMANCE: CACHE EM MEMÓRIA & DEDUPLICAÇÃO DE REQUISIÇÕES IN-FLIGHT
+// ============================================================================
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const memoryCache = new Map<string, CacheEntry<any>>();
+const inFlightRequests = new Map<string, Promise<any>>();
+
+function getCached<T>(key: string, ttlMs: number): T | null {
+  const entry = memoryCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > ttlMs) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache<T>(key: string, data: T): void {
+  if (memoryCache.size >= 500) {
+    const oldestKey = memoryCache.keys().next().value;
+    if (oldestKey) memoryCache.delete(oldestKey);
+  }
+  memoryCache.set(key, { data, timestamp: Date.now() });
+}
+
+export function invalidateSupabaseCache(prefixOrKey?: string): void {
+  if (!prefixOrKey) {
+    memoryCache.clear();
+    return;
+  }
+  for (const k of Array.from(memoryCache.keys())) {
+    if (k.startsWith(prefixOrKey) || k === prefixOrKey) {
+      memoryCache.delete(k);
+    }
+  }
+}
+
+async function deduplicatedFetch<T>(key: string, fetcher: () => Promise<T>, ttlMs: number = 30000): Promise<T> {
+  const cached = getCached<T>(key, ttlMs);
+  if (cached !== null) {
+    return cached;
+  }
+
+  const existingInFlight = inFlightRequests.get(key);
+  if (existingInFlight) {
+    return existingInFlight as Promise<T>;
+  }
+
+  const promise = (async () => {
+    try {
+      const result = await fetcher();
+      if (result !== null && result !== undefined) {
+        setCache(key, result);
+      }
+      return result;
+    } finally {
+      inFlightRequests.delete(key);
+    }
+  })();
+
+  inFlightRequests.set(key, promise);
+  return promise;
+}
+
+// ============================================================================
 // ALUNOS (STUDENTS)
 // ============================================================================
 
@@ -17,54 +86,58 @@ export async function fetchStudentsFromSupabase(coachId?: string, limit: number 
   const client = getSupabase();
   if (!client) return null;
 
-  try {
-    let query = client.from("students").select("*");
-    if (coachId) {
-      query = query.eq("coach_id", coachId);
-    }
-    const safeLimit = Math.min(Math.max(1, limit), 250);
-    const { data, error } = await query
-      .order("created_at", { ascending: false })
-      .limit(safeLimit);
+  const cacheKey = `students_${coachId || "all"}_${limit}`;
 
-    if (error) {
-      console.warn("⚠️ [Supabase] Erro ao buscar alunos:", error.message);
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      let query = client.from("students").select("*");
+      if (coachId) {
+        query = query.eq("coach_id", coachId);
+      }
+      const safeLimit = Math.min(Math.max(1, limit), 250);
+      const { data, error } = await query
+        .order("created_at", { ascending: false })
+        .limit(safeLimit);
+
+      if (error) {
+        console.warn("⚠️ [Supabase] Erro ao buscar alunos:", error.message);
+        return null;
+      }
+
+      if (!data) return [];
+
+      return data.map((row: any): StudentProfile => ({
+        id: row.id,
+        name: row.name,
+        email: row.email || "",
+        phone: row.phone || undefined,
+        matricula: row.matricula || `GF-${row.id.slice(0, 5)}`,
+        goal: row.goal || "Hipertrofia",
+        plan: row.plan || "Mensal Pro",
+        status: row.status || "ativo",
+        monthlyPresence: row.monthly_presence ?? 0,
+        monthlyAbsences: row.monthly_absences ?? 0,
+        monthlyDelays: row.monthly_delays ?? 0,
+        totalClasses: row.total_classes ?? 0,
+        lastPresence: row.last_presence || undefined,
+        age: row.age ?? 25,
+        hasWorkoutSheet: row.has_workout_sheet ?? true,
+        isOfflineStudent: row.is_offline_student ?? false,
+        emergencyContact: row.emergency_contact || undefined,
+        avatarUrl: row.avatar_url || undefined,
+        currentRoutineTitle: row.current_routine_title || "Acompanhamento Presencial Livre",
+        prescribedBy: row.prescribed_by || "",
+        prescribedAt: row.prescribed_at || "",
+        notesFromCoach: row.notes_from_coach || undefined,
+        scheduledTimeToday: row.scheduled_time_today || undefined,
+        todayAttendanceStatus: row.today_attendance_status || undefined,
+        delayMinutes: row.delay_minutes ?? 0,
+      }));
+    } catch (err) {
+      console.warn("⚠️ [Supabase] Falha de rede ao buscar alunos:", err);
       return null;
     }
-
-    if (!data) return [];
-
-    return data.map((row: any): StudentProfile => ({
-      id: row.id,
-      name: row.name,
-      email: row.email || "",
-      phone: row.phone || undefined,
-      matricula: row.matricula || `GF-${row.id.slice(0, 5)}`,
-      goal: row.goal || "Hipertrofia",
-      plan: row.plan || "Mensal Pro",
-      status: row.status || "ativo",
-      monthlyPresence: row.monthly_presence ?? 0,
-      monthlyAbsences: row.monthly_absences ?? 0,
-      monthlyDelays: row.monthly_delays ?? 0,
-      totalClasses: row.total_classes ?? 0,
-      lastPresence: row.last_presence || undefined,
-      age: row.age ?? 25,
-      hasWorkoutSheet: row.has_workout_sheet ?? true,
-      isOfflineStudent: row.is_offline_student ?? false,
-      emergencyContact: row.emergency_contact || undefined,
-      avatarUrl: row.avatar_url || undefined,
-      currentRoutineTitle: row.current_routine_title || "Acompanhamento Presencial Livre",
-      prescribedBy: row.prescribed_by || "",
-      prescribedAt: row.prescribed_at || "",
-      notesFromCoach: row.notes_from_coach || undefined,
-      scheduledTimeToday: row.scheduled_time_today || undefined,
-      todayAttendanceStatus: row.today_attendance_status || undefined,
-      delayMinutes: row.delay_minutes ?? 0,
-    }));
-  } catch (err) {
-    console.warn("⚠️ [Supabase] Falha de rede ao buscar alunos:", err);
-    return null;
-  }
+  }, 20000); // 20s TTL
 }
 
 export async function upsertStudentToSupabase(student: StudentProfile, coachId: string = "coach_default"): Promise<boolean> {
@@ -107,6 +180,7 @@ export async function upsertStudentToSupabase(student: StudentProfile, coachId: 
       console.warn("⚠️ [Supabase] Erro ao salvar aluno:", error.message);
       return false;
     }
+    invalidateSupabaseCache("students_");
     return true;
   } catch (err) {
     console.warn("⚠️ [Supabase] Falha ao upsert student:", err);
@@ -120,6 +194,9 @@ export async function deleteStudentFromSupabase(studentId: string): Promise<bool
 
   try {
     const { error } = await client.from("students").delete().eq("id", studentId);
+    if (!error) {
+      invalidateSupabaseCache("students_");
+    }
     return !error;
   } catch {
     return false;
@@ -134,26 +211,30 @@ export async function fetchWorkoutFromSupabase(studentId: string): Promise<Stude
   const client = getSupabase();
   if (!client) return null;
 
-  try {
-    const { data, error } = await client
-      .from("student_workouts")
-      .select("*")
-      .eq("student_id", studentId)
-      .maybeSingle();
+  const cacheKey = `workout_${studentId}`;
 
-    if (error || !data) return null;
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const { data, error } = await client
+        .from("student_workouts")
+        .select("*")
+        .eq("student_id", studentId)
+        .maybeSingle();
 
-    return {
-      studentId: data.student_id,
-      routineTitle: data.routine_title,
-      prescribedBy: data.prescribed_by || "",
-      prescribedAt: data.prescribed_at || "",
-      coachNotes: data.coach_notes || undefined,
-      splits: (data.splits as any) || [],
-    };
-  } catch {
-    return null;
-  }
+      if (error || !data) return null;
+
+      return {
+        studentId: data.student_id,
+        routineTitle: data.routine_title,
+        prescribedBy: data.prescribed_by || "",
+        prescribedAt: data.prescribed_at || "",
+        coachNotes: data.coach_notes || undefined,
+        splits: (data.splits as any) || [],
+      };
+    } catch {
+      return null;
+    }
+  }, 30000); // 30s TTL
 }
 
 export async function saveWorkoutToSupabase(workout: StudentWorkoutPackage): Promise<boolean> {
@@ -172,6 +253,9 @@ export async function saveWorkoutToSupabase(workout: StudentWorkoutPackage): Pro
     };
 
     const { error } = await client.from("student_workouts").upsert(payload, { onConflict: "student_id" });
+    if (!error) {
+      invalidateSupabaseCache(`workout_${workout.studentId}`);
+    }
     return !error;
   } catch {
     return false;
@@ -186,41 +270,45 @@ export async function fetchBookingsFromSupabase(coachId?: string, studentId?: st
   const client = getSupabase();
   if (!client) return null;
 
-  try {
-    let query = client.from("bookings").select("*");
-    if (coachId) query = query.eq("coach_id", coachId);
-    if (studentId) query = query.eq("student_id", studentId);
+  const cacheKey = `bookings_${coachId || "all"}_${studentId || "all"}_${limit}`;
 
-    const safeLimit = Math.min(Math.max(1, limit), 250);
-    const { data, error } = await query
-      .order("created_at", { ascending: false })
-      .limit(safeLimit);
-    if (error || !data) return null;
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      let query = client.from("bookings").select("*");
+      if (coachId) query = query.eq("coach_id", coachId);
+      if (studentId) query = query.eq("student_id", studentId);
 
-    return data.map((b: any): BookingRequest => ({
-      id: b.id,
-      studentId: b.student_id,
-      studentName: b.student_name,
-      studentPhone: b.student_phone || "",
-      coachId: b.coach_id,
-      coachName: b.coach_name,
-      coachPhone: b.coach_phone || "",
-      slotDay: b.slot_day,
-      slotTime: b.slot_time,
-      planType: b.plan_type,
-      basePrice: Number(b.base_price),
-      extraOfferedAmount: Number(b.extra_offered_amount || 0),
-      totalPrice: Number(b.total_price),
-      status: b.status,
-      paymentStatus: b.payment_status,
-      attendanceStatus: b.attendance_status,
-      notes: b.notes || undefined,
-      createdAt: b.created_at,
-      rescheduleRequest: b.reschedule_request || undefined,
-    }));
-  } catch {
-    return null;
-  }
+      const safeLimit = Math.min(Math.max(1, limit), 250);
+      const { data, error } = await query
+        .order("created_at", { ascending: false })
+        .limit(safeLimit);
+      if (error || !data) return null;
+
+      return data.map((b: any): BookingRequest => ({
+        id: b.id,
+        studentId: b.student_id,
+        studentName: b.student_name,
+        studentPhone: b.student_phone || "",
+        coachId: b.coach_id,
+        coachName: b.coach_name,
+        coachPhone: b.coach_phone || "",
+        slotDay: b.slot_day,
+        slotTime: b.slot_time,
+        planType: b.plan_type,
+        basePrice: Number(b.base_price),
+        extraOfferedAmount: Number(b.extra_offered_amount || 0),
+        totalPrice: Number(b.total_price),
+        status: b.status,
+        paymentStatus: b.payment_status,
+        attendanceStatus: b.attendance_status,
+        notes: b.notes || undefined,
+        createdAt: b.created_at,
+        rescheduleRequest: b.reschedule_request || undefined,
+      }));
+    } catch {
+      return null;
+    }
+  }, 15000); // 15s TTL
 }
 
 export async function saveBookingToSupabase(booking: BookingRequest): Promise<boolean> {
@@ -251,6 +339,9 @@ export async function saveBookingToSupabase(booking: BookingRequest): Promise<bo
     };
 
     const { error } = await client.from("bookings").upsert(payload, { onConflict: "id" });
+    if (!error) {
+      invalidateSupabaseCache("bookings_");
+    }
     return !error;
   } catch {
     return false;
@@ -265,33 +356,37 @@ export async function fetchCoachPlansFromSupabase(coachId: string = "coach_defau
   const client = getSupabase();
   if (!client) return null;
 
-  try {
-    const { data, error } = await client
-      .from("coach_plans")
-      .select("*")
-      .eq("coach_id", coachId)
-      .order("created_at", { ascending: true });
+  const cacheKey = `coach_plans_${coachId}`;
 
-    if (error || !data) return null;
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const { data, error } = await client
+        .from("coach_plans")
+        .select("*")
+        .eq("coach_id", coachId)
+        .order("created_at", { ascending: true });
 
-    return data.map((p: any): CoachPlanOption => ({
-      id: p.id,
-      name: p.name,
-      price: Number(p.price),
-      period: p.period,
-      frequency: p.frequency || undefined,
-      duration: p.duration || undefined,
-      modalities: Array.isArray(p.modalities)
-        ? p.modalities
-        : typeof p.modalities === "string"
-        ? (p.modalities.startsWith("[") ? JSON.parse(p.modalities) : p.modalities.split(",").map((s: string) => s.trim()))
-        : undefined,
-      description: p.description || undefined,
-      isCustom: p.is_custom,
-    }));
-  } catch {
-    return null;
-  }
+      if (error || !data) return null;
+
+      return data.map((p: any): CoachPlanOption => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price),
+        period: p.period,
+        frequency: p.frequency || undefined,
+        duration: p.duration || undefined,
+        modalities: Array.isArray(p.modalities)
+          ? p.modalities
+          : typeof p.modalities === "string"
+          ? (p.modalities.startsWith("[") ? JSON.parse(p.modalities) : p.modalities.split(",").map((s: string) => s.trim()))
+          : undefined,
+        description: p.description || undefined,
+        isCustom: p.is_custom,
+      }));
+    } catch {
+      return null;
+    }
+  }, 60000); // 60s TTL
 }
 
 export async function saveCoachPlanToSupabase(plan: CoachPlanOption, coachId: string = "coach_default"): Promise<boolean> {
@@ -313,6 +408,9 @@ export async function saveCoachPlanToSupabase(plan: CoachPlanOption, coachId: st
     };
 
     const { error } = await client.from("coach_plans").upsert(payload, { onConflict: "id" });
+    if (!error) {
+      invalidateSupabaseCache(`coach_plans_${coachId}`);
+    }
     return !error;
   } catch {
     return false;
@@ -389,11 +487,13 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
           console.warn("⚠️ [Supabase] Erro no fallback ao salvar perfil:", fallbackError.message);
           return false;
         }
+        invalidateSupabaseCache(`profile_${user.id}`);
         return true;
       }
       console.warn("⚠️ [Supabase] Erro ao salvar perfil:", error.message);
       return false;
     }
+    invalidateSupabaseCache(`profile_${user.id}`);
     return true;
   } catch (err) {
     console.warn("⚠️ [Supabase] Exceção ao salvar perfil:", err);
@@ -405,61 +505,65 @@ export async function fetchProfileFromSupabase(userId: string): Promise<UserProf
   const client = getSupabase();
   if (!client) return null;
 
-  try {
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    if (!isUUID) return null;
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+  if (!isUUID) return null;
 
-    const { data, error } = await client
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
+  const cacheKey = `profile_${userId}`;
 
-    if (error || !data) return null;
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const { data, error } = await client
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
 
-    return {
-      id: data.id,
-      name: data.name || "Usuário",
-      email: data.email || "",
-      phone: data.phone || "",
-      activeRole: data.active_role || "student",
-      enabledRoles: data.enabled_roles || (data.active_role === "coach" ? ["coach", "student"] : ["student"]),
-      matricula: data.matricula || `GF-${data.id.slice(0, 5)}`,
-      goal: data.goal || "Hipertrofia",
-      experienceLevel: data.experience_level || undefined,
-      profileCompleted: data.profile_completed ?? false,
-      height: data.height ? Number(data.height) : undefined,
-      weight: data.weight ? Number(data.weight) : undefined,
-      termsAccepted: data.terms_accepted ?? false,
-      termsAcceptedAt: data.terms_accepted_at || undefined,
-      cref: data.cref || undefined,
-      specialty: data.specialty || undefined,
-      bio: data.bio || undefined,
-      hourlyRate: data.hourly_rate ?? 35,
-      avatarUrl: data.avatar_url || undefined,
-      instagram: data.instagram || undefined,
-      location: data.location || undefined,
-      city: data.city || undefined,
-      state: data.state || undefined,
-      neighborhood: data.neighborhood || undefined,
-      latitude: data.latitude !== null && data.latitude !== undefined ? Number(data.latitude) : undefined,
-      longitude: data.longitude !== null && data.longitude !== undefined ? Number(data.longitude) : undefined,
-      operatingRadiusKm: data.operating_radius_km !== null && data.operating_radius_km !== undefined ? Number(data.operating_radius_km) : undefined,
-      serviceModality: data.service_modality || undefined,
-      pricing: data.pricing || undefined,
-      pixKey: data.pix_key || undefined,
-      pixKeyType: data.pix_key_type || undefined,
-      pixName: data.pix_name || undefined,
-      pixBank: data.pix_bank || undefined,
-      subscriptionStatus: data.subscription_status || undefined,
-      subscriptionPlan: data.subscription_plan || undefined,
-      planTier: data.plan_tier || undefined,
-      trialEndsAt: data.trial_ends_at || undefined,
-      subscriptionEndsAt: data.subscription_ends_at || undefined,
-      deviceFingerprint: data.device_fingerprint || undefined,
-    };
-  } catch {
-    return null;
-  }
+      if (error || !data) return null;
+
+      return {
+        id: data.id,
+        name: data.name || "Usuário",
+        email: data.email || "",
+        phone: data.phone || "",
+        activeRole: data.active_role || "student",
+        enabledRoles: data.enabled_roles || (data.active_role === "coach" ? ["coach", "student"] : ["student"]),
+        matricula: data.matricula || `GF-${data.id.slice(0, 5)}`,
+        goal: data.goal || "Hipertrofia",
+        experienceLevel: data.experience_level || undefined,
+        profileCompleted: data.profile_completed ?? false,
+        height: data.height ? Number(data.height) : undefined,
+        weight: data.weight ? Number(data.weight) : undefined,
+        termsAccepted: data.terms_accepted ?? false,
+        termsAcceptedAt: data.terms_accepted_at || undefined,
+        cref: data.cref || undefined,
+        specialty: data.specialty || undefined,
+        bio: data.bio || undefined,
+        hourlyRate: data.hourly_rate ?? 35,
+        avatarUrl: data.avatar_url || undefined,
+        instagram: data.instagram || undefined,
+        location: data.location || undefined,
+        city: data.city || undefined,
+        state: data.state || undefined,
+        neighborhood: data.neighborhood || undefined,
+        latitude: data.latitude !== null && data.latitude !== undefined ? Number(data.latitude) : undefined,
+        longitude: data.longitude !== null && data.longitude !== undefined ? Number(data.longitude) : undefined,
+        operatingRadiusKm: data.operating_radius_km !== null && data.operating_radius_km !== undefined ? Number(data.operating_radius_km) : undefined,
+        serviceModality: data.service_modality || undefined,
+        pricing: data.pricing || undefined,
+        pixKey: data.pix_key || undefined,
+        pixKeyType: data.pix_key_type || undefined,
+        pixName: data.pix_name || undefined,
+        pixBank: data.pix_bank || undefined,
+        subscriptionStatus: data.subscription_status || undefined,
+        subscriptionPlan: data.subscription_plan || undefined,
+        planTier: data.plan_tier || undefined,
+        trialEndsAt: data.trial_ends_at || undefined,
+        subscriptionEndsAt: data.subscription_ends_at || undefined,
+        deviceFingerprint: data.device_fingerprint || undefined,
+      };
+    } catch {
+      return null;
+    }
+  }, 30000); // 30s TTL
 }
 

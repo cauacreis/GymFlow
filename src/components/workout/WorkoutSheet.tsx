@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dumbbell,
   CheckCircle2,
@@ -36,6 +36,7 @@ import {
   saveCustomExercise,
   ExerciseDBItem,
   matchBodyPartCategory,
+  normalizeSearchString,
 } from "@/lib/exercisedb";
 import { ExerciseGifModal, ExerciseModalData } from "./ExerciseGifModal";
 import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
@@ -106,6 +107,50 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
   const [customWeight, setCustomWeight] = useState(15);
   const [customRest, setCustomRest] = useState(60);
   const [customNotes, setCustomNotes] = useState("");
+
+  // Memoização de busca ultra-rápida do catálogo de exercícios
+  const filteredCatalogExercises = useMemo(() => {
+    let list = getAllExercises();
+    if (catalogMuscleFilter !== "todos") {
+      list = list.filter((item) => matchBodyPartCategory(item.bodyPart, catalogMuscleFilter));
+    }
+    if (catalogSearch.trim()) {
+      const normTokens = normalizeSearchString(catalogSearch).split(/\s+/).filter(Boolean);
+      if (normTokens.length > 0) {
+        list = list
+          .map((item) => {
+            const normName = normalizeSearchString(item.name);
+            const normTarget = normalizeSearchString(item.target);
+            const normBody = normalizeSearchString(item.bodyPart);
+            const normEq = normalizeSearchString(item.equipment);
+
+            let score = 0;
+            let allMatch = true;
+
+            for (const token of normTokens) {
+              if (normName.includes(token)) {
+                score += normName.startsWith(token) ? 10 : 5;
+              } else if (normTarget.includes(token)) {
+                score += 3;
+              } else if (normBody.includes(token)) {
+                score += 2;
+              } else if (normEq.includes(token)) {
+                score += 1;
+              } else {
+                allMatch = false;
+                break;
+              }
+            }
+
+            return { item, score, allMatch };
+          })
+          .filter((res) => res.allMatch)
+          .sort((a, b) => b.score - a.score)
+          .map((res) => res.item);
+      }
+    }
+    return list.slice(0, 80);
+  }, [catalogSearch, catalogMuscleFilter]);
 
   // Mapeia exercícios enriquecendo com o catálogo
   const mapExercises = (rawExercises: ExerciseInWorkout[]): Exercise[] => {
@@ -752,28 +797,11 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
 
                 {/* Lista de Exercícios Filtrados */}
                 <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1">
-                  {getAllExercises()
-                    .filter((item) => {
-                      if (!matchBodyPartCategory(item.bodyPart, catalogMuscleFilter)) {
-                        return false;
-                      }
-                      if (catalogSearch.trim()) {
-                        const term = catalogSearch.toLowerCase().trim();
-                        return (
-                          item.name.toLowerCase().includes(term) ||
-                          item.target.toLowerCase().includes(term) ||
-                          item.equipment.toLowerCase().includes(term) ||
-                          item.bodyPart.toLowerCase().includes(term)
-                        );
-                      }
-                      return true;
-                    })
-                    .slice(0, 100)
-                    .map((item) => (
-                      <div
-                        key={item.id}
-                        className="p-2.5 rounded-xl bg-zinc-950 border border-white/[0.06] flex items-center justify-between gap-2 hover:border-emerald-500/30 transition-all"
-                      >
+                  {filteredCatalogExercises.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-2.5 rounded-xl bg-zinc-950 border border-white/[0.06] flex items-center justify-between gap-2 hover:border-emerald-500/30 transition-all"
+                    >
                         <div className="flex items-center gap-2.5 min-w-0">
                           {item.mediaFrames?.[0] ? (
                             <div className="w-9 h-9 rounded-lg overflow-hidden bg-black/50 border border-white/10 shrink-0">

@@ -4978,6 +4978,7 @@ export function saveCustomExercise(
     localStorage.setItem(STORAGE_KEY_CUSTOM_EXERCISES, JSON.stringify(updatedList));
     window.dispatchEvent(new Event("gymflow:custom-exercises-updated"));
   }
+  invalidateExerciseIndex();
   return newEx;
 }
 
@@ -4987,6 +4988,7 @@ export function deleteCustomExercise(id: string): void {
   const updated = customList.filter((e) => e.id !== id);
   localStorage.setItem(STORAGE_KEY_CUSTOM_EXERCISES, JSON.stringify(updated));
   window.dispatchEvent(new Event("gymflow:custom-exercises-updated"));
+  invalidateExerciseIndex();
 }
 
 export function getAllExercises(): ExerciseDBItem[] {
@@ -5065,7 +5067,13 @@ export async function searchExercises(
     }
   }
 
-  // Busca no catálogo completo (exercícios locais + personalizados)
+  // Busca ultra-otimizada no catálogo completo com cache LRU e normalização de acentos
+  const cacheKey = `${query.trim().toLowerCase()}_${filters?.bodyPart || "all"}_${filters?.equipment || "all"}`;
+  const cachedResult = getCachedSearchResults(cacheKey);
+  if (cachedResult) {
+    return cachedResult;
+  }
+
   let filtered = getAllExercises();
 
   if (filters?.bodyPart && filters.bodyPart !== "todos") {
@@ -5073,36 +5081,134 @@ export async function searchExercises(
   }
 
   if (filters?.equipment && filters.equipment !== "todos") {
-    filtered = filtered.filter((ex) => ex.equipment.toLowerCase() === filters.equipment?.toLowerCase());
+    const targetEq = normalizeSearchString(filters.equipment);
+    filtered = filtered.filter((ex) => normalizeSearchString(ex.equipment) === targetEq);
   }
 
   if (query.trim()) {
-    const term = query.toLowerCase().trim();
-    filtered = filtered.filter(
-      (ex) =>
-        ex.name.toLowerCase().includes(term) ||
-        ex.target.toLowerCase().includes(term) ||
-        ex.bodyPart.toLowerCase().includes(term) ||
-        ex.equipment.toLowerCase().includes(term)
-    );
+    const rawTokens = normalizeSearchString(query).split(/\s+/).filter(Boolean);
+    if (rawTokens.length > 0) {
+      filtered = filtered
+        .map((ex) => {
+          const normName = normalizeSearchString(ex.name);
+          const normTarget = normalizeSearchString(ex.target);
+          const normBody = normalizeSearchString(ex.bodyPart);
+          const normEq = normalizeSearchString(ex.equipment);
+
+          let score = 0;
+          let allMatch = true;
+
+          for (const token of rawTokens) {
+            if (normName.includes(token)) {
+              score += normName.startsWith(token) ? 10 : 5;
+            } else if (normTarget.includes(token)) {
+              score += 3;
+            } else if (normBody.includes(token)) {
+              score += 2;
+            } else if (normEq.includes(token)) {
+              score += 1;
+            } else {
+              allMatch = false;
+              break;
+            }
+          }
+
+          return { ex, score, allMatch };
+        })
+        .filter((item) => item.allMatch)
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.ex);
+    }
   }
 
+  setCachedSearchResults(cacheKey, filtered);
   return filtered;
 }
 
+// ============================================================================
+// ÍNDICES EM MEMÓRIA & BUSCA O(1) POR ID / NOME
+// ============================================================================
+
+export function normalizeSearchString(str: string): string {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+let cachedIdMap: Map<string, ExerciseDBItem> | null = null;
+let cachedNameMap: Map<string, ExerciseDBItem> | null = null;
+let cachedNormNameMap: Map<string, ExerciseDBItem> | null = null;
+const searchLRUCache = new Map<string, ExerciseDBItem[]>();
+
+function getCachedSearchResults(key: string): ExerciseDBItem[] | null {
+  return searchLRUCache.get(key) || null;
+}
+
+function setCachedSearchResults(key: string, results: ExerciseDBItem[]): void {
+  if (searchLRUCache.size >= 150) {
+    const oldest = searchLRUCache.keys().next().value;
+    if (oldest) searchLRUCache.delete(oldest);
+  }
+  searchLRUCache.set(key, results);
+}
+
+export function invalidateExerciseIndex(): void {
+  cachedIdMap = null;
+  cachedNameMap = null;
+  cachedNormNameMap = null;
+  searchLRUCache.clear();
+}
+
+function getExerciseIndex(): {
+  idMap: Map<string, ExerciseDBItem>;
+  nameMap: Map<string, ExerciseDBItem>;
+  normNameMap: Map<string, ExerciseDBItem>;
+} {
+  if (cachedIdMap && cachedNameMap && cachedNormNameMap) {
+    return { idMap: cachedIdMap, nameMap: cachedNameMap, normNameMap: cachedNormNameMap };
+  }
+
+  const all = getAllExercises();
+  const idMap = new Map<string, ExerciseDBItem>();
+  const nameMap = new Map<string, ExerciseDBItem>();
+  const normNameMap = new Map<string, ExerciseDBItem>();
+
+  for (let i = 0; i < all.length; i++) {
+    const ex = all[i];
+    if (ex.id) idMap.set(ex.id, ex);
+    if (ex.name) {
+      nameMap.set(ex.name.toLowerCase().trim(), ex);
+      normNameMap.set(normalizeSearchString(ex.name), ex);
+    }
+  }
+
+  cachedIdMap = idMap;
+  cachedNameMap = nameMap;
+  cachedNormNameMap = normNameMap;
+
+  return { idMap, nameMap, normNameMap };
+}
+
 /**
- * Retorna os dados de mídia e instruções de um exercício por ID ou nome
+ * Retorna os dados de mídia e instruções de um exercício por ID ou nome com complexidade O(1)
  */
 export function getExerciseDetails(exerciseIdOrName: string): ExerciseDBItem | undefined {
   if (!exerciseIdOrName) return undefined;
-  const all = getAllExercises();
+  const { idMap, nameMap, normNameMap } = getExerciseIndex();
 
-  const matchById = all.find((ex) => ex.id === exerciseIdOrName);
-  if (matchById) return matchById;
+  const directId = idMap.get(exerciseIdOrName);
+  if (directId) return directId;
 
-  const matchByName = all.find(
-    (ex) => ex.name.toLowerCase().trim() === exerciseIdOrName.toLowerCase().trim()
-  );
-  return matchByName;
+  const directName = nameMap.get(exerciseIdOrName.toLowerCase().trim());
+  if (directName) return directName;
+
+  const normName = normNameMap.get(normalizeSearchString(exerciseIdOrName));
+  if (normName) return normName;
+
+  return undefined;
 }
+
 
