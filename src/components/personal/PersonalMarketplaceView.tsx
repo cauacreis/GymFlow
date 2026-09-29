@@ -339,19 +339,66 @@ export function PersonalMarketplaceView({
 
   const isContract = selectedPlanType === "semanal" || selectedPlanType === "mensal";
 
+  // Planos disponíveis do personal selecionado (customizados ou padrões)
+  const coachPlanOptions = useMemo(() => {
+    if (currentCoach?.coachPlans && currentCoach.coachPlans.length > 0) {
+      return currentCoach.coachPlans.map((p, idx) => ({
+        id: (idx === 0 ? "diario" : idx === 1 ? "semanal" : "mensal") as "diario" | "semanal" | "mensal",
+        customId: p.id,
+        title: p.name,
+        frequency: p.frequency || "2x na semana",
+        duration: p.duration || "1h / aula",
+        modalities: p.modalities || ["Musculação"],
+        price: p.price,
+        period: p.period === "diario" ? "/treino" : p.period === "semanal" ? "/sem" : "/mês",
+        badge: idx === 1 ? "Mais Popular" : idx === 2 ? "Mais Escolhido" : undefined,
+      }));
+    }
+
+    return [
+      {
+        id: "diario" as const,
+        customId: "plan_basico",
+        title: "Mensal Básico",
+        frequency: "2x na semana",
+        duration: "45 min / aula",
+        modalities: ["Musculação", "Treinamento Funcional"],
+        price: currentCoach?.pricing.basicMonthly ?? currentCoach?.pricing.dailySession ?? 35,
+        period: "/mês",
+      },
+      {
+        id: "semanal" as const,
+        customId: "plan_pro",
+        title: "Mensal Pro",
+        frequency: "3x na semana",
+        duration: "1h / aula",
+        modalities: ["Musculação", "Corrida / Cardio", "Treinamento Funcional"],
+        badge: "Mais Popular",
+        price: currentCoach?.pricing.proMonthly ?? currentCoach?.pricing.weeklyPlan ?? 45,
+        period: "/mês",
+      },
+      {
+        id: "mensal" as const,
+        customId: "plan_vip",
+        title: "Mensal VIP",
+        frequency: "5x na semana / Livre",
+        duration: "1h15 / aula",
+        modalities: ["Musculação", "Corrida / Cardio", "Treinamento Funcional", "Nutrição"],
+        badge: "VIP Completo",
+        price: currentCoach?.pricing.vipMonthly ?? currentCoach?.pricing.monthlyPlan ?? 55,
+        period: "/mês",
+      },
+    ];
+  }, [currentCoach]);
+
   // Slots do dia selecionado no calendário
   const daySlots = useMemo(() => {
     return getCoachSlotsForDate(currentCoach, selectedDate);
   }, [currentCoach, selectedDate]);
 
   // Preço base do plano selecionado
-  const basePrice = currentCoach
-    ? selectedPlanType === "diario"
-      ? (currentCoach.pricing.dailySession ?? currentCoach.pricing.basicMonthly ?? 35)
-      : selectedPlanType === "semanal"
-      ? (currentCoach.pricing.weeklyPlan ?? currentCoach.pricing.proMonthly ?? 45)
-      : (currentCoach.pricing.monthlyPlan ?? currentCoach.pricing.vipMonthly ?? 55)
-    : 0;
+  const selectedPlanObj = coachPlanOptions.find((p) => p.id === selectedPlanType) || coachPlanOptions[0];
+  const basePrice = selectedPlanObj ? selectedPlanObj.price : 0;
 
   const totalPrice = basePrice + Math.max(0, extraAmount);
 
@@ -1021,66 +1068,62 @@ export function PersonalMarketplaceView({
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-zinc-400 uppercase">1. Modalidade do Plano:</span>
               <span className="text-[9px] text-emerald-400 font-bold">
-                {selectedPlanType === "diario"
-                  ? "Sessão Avulsa"
-                  : selectedPlanType === "semanal"
-                  ? "Plano Semanal (3x)"
-                  : "Plano Mensal VIP"}
+                {selectedPlanObj?.title || "Plano Selecionado"}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5">
-              {[
-                {
-                  id: "diario" as const,
-                  title: "Diária Avulsa",
-                  subtitle: "1 treino presencial",
-                  price: currentCoach.pricing.basicMonthly ?? currentCoach.pricing.dailySession ?? 35,
-                  period: "/treino",
-                },
-                {
-                  id: "semanal" as const,
-                  title: "Semanal (3x)",
-                  subtitle: "3x por semana",
-                  badge: "Flexível",
-                  price: currentCoach.pricing.proMonthly ?? currentCoach.pricing.weeklyPlan ?? 45,
-                  period: "/sem",
-                },
-                {
-                  id: "mensal" as const,
-                  title: "Mensal VIP",
-                  subtitle: "Acompanhamento mês",
-                  badge: "Mais Escolhido",
-                  price: currentCoach.pricing.vipMonthly ?? currentCoach.pricing.monthlyPlan ?? 55,
-                  period: "/mês",
-                },
-              ].map((plan) => {
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {coachPlanOptions.map((plan) => {
                 const isSelected = selectedPlanType === plan.id;
                 return (
                   <button
-                    key={plan.id}
+                    key={plan.customId || plan.id}
                     type="button"
                     onClick={() => {
                       triggerHaptic("selection");
                       setSelectedPlanType(plan.id);
                       setSelectedTimeSlot("");
                     }}
-                    className={`relative p-2.5 rounded-xl border flex flex-col items-center text-center transition-all ${
+                    className={`relative p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
                       isSelected
-                        ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-md shadow-emerald-500/10 scale-102"
+                        ? "bg-emerald-500/15 border-emerald-500/60 text-emerald-300 shadow-md shadow-emerald-500/10 scale-[1.01]"
                         : "bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/20"
                     }`}
                   >
                     {plan.badge && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[7px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 px-1.5 py-0.2 rounded-full whitespace-nowrap shadow">
+                      <span className="absolute -top-2 right-2 text-[7px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 px-1.5 py-0.2 rounded-full whitespace-nowrap shadow">
                         {plan.badge}
                       </span>
                     )}
-                    <span className="text-[11px] font-black text-white truncate">{plan.title}</span>
-                    <span className="text-[8px] text-zinc-400 leading-tight mt-0.5">{plan.subtitle}</span>
-                    <span className="text-xs font-mono font-black text-emerald-400 mt-1">
-                      R$ {plan.price}{plan.period}
-                    </span>
+                    <div>
+                      <span className="text-xs font-black text-white block truncate">{plan.title}</span>
+                      <span className="text-[10px] text-zinc-300 font-medium block mt-0.5">
+                        {plan.frequency} • {plan.duration}
+                      </span>
+                      {plan.modalities && plan.modalities.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {plan.modalities.slice(0, 3).map((m) => (
+                            <span
+                              key={m}
+                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-white/[0.05] text-zinc-300 border border-white/[0.06]"
+                            >
+                              {m}
+                            </span>
+                          ))}
+                          {plan.modalities.length > 3 && (
+                            <span className="text-[8px] font-bold px-1 py-0.5 rounded-md bg-white/[0.05] text-zinc-400">
+                              +{plan.modalities.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="pt-2 mt-1 border-t border-white/[0.06] flex items-center justify-between">
+                      <span className="text-[9px] text-zinc-400 font-medium">Investimento:</span>
+                      <span className="text-xs font-mono font-black text-emerald-400">
+                        R$ {plan.price}{plan.period}
+                      </span>
+                    </div>
                   </button>
                 );
               })}

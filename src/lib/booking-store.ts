@@ -8,6 +8,7 @@ import {
   fetchBookingsFromSupabase,
   saveBookingToSupabase,
 } from "./supabase-service";
+import type { CoachPlanOption } from "./workout-store";
 
 export interface TrainerSlot {
   id: string;
@@ -49,6 +50,7 @@ export interface CoachTrainer {
     weeklyPlan?: number;
     monthlyPlan?: number;
   };
+  coachPlans?: CoachPlanOption[];
   slots: TrainerSlot[];
 }
 
@@ -512,6 +514,7 @@ export function getStoredCoaches(): CoachTrainer[] {
         longitude: c.longitude ?? initial?.longitude,
         operatingRadiusKm: c.operatingRadiusKm ?? initial?.operatingRadiusKm,
         serviceModality: c.serviceModality || initial?.serviceModality || "presencial",
+        coachPlans: c.coachPlans || initial?.coachPlans,
         pricing: {
           basicMonthly: basic,
           proMonthly: pro,
@@ -1199,6 +1202,7 @@ export function updateCoachPublicProfile(coachId: string, profile: Partial<Coach
       longitude: profile.longitude,
       operatingRadiusKm: profile.operatingRadiusKm,
       serviceModality: profile.serviceModality || "presencial",
+      coachPlans: profile.coachPlans,
       pricing: profile.pricing || {
         basicMonthly: 35,
         proMonthly: 45,

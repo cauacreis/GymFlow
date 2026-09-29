@@ -30,6 +30,13 @@ import {
   Sparkles,
   DollarSign,
   FileText,
+  Plus,
+  Clock,
+  Calendar,
+  Layers,
+  Heart,
+  Tag,
+  SlidersHorizontal,
 } from "lucide-react";
 import { TermsOfServiceModal } from "./TermsOfServiceModal";
 import {
@@ -41,7 +48,13 @@ import {
 import { saveProfileToSupabase } from "@/lib/supabase-service";
 import { getSupabase } from "@/lib/supabase";
 import { updateCoachPublicProfile } from "@/lib/booking-store";
-import { saveNewStudent } from "@/lib/workout-store";
+import {
+  CoachPlanOption,
+  getStoredCoachPlans,
+  saveCoachPlans,
+  DEFAULT_COACH_PLANS,
+  saveNewStudent,
+} from "@/lib/workout-store";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   processAndCompressImageToWebP,
@@ -53,6 +66,44 @@ import {
   isValidCoordinate,
 } from "@/lib/geo";
 import { sanitizeInput, maskEmail } from "@/lib/security";
+
+const AVAILABLE_MODALITIES: Array<{ id: string; label: string; icon: string }> = [
+  { id: "Musculação", label: "Musculação", icon: "🏋️‍♂️" },
+  { id: "Corrida / Cardio", label: "Corrida & Cardio", icon: "🏃‍♂️" },
+  { id: "Treinamento Funcional", label: "Funcional", icon: "⚡" },
+  { id: "Mobilidade & Alongamento", label: "Mobilidade & Along.", icon: "🧘" },
+  { id: "Orientação Nutricional", label: "Nutrição & Hábitos", icon: "🥗" },
+  { id: "Acompanhamento WhatsApp", label: "WhatsApp Direto", icon: "📱" },
+  { id: "Avaliação Física", label: "Avaliação Física", icon: "📊" },
+  { id: "Lutas / Artes Marciais", label: "Lutas & Artes Marciais", icon: "🥊" },
+  { id: "Natação & Hidro", label: "Natação & Hidro", icon: "🏊‍♂️" },
+];
+
+const FREQUENCY_OPTIONS = [
+  "1x na semana",
+  "2x na semana",
+  "3x na semana",
+  "4x na semana",
+  "5x na semana",
+  "Acompanhamento Livre",
+];
+
+const DURATION_OPTIONS = [
+  "30 min / aula",
+  "45 min / aula",
+  "1h / aula",
+  "1h15 / aula",
+  "1h30 / aula",
+  "2h / aula",
+];
+
+const PERIOD_OPTIONS: Array<{ value: NonNullable<CoachPlanOption["period"]>; label: string }> = [
+  { value: "mensal", label: "Mensal (R$/mês)" },
+  { value: "semanal", label: "Semanal (R$/sem)" },
+  { value: "diario", label: "Por Sessão / Aula" },
+  { value: "trimestral", label: "Trimestral" },
+  { value: "personalizado", label: "Personalizado" },
+];
 
 interface AccountCustomizationModalProps {
   isOpen: boolean;
@@ -220,6 +271,18 @@ export function AccountCustomizationModal({
   const [proPrice, setProPrice] = useState(user.pricing?.proMonthly || 45);
   const [vipPrice, setVipPrice] = useState(user.pricing?.vipMonthly || 55);
 
+  // Configurador de Planos, Frequências, Horas e Modalidades do Coach
+  const [coachPlans, setCoachPlans] = useState<CoachPlanOption[]>(() => {
+    if (user.coachPlans && user.coachPlans.length > 0) {
+      return user.coachPlans;
+    }
+    const stored = getStoredCoachPlans();
+    return stored && stored.length > 0 ? stored : DEFAULT_COACH_PLANS;
+  });
+  const [activePlanIndex, setActivePlanIndex] = useState<number>(0);
+  const [newModalityInput, setNewModalityInput] = useState<string>("");
+  const [showAddModalityInput, setShowAddModalityInput] = useState<boolean>(false);
+
   // Termos & LGPD (Passo 5)
   const [termsAccepted, setTermsAccepted] = useState(Boolean(user.termsAccepted));
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -283,6 +346,12 @@ export function AccountCustomizationModal({
     if (user.pricing?.basicMonthly) setBasicPrice(user.pricing.basicMonthly);
     if (user.pricing?.proMonthly) setProPrice(user.pricing.proMonthly);
     if (user.pricing?.vipMonthly) setVipPrice(user.pricing.vipMonthly);
+    if (user.coachPlans && user.coachPlans.length > 0) {
+      setCoachPlans(user.coachPlans);
+    } else {
+      const stored = getStoredCoachPlans();
+      if (stored && stored.length > 0) setCoachPlans(stored);
+    }
     if (user.termsAccepted) setTermsAccepted(true);
   }, [user]);
 
@@ -533,6 +602,77 @@ export function AccountCustomizationModal({
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
+  // Gestão de Planos e Serviços do Coach
+  const activePlan = coachPlans[activePlanIndex] || coachPlans[0] || DEFAULT_COACH_PLANS[0];
+
+  const updateActivePlan = (updates: Partial<CoachPlanOption>) => {
+    setCoachPlans((prev) => {
+      const next = [...prev];
+      if (next[activePlanIndex]) {
+        next[activePlanIndex] = { ...next[activePlanIndex], ...updates };
+      }
+      return next;
+    });
+  };
+
+  const togglePlanModality = (modalityName: string) => {
+    if (!activePlan) return;
+    const currentMods = activePlan.modalities || [];
+    const exists = currentMods.includes(modalityName);
+    const nextMods = exists
+      ? currentMods.filter((m) => m !== modalityName)
+      : [...currentMods, modalityName];
+    updateActivePlan({ modalities: nextMods });
+    triggerHaptic("selection");
+  };
+
+  const handleAddCustomModality = () => {
+    const trimmed = sanitizeInput(newModalityInput.trim());
+    if (!trimmed) return;
+    if (!activePlan) return;
+    const currentMods = activePlan.modalities || [];
+    if (!currentMods.includes(trimmed)) {
+      updateActivePlan({ modalities: [...currentMods, trimmed] });
+    }
+    setNewModalityInput("");
+    setShowAddModalityInput(false);
+    triggerHaptic("success");
+  };
+
+  const handleRemoveCustomModality = (modalityName: string) => {
+    if (!activePlan) return;
+    const currentMods = activePlan.modalities || [];
+    updateActivePlan({ modalities: currentMods.filter((m) => m !== modalityName) });
+    triggerHaptic("light");
+  };
+
+  const handleAddNewPlan = () => {
+    const nextNum = coachPlans.length + 1;
+    const newPlan: CoachPlanOption = {
+      id: `plan_custom_${Date.now()}`,
+      name: `Plano Custom ${nextNum}`,
+      price: 50,
+      period: "mensal",
+      frequency: "3x na semana",
+      duration: "1h / aula",
+      modalities: ["Musculação", "Treinamento Funcional"],
+      description: "Plano sob medida com acompanhamento e foco em resultados.",
+      isCustom: true,
+    };
+    const nextPlans = [...coachPlans, newPlan];
+    setCoachPlans(nextPlans);
+    setActivePlanIndex(nextPlans.length - 1);
+    triggerHaptic("success");
+  };
+
+  const handleRemoveActivePlan = (indexToRemove: number) => {
+    if (coachPlans.length <= 1) return;
+    const nextPlans = coachPlans.filter((_, idx) => idx !== indexToRemove);
+    setCoachPlans(nextPlans);
+    setActivePlanIndex((prev) => Math.max(0, Math.min(prev, nextPlans.length - 1)));
+    triggerHaptic("light");
+  };
+
   // Submissão Final (Passo 5)
   const handleSubmitFinal = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -582,14 +722,22 @@ export function AccountCustomizationModal({
     try {
       const validCoords = isValidCoordinate(latitude, longitude);
 
+      const primaryBasic = coachPlans[0]?.price || basicPrice || 35;
+      const primaryPro = coachPlans[1]?.price || proPrice || 45;
+      const primaryVip = coachPlans[2]?.price || vipPrice || 55;
+
       const pricingObj = {
-        basicMonthly: Number(basicPrice) || 35,
-        proMonthly: Number(proPrice) || 45,
-        vipMonthly: Number(vipPrice) || 55,
-        dailySession: Number(basicPrice) || 35,
-        weeklyPlan: Number(proPrice) || 45,
-        monthlyPlan: Number(vipPrice) || 55,
+        basicMonthly: Number(primaryBasic) || 35,
+        proMonthly: Number(primaryPro) || 45,
+        vipMonthly: Number(primaryVip) || 55,
+        dailySession: Number(primaryBasic) || 35,
+        weeklyPlan: Number(primaryPro) || 45,
+        monthlyPlan: Number(primaryVip) || 55,
       };
+
+      if (role === "coach") {
+        saveCoachPlans(coachPlans);
+      }
 
       const updatedUserPayload: UserProfile = {
         ...user,
@@ -624,6 +772,7 @@ export function AccountCustomizationModal({
         specialty: finalSpecialty,
         bio: role === "coach" ? sanitizeInput(bio.trim()) : user.bio,
         pricing: role === "coach" ? pricingObj : user.pricing,
+        coachPlans: role === "coach" ? coachPlans : user.coachPlans,
         profileCompleted: true,
         termsAccepted: true,
         termsAcceptedAt: user.termsAcceptedAt || new Date().toISOString(),
@@ -692,6 +841,7 @@ export function AccountCustomizationModal({
           longitude: validCoords ? longitude : undefined,
           serviceModality: updatedUserPayload.serviceModality,
           operatingRadiusKm: updatedUserPayload.operatingRadiusKm,
+          coachPlans: coachPlans,
           pricing: pricingObj,
         });
       } else {
@@ -1367,10 +1517,10 @@ export function AccountCustomizationModal({
           )}
 
           {/* ------------------------------------------------------------- */}
-          {/* PASSO 4 (PROFESSOR): ESPECIALIDADE, CREF, BIO E PLANOS */}
+          {/* PASSO 4 (PROFESSOR): ESPECIALIDADE, CREF, BIO E PLANOS/SERVIÇOS */}
           {/* ------------------------------------------------------------- */}
           {currentStep === 4 && isCoach && (
-            <div className="space-y-3.5 animate-in fade-in duration-200">
+            <div className="space-y-4 animate-in fade-in duration-200">
               {/* Especialidade Principal */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-amber-300">
@@ -1403,77 +1553,301 @@ export function AccountCustomizationModal({
                 )}
               </div>
 
-              {/* Registro CREF */}
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-zinc-300 flex items-center justify-between">
-                  <span>Registro Profissional (CREF)</span>
-                  <span className="text-[10px] text-zinc-500 font-normal lowercase">(opcional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={cref}
-                  onChange={(e) => setCref(e.target.value.toUpperCase())}
-                  placeholder="Ex: 08412-G/SP (opcional)"
-                  maxLength={30}
-                  className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white font-mono placeholder-zinc-500 focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              {/* Biografia / Apresentação */}
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-zinc-300">
-                  Breve Apresentação / Metodologia <span className="text-zinc-500 text-[10px] font-normal">(opcional)</span>
-                </label>
-                <textarea
-                  rows={2}
-                  maxLength={300}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Explique sua metodologia de treino e experiência com os alunos..."
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              {/* Planos Mensais */}
-              <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-amber-500/20 space-y-2">
-                <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider block">
-                  Tabela de Planos Mensais para Alunos (R$ / mês)
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-[9px] text-zinc-400 font-bold block mb-0.5">Básico (R$)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={9999}
-                      value={basicPrice}
-                      onChange={(e) => setBasicPrice(Number(e.target.value))}
-                      className="w-full p-2 rounded-lg bg-zinc-950 border border-zinc-800 text-xs text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] text-amber-400 font-bold block mb-0.5">Pro (R$)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={9999}
-                      value={proPrice}
-                      onChange={(e) => setProPrice(Number(e.target.value))}
-                      className="w-full p-2 rounded-lg bg-zinc-950 border border-amber-500/40 text-xs text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] text-emerald-400 font-bold block mb-0.5">VIP (R$)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={9999}
-                      value={vipPrice}
-                      onChange={(e) => setVipPrice(Number(e.target.value))}
-                      className="w-full p-2 rounded-lg bg-zinc-950 border border-emerald-500/40 text-xs text-white font-mono"
-                    />
-                  </div>
+              {/* Registro CREF & Apresentação */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-zinc-300 flex items-center justify-between">
+                    <span>Registro Profissional (CREF)</span>
+                    <span className="text-[9px] text-zinc-500 font-normal lowercase">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={cref}
+                    onChange={(e) => setCref(e.target.value.toUpperCase())}
+                    placeholder="Ex: 08412-G/SP"
+                    maxLength={30}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white font-mono placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                  />
                 </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-zinc-300">
+                    Metodologia / Bio <span className="text-zinc-500 text-[9px] font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={150}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Metodologia e estilo de treino..."
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              {/* CONFIGURADOR DINÂMICO DE PLANOS & SERVIÇOS DO PERSONAL */}
+              <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-amber-500/30 space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-amber-500/20">
+                  <div className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-bold text-amber-300">
+                      Personalizar Planos, Aulas, Horas e Modalidades
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddNewPlan}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Novo Plano</span>
+                  </button>
+                </div>
+
+                {/* Abas de Planos */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {coachPlans.map((p, idx) => {
+                    const isSelected = idx === activePlanIndex;
+                    return (
+                      <button
+                        key={p.id || idx}
+                        type="button"
+                        onClick={() => {
+                          setActivePlanIndex(idx);
+                          triggerHaptic("selection");
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-amber-500 text-zinc-950 border-amber-400 shadow-sm shadow-amber-500/20"
+                            : "bg-zinc-950/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                        }`}
+                      >
+                        <span>{p.name || `Plano ${idx + 1}`}</span>
+                        <span className={`text-[10px] font-mono ${isSelected ? "text-zinc-950 font-black" : "text-amber-400"}`}>
+                          R${p.price}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Editor do Plano Ativo */}
+                {activePlan && (
+                  <div className="p-3 rounded-xl bg-zinc-950/90 border border-zinc-800 space-y-3 animate-in fade-in duration-150">
+                    {/* Nome, Preço e Periodicidade */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="sm:col-span-2 space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-300 block">Nome do Plano</label>
+                        <input
+                          type="text"
+                          maxLength={45}
+                          value={activePlan.name}
+                          onChange={(e) => updateActivePlan({ name: e.target.value })}
+                          placeholder="Ex: Mensal Pro, Corrida & Hipertrofia..."
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-amber-300 block">Preço (R$)</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-zinc-400">
+                            R$
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={9999}
+                            value={activePlan.price}
+                            onChange={(e) => updateActivePlan({ price: Number(e.target.value) || 0 })}
+                            className="w-full pl-8 pr-2.5 py-1.5 rounded-lg bg-zinc-900 border border-amber-500/40 text-xs font-mono font-bold text-white focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Frequência (Aulas Semanais) */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-zinc-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-amber-400" />
+                          <span>Aulas Semanais / Frequência:</span>
+                        </span>
+                        <span className="text-[9px] text-amber-400 font-medium">{activePlan.frequency || "2x na semana"}</span>
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                        {FREQUENCY_OPTIONS.map((freq) => {
+                          const isSelected = activePlan.frequency === freq;
+                          return (
+                            <button
+                              key={freq}
+                              type="button"
+                              onClick={() => {
+                                updateActivePlan({ frequency: freq });
+                                triggerHaptic("selection");
+                              }}
+                              className={`p-1.5 rounded-lg text-[10px] font-semibold border transition-all text-center ${
+                                isSelected
+                                  ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
+                                  : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                              }`}
+                            >
+                              {freq}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Duração da Aula / Horas por Dia */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-zinc-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          <span>Duração da Aula / Horas por Dia:</span>
+                        </span>
+                        <span className="text-[9px] text-amber-400 font-medium">{activePlan.duration || "1h / aula"}</span>
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                        {DURATION_OPTIONS.map((dur) => {
+                          const isSelected = activePlan.duration === dur;
+                          return (
+                            <button
+                              key={dur}
+                              type="button"
+                              onClick={() => {
+                                updateActivePlan({ duration: dur });
+                                triggerHaptic("selection");
+                              }}
+                              className={`p-1.5 rounded-lg text-[10px] font-semibold border transition-all text-center ${
+                                isSelected
+                                  ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
+                                  : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                              }`}
+                            >
+                              {dur}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Modalidades Inclusas (Musculação, Corrida, Funcional, etc.) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-zinc-300 flex items-center gap-1">
+                          <Dumbbell className="w-3 h-3 text-amber-400" />
+                          <span>Modalidades & Atividades Inclusas:</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddModalityInput(!showAddModalityInput)}
+                          className="text-[9px] text-amber-400 hover:underline flex items-center gap-0.5"
+                        >
+                          <Plus className="w-2.5 h-2.5" />
+                          <span>Outra Modalidade</span>
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {AVAILABLE_MODALITIES.map((mod) => {
+                          const isChecked = (activePlan.modalities || []).includes(mod.id);
+                          return (
+                            <button
+                              key={mod.id}
+                              type="button"
+                              onClick={() => togglePlanModality(mod.id)}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border flex items-center gap-1 transition-all active:scale-95 ${
+                                isChecked
+                                  ? "bg-amber-500/20 border-amber-400/80 text-amber-300 font-bold shadow-sm"
+                                  : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                              }`}
+                            >
+                              <span>{mod.icon}</span>
+                              <span>{mod.label}</span>
+                              {isChecked && <Check className="w-2.5 h-2.5 text-amber-300 ml-0.5 stroke-[3]" />}
+                            </button>
+                          );
+                        })}
+
+                        {/* Modalidades customizadas adicionadas pelo usuário */}
+                        {(activePlan.modalities || [])
+                          .filter((m) => !AVAILABLE_MODALITIES.some((am) => am.id === m))
+                          .map((customMod) => (
+                            <span
+                              key={customMod}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/25 border border-amber-400 text-amber-200 flex items-center gap-1"
+                            >
+                              <span>🎯</span>
+                              <span>{customMod}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCustomModality(customMod)}
+                                className="hover:text-rose-400 ml-0.5 p-0.5"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </span>
+                          ))}
+                      </div>
+
+                      {/* Input para adicionar nova modalidade personalizada */}
+                      {showAddModalityInput && (
+                        <div className="flex items-center gap-1.5 pt-1 animate-in fade-in">
+                          <input
+                            type="text"
+                            value={newModalityInput}
+                            onChange={(e) => setNewModalityInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddCustomModality();
+                              }
+                            }}
+                            placeholder="Ex: Pilates, Calistenia, Cross..."
+                            maxLength={30}
+                            className="flex-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-amber-500/50 text-xs text-white placeholder-zinc-500 focus:outline-none"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomModality}
+                            className="px-3 py-1 rounded-lg bg-amber-500 text-zinc-950 font-bold text-xs"
+                          >
+                            Adicionar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Descrição curta / Benefício */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-400 block">Destaque / Descrição do Plano</label>
+                      <input
+                        type="text"
+                        maxLength={100}
+                        value={activePlan.description || ""}
+                        onChange={(e) => updateActivePlan({ description: e.target.value })}
+                        placeholder="Ex: Treino essencial com acompanhamento e foco biomecânico"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    {/* Botão de Excluir Plano (se houver mais de 1) */}
+                    {coachPlans.length > 1 && (
+                      <div className="pt-1 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveActivePlan(activePlanIndex)}
+                          className="text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1 transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Excluir este plano</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1541,6 +1915,32 @@ export function AccountCustomizationModal({
                         <span className="text-amber-400 font-semibold truncate block">
                           {specialty === "Outra / Personalizada" ? customSpecialtyInput || "Personal Trainer" : specialty}
                         </span>
+                      </div>
+
+                      {/* Resumo dos Planos do Coach */}
+                      <div className="col-span-2 pt-2 border-t border-zinc-800/60 space-y-1.5">
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase block">
+                          Planos de Atendimento ({coachPlans.length}):
+                        </span>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {coachPlans.map((p, idx) => (
+                            <div
+                              key={p.id || idx}
+                              className="p-2 rounded-xl bg-zinc-950 border border-zinc-800/80 flex items-center justify-between text-xs"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <span className="font-bold text-white block truncate">{p.name}</span>
+                                <span className="text-[10px] text-zinc-400 block truncate">
+                                  {p.frequency || "Frequência livre"} • {p.duration || "1h / aula"}
+                                  {p.modalities && p.modalities.length > 0 ? ` • ${p.modalities.join(", ")}` : ""}
+                                </span>
+                              </div>
+                              <span className="font-mono font-black text-amber-400 text-xs shrink-0 ml-2">
+                                R$ {p.price}/mês
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </>
                   )}

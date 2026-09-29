@@ -55,7 +55,9 @@ export interface CoachPlanOption {
   name: string;
   price: number;
   period?: "mensal" | "semanal" | "diario" | "trimestral" | "personalizado";
-  frequency?: string;
+  frequency?: string; // ex: "3x por semana", "2x por semana", "Livre / 5x"
+  duration?: string;  // ex: "1h por dia", "45 min", "1h30"
+  modalities?: string[]; // ex: ["Musculação", "Corrida", "Funcional"]
   description?: string;
   isCustom?: boolean;
 }
@@ -264,7 +266,9 @@ export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
     name: "Mensal Básico",
     price: 35,
     period: "mensal",
-    frequency: "2x por semana presencial",
+    frequency: "2x na semana",
+    duration: "45 min / aula",
+    modalities: ["Musculação", "Treinamento Funcional"],
     description: "Treino essencial e correção biomecânica",
   },
   {
@@ -272,7 +276,9 @@ export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
     name: "Mensal Pro",
     price: 45,
     period: "mensal",
-    frequency: "3x por semana presencial",
+    frequency: "3x na semana",
+    duration: "1h / aula",
+    modalities: ["Musculação", "Corrida / Cardio", "Treinamento Funcional", "Acompanhamento WhatsApp"],
     description: "Fichas completas com catálogo de exercícios e acompanhamento semanal",
   },
   {
@@ -280,7 +286,17 @@ export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
     name: "Mensal VIP",
     price: 55,
     period: "mensal",
-    frequency: "Acompanhamento livre / 5x na semana",
+    frequency: "5x na semana / Livre",
+    duration: "1h15 / aula",
+    modalities: [
+      "Musculação",
+      "Corrida / Cardio",
+      "Treinamento Funcional",
+      "Mobilidade & Alongamento",
+      "Orientação Nutricional",
+      "Acompanhamento WhatsApp",
+      "Avaliação Física",
+    ],
     description: "Acompanhamento VIP livre e remanejamento flexível prioritário",
   },
 ];

@@ -280,6 +280,12 @@ export async function fetchCoachPlansFromSupabase(coachId: string = "coach_defau
       price: Number(p.price),
       period: p.period,
       frequency: p.frequency || undefined,
+      duration: p.duration || undefined,
+      modalities: Array.isArray(p.modalities)
+        ? p.modalities
+        : typeof p.modalities === "string"
+        ? (p.modalities.startsWith("[") ? JSON.parse(p.modalities) : p.modalities.split(",").map((s: string) => s.trim()))
+        : undefined,
       description: p.description || undefined,
       isCustom: p.is_custom,
     }));
@@ -300,6 +306,8 @@ export async function saveCoachPlanToSupabase(plan: CoachPlanOption, coachId: st
       price: plan.price,
       period: plan.period || "mensal",
       frequency: plan.frequency || null,
+      duration: plan.duration || null,
+      modalities: plan.modalities || null,
       description: plan.description || null,
       is_custom: Boolean(plan.isCustom),
     };

@@ -48,6 +48,7 @@ export interface UserProfile {
     weeklyPlan?: number;
     monthlyPlan?: number;
   };
+  coachPlans?: CoachPlanOption[];
   defaultPaymentDueDay?: number; // Dia de vencimento padrão para alunos do personal (1 a 31, ex: 10)
   // Gestão de Assinatura & Acesso Paywall
   subscriptionStatus?: "trial" | "active" | "past_due" | "expired" | "pending_choice";
@@ -60,8 +61,7 @@ export interface UserProfile {
   termsAcceptedAt?: string;
 }
 
-
-
+import type { CoachPlanOption } from "./workout-store";
 import { saveProfileToSupabase, fetchProfileFromSupabase } from "./supabase-service";
 import { getSupabase } from "./supabase";
 import { registerDeviceAccount } from "./device-lockout";
