@@ -2069,6 +2069,2273 @@ export const LOCAL_EXERCISE_DB: ExerciseDBItem[] = [
     tips: ["Ideal para protocolos Tabata de 20s pedalada máxima por 10s descanso."],
     difficulty: "Avançado",
   },
+
+  {
+    id: "ex_hex_press_dumbbell",
+    name: "Supino Hex Press com Halteres",
+    bodyPart: "chest",
+    target: "Peitoral Maior (Foco Medial) & Tríceps",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_Hex_Press_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_Hex_Press_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Deite no banco reto segurando dois halteres colados um contra o outro no centro do peito.",
+      "Mantenha uma pressão constante empurrando os halteres um contra o outro durante todo o trajeto.",
+      "Empurre para cima estendendo os braços e aperte o centro do peito no topo.",
+      "Desça mantendo a adução ativa e constante."
+    ],
+    tips: [
+      "A chave do exercício é a compressão contínua entre os halteres.",
+      "Excelente para quem sente dificuldade em conectar a mente com a contração do miolo do peitoral."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_mid_cable_crossover",
+    name: "Crossover na Polia Média",
+    bodyPart: "chest",
+    target: "Peitoral Maior (Foco Esternal)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crossover_na_Polia_M_dia/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crossover_na_Polia_M_dia/1.jpg",
+    ],
+    instructions: [
+      "Ajuste as duas roldanas na altura média (linha dos mamilos ou costelas).",
+      "Dê um passo à frente com base dividida e una as mãos em arco à frente do peito.",
+      "Cruze ligeiramente as mãos no final do movimento para contração máxima.",
+      "Retorne controlando a abertura até sentir o alongamento peitoral."
+    ],
+    tips: [
+      "Mantenha uma leve flexão nos cotovelos durante todo o trajeto.",
+      "Evite inclinar excessivamente o tronco para a frente."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_diamond_pushups",
+    name: "Flexão Diamante no Solo",
+    bodyPart: "chest",
+    target: "Tríceps Braquial & Peitoral Medial",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_Diamante_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_Diamante_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Fique em posição de flexão no chão com as mãos unidas sob o esterno formando um diamante com polegares e indicadores.",
+      "Mantenha o corpo reto e abdômen firme.",
+      "Desça flexionando os cotovelos junto ao corpo até o peito encostar nas mãos.",
+      "Empurre o solo com foco nos tríceps e peitoral medial."
+    ],
+    tips: [
+      "Se sentir desconforto nos punhos, afaste ligeiramente as mãos mantendo pegada fechada.",
+      "Pode ser executado com apoio dos joelhos para iniciantes."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_decline_pushups",
+    name: "Flexão Declinada (Pés Elevados no Banco)",
+    bodyPart: "chest",
+    target: "Peitoral Superior (Porção Clavicular) & Deltoide Anterior",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_Declinada/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_Declinada/1.jpg",
+    ],
+    instructions: [
+      "Apoie a ponta dos pés em um banco, cadeira ou degrau e as mãos no solo na largura dos ombros.",
+      "Mantenha a prancha corporal perfeita sem deixar o quadril desabar.",
+      "Desça o peito em direção ao chão e empurre com explosão controlada."
+    ],
+    tips: [
+      "Quanto mais alto o apoio dos pés, maior o recrutamento da porção superior do peito e ombros.",
+      "Não deixe a cabeça pender para baixo."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_incline_smith_bench_press",
+    name: "Supino Inclinado no Smith Machine",
+    bodyPart: "chest",
+    target: "Peitoral Superior & Deltoide Anterior",
+    equipment: "smith machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_Inclinado_no_Smith_Machine/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_Inclinado_no_Smith_Machine/1.jpg",
+    ],
+    instructions: [
+      "Posicione o banco inclinado a 30° centralizado sob a barra guiada do Smith.",
+      "Segure a barra com pegada ligeiramente mais aberta que os ombros.",
+      "Destrave e desça a barra até tocar suavemente a parte alta do peito (logo abaixo da clavícula).",
+      "Empurre a barra em linha reta focando na contração do peitoral superior."
+    ],
+    tips: [
+      "O Smith permite aplicar sobrecarga com segurança e focar totalmente na ativação muscular sem perda de estabilidade.",
+      "Mantenha os cotovelos apontando a 45°-60° do tronco."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_decline_dumbbell_fly",
+    name: "Crucifixo Declinado com Halteres",
+    bodyPart: "chest",
+    target: "Peitoral Inferior (Porção Abdominal)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Declinado_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Declinado_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Deite em um banco declinado com os pés travados no suporte, segurando os halteres acima do peito.",
+      "Abra os braços em arco suave até sentir alongamento na porção inferior do peito.",
+      "Traga os halteres de volta ao centro em movimento de abraço."
+    ],
+    tips: [
+      "Mantenha os cotovelos fixos em leve flexão para proteger a articulação.",
+      "Concentre-se em espremer a base do peitoral no topo."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_dumbbell_floor_press",
+    name: "Supino no Chão com Halteres (Floor Press)",
+    bodyPart: "chest",
+    target: "Peitoral Maior & Tríceps (Bloqueio)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_no_Ch_o_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_no_Ch_o_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Deite de costas no solo com os joelhos flexionados e pés apoiados.",
+      "Segure os halteres acima do peito e desça até que a parte posterior dos braços toque o chão.",
+      "Faça uma pausa de 1 segundo com os braços no solo sem relaxar a tensão muscular.",
+      "Empurre com força até a extensão completa."
+    ],
+    tips: [
+      "Elimina o estresse excessivo no ombro na fase mais funda do supino.",
+      "Excelente para hipertrofia de tríceps e superação de pontos de estagnação no supino reto."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_svend_press",
+    name: "Supino Svend com Anilhas (Svend Press)",
+    bodyPart: "chest",
+    target: "Peitoral Maior (Isometria e Densidade)",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_Svend_com_Anilhas/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Supino_Svend_com_Anilhas/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé segurando duas anilhas pequenas (ou uma de 5kg) prensadas entre as palmas das mãos na frente do peito.",
+      "Pressione as palmas com máxima força e estenda os braços horizontalmente para a frente.",
+      "Segure 2 segundos de contração peitoral com braços estendidos e retorne ao peito."
+    ],
+    tips: [
+      "Não use peso excessivo; o estímulo vem da pressão isométrica entre as mãos.",
+      "Perfeito como finalizador (burnout) no final do treino de peito."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_single_arm_cable_fly",
+    name: "Crucifixo Unilateral na Polia (Single Arm Fly)",
+    bodyPart: "chest",
+    target: "Peitoral Maior & Correção de Assimetrias",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Unilateral_na_Polia/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Unilateral_na_Polia/1.jpg",
+    ],
+    instructions: [
+      "Posicione-se de lado para a torre de polia com o cabo na altura do peito.",
+      "Puxe a manilha cruzando a linha média do tronco em direção ao ombro oposto.",
+      "Aperte o peitoral por 2 segundos no ponto de maior adução e retorne devagar."
+    ],
+    tips: [
+      "Permite uma amplitude de adução muito maior que o crucifixo bilateral tradicional.",
+      "Excelente para corrigir desbalanços de força e volume entre os lados direito e esquerdo."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_incline_cable_fly",
+    name: "Crucifixo Inclinado na Polia Baixa",
+    bodyPart: "chest",
+    target: "Peitoral Superior & Clavicular",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Inclinado_na_Polia_Baixa/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Inclinado_na_Polia_Baixa/1.jpg",
+    ],
+    instructions: [
+      "Posicione um banco inclinado a 30° entre duas polias baixas.",
+      "Segure as manoplas e traga os cabos para cima e para o centro em arco convergente.",
+      "Aperte o topo do peitoral e retorne alongando sob tensão contínua do cabo."
+    ],
+    tips: [
+      "A tensão constante dos cabos mantém o peitoral superior ativado mesmo no topo do movimento.",
+      "Mantenha o peito estufado e ombros para trás."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_archer_pushups",
+    name: "Flexão Arqueiro no Solo (Archer Push-ups)",
+    bodyPart: "chest",
+    target: "Peitoral Maior, Tríceps & Força Unilateral",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_Arqueiro_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_Arqueiro_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Inicie em posição de flexão com mãos bem afastadas além da largura dos ombros.",
+      "Desça o corpo sobre um dos braços flexionando-o enquanto o outro braço permanece estendido lateralmente.",
+      "Empurre de volta ao centro e repita para o lado oposto em padrão arqueiro."
+    ],
+    tips: [
+      "Excelente progressão de calistenia para a flexão unilateral de um braço só.",
+      "Mantenha o core rígido para evitar torção do quadril."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_v_bar_lat_pulldown",
+    name: "Puxada com Triângulo / Barra V no Pulley",
+    bodyPart: "back",
+    target: "Grande Dorsal (Foco Inferior) & Romboides",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxada_com_Tri_ngulo___Barra_V_no_Pulley/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxada_com_Tri_ngulo___Barra_V_no_Pulley/1.jpg",
+    ],
+    instructions: [
+      "Prenda o puxador triângulo (V-Bar) na polia alta e sente-se com coxas travadas nas almofadas.",
+      "Incline levemente o tronco para trás (10°-15°) e puxe o triângulo até o topo do peito.",
+      "Aperte as escápulas e mantenha os cotovelos direcionados para baixo e para dentro.",
+      "Suba controladamente permitindo que as dorsais se alonguem por completo."
+    ],
+    tips: [
+      "A pegada neutra fechada favorece o recrutamento das fibras inferiores da grande dorsal.",
+      "Não use impulso do tronco para puxar a carga."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_single_arm_lat_pulldown",
+    name: "Puxada Unilateral na Polia Alta",
+    bodyPart: "back",
+    target: "Grande Dorsal & Redondo Maior",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxada_Unilateral_na_Polia_Alta/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxada_Unilateral_na_Polia_Alta/1.jpg",
+    ],
+    instructions: [
+      "Ajoelhe-se ou sente-se lateralmente à polia alta segurando uma manilha individual.",
+      "Inicie o movimento puxando o cotovelo para baixo em direção ao quadril do mesmo lado.",
+      "Faça uma ligeira flexão lateral do tronco no final para contração máxima da dorsal.",
+      "Deixe o cabo puxar e alongar a dorsal completamente no topo."
+    ],
+    tips: [
+      "Permite seguir perfeitamente a linha de tração anatômica das fibras da dorsal.",
+      "Ideal para atletas com assimetria de costas ou escoliose leve."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_converging_machine_pulldown",
+    name: "Puxada Articulada Convergente na Máquina",
+    bodyPart: "back",
+    target: "Grande Dorsal, Redondo Maior & Bíceps",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxada_Articulada_Convergente_na_M_quina/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxada_Articulada_Convergente_na_M_quina/1.jpg",
+    ],
+    instructions: [
+      "Ajuste o assento para que os braços comecem totalmente estendidos ao segurar as manoplas.",
+      "Puxe os braços articulados para baixo com movimento fluido e convergente até a linha do queixo/peito.",
+      "Segure 1 segundo no ponto de pico e retorne controlando a fase excêntrica."
+    ],
+    tips: [
+      "A trajetória convergente respeita a biomecânica natural dos ombros e escápulas.",
+      "Permite trabalhar com altas cargas sem risco de desequilíbrio."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_chest_supported_db_row",
+    name: "Remada no Banco Inclinado com Halteres (Chest-Supported)",
+    bodyPart: "back",
+    target: "Romboides, Trapézio Médio e Dorsais",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_no_Banco_Inclinado_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_no_Banco_Inclinado_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Deite de bruços em um banco inclinado a 30°-45° com o peito totalmente apoiado.",
+      "Segure os halteres com os braços pendurados perpendicularmente ao solo.",
+      "Puxe os halteres trazendo os cotovelos para trás e apertando as escápulas com força.",
+      "Desça devagar estendendo os braços e sentindo as escápulas se abrirem."
+    ],
+    tips: [
+      "Isola completamente as costas retirando qualquer sobrecarga ou compensação da lombar.",
+      "Mantenha o peito sempre colado no acolchoado do banco."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_meadows_row",
+    name: "Remada Meadows com Barra / Landmine",
+    bodyPart: "back",
+    target: "Grande Dorsal, Redondo Maior e Trapézio",
+    equipment: "barbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Meadows_com_Barra___Landmine/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Meadows_com_Barra___Landmine/1.jpg",
+    ],
+    instructions: [
+      "Posicione uma barra no suporte Landmine (canto) e fique perpendicular à ponta da barra com base dividida.",
+      "Segure a ponta da barra com pegada pronada com uma das mãos, apoiando o cotovelo oposto na coxa.",
+      "Puxe a barra liderando pelo cotovelo até que ele ultrapasse a linha do tronco.",
+      "Desça alongando a dorsal profundamente."
+    ],
+    tips: [
+      "Criada pelo lendário bodybuilder John Meadows para hipertrofia extrema da porção lateral das costas.",
+      "Use straps na pegada para focar 100% nas costas sem cansar o antebraço."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_kroc_row",
+    name: "Remada Kroc com Halter Pesado",
+    bodyPart: "back",
+    target: "Dorsais, Trapézio, Romboides & Pegada",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Kroc_com_Halter_Pesado/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Kroc_com_Halter_Pesado/1.jpg",
+    ],
+    instructions: [
+      "Apoie uma mão em um banco ou suporte e incline o tronco quase paralelo ao solo.",
+      "Segure um halter pesado e execute remadas explosivas em altas repetições (15-25 reps).",
+      "Permita uma leve rotação controlada da parte superior do tronco no pico para amplitude máxima.",
+      "Mantenha o ritmo intenso com controle postural."
+    ],
+    tips: [
+      "Excelente para ganho de força brutal na pegada e espessura dorsal.",
+      "Diferente do serrote clássico, o Kroc Row usa cargas elevadas com alta intensidade metabólica."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_seal_row",
+    name: "Remada Seal no Banco Reto (Seal Row)",
+    bodyPart: "back",
+    target: "Romboides, Trapézio Médio/Inferior e Grande Dorsal",
+    equipment: "barbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Seal_no_Banco_Reto/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Seal_no_Banco_Reto/1.jpg",
+    ],
+    instructions: [
+      "Deite de bruços em um banco reto elevado segurando uma barra por baixo.",
+      "Puxe a barra em direção à base do banco/peito com os cotovelos apontando para fora e para trás.",
+      "Toque a barra no banco, aperte as escápulas e desça controladamente."
+    ],
+    tips: [
+      "Elimina qualquer tipo de roubo ou impulso com pernas e tronco.",
+      "Padrão ouro para desenvolvimento da espessura do meio das costas."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_smith_machine_row",
+    name: "Remada Curvada no Smith Machine",
+    bodyPart: "back",
+    target: "Dorsais, Romboides & Trapézio",
+    equipment: "smith machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Curvada_no_Smith_Machine/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Curvada_no_Smith_Machine/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé em frente à barra do Smith, destrave com pegada pronada ou supinada e incline o tronco a 45°.",
+      "Puxe a barra em direção ao umbigo mantendo os cotovelos próximos às costelas.",
+      "Aperte as costas no topo e desça sentindo o alongamento da musculatura."
+    ],
+    tips: [
+      "O trilho fixo do Smith permite uma trajetória perfeitamente estável e foco absoluto na contração das costas.",
+      "Mantenha a coluna neutra e joelhos levemente destravados."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_rope_straight_arm_pulldown",
+    name: "Pulldown na Polia com Corda",
+    bodyPart: "back",
+    target: "Grande Dorsal (Isolamento) & Redondo Maior",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pulldown_na_Polia_com_Corda/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pulldown_na_Polia_com_Corda/1.jpg",
+    ],
+    instructions: [
+      "Prenda a corda na polia alta, dê dois passos para trás e incline o tronco a 30° com braços estendidos.",
+      "Puxe a corda em arco descendente até as coxas, abrindo as pontas da corda ao lado do quadril no final.",
+      "Aperte as dorsais com máxima intensidade e retorne controladamente acima da cabeça."
+    ],
+    tips: [
+      "A corda permite maior liberdade de movimento e extensão no final que a barra reta.",
+      "Mantenha os cotovelos firmes com microflexão sem dobrá-los durante a puxada."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_neutral_grip_pullup",
+    name: "Barra Fixa com Pegada Neutra (Palmas Frente a Frente)",
+    bodyPart: "back",
+    target: "Grande Dorsal, Braquial & Bíceps",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barra_Fixa_com_Pegada_Neutra/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barra_Fixa_com_Pegada_Neutra/1.jpg",
+    ],
+    instructions: [
+      "Segure as manoplas paralelas da barra fixa com as palmas voltadas uma para a outra.",
+      "Puxe o corpo para cima levando o peito em direção à barra até o queixo ultrapassar a altura das mãos.",
+      "Desça lentamente até a extensão quase completa dos braços."
+    ],
+    tips: [
+      "A pegada neutra é a mais segura e confortável para os ombros e punhos.",
+      "Excelente transferência de força para puxadas pesadas."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_inverted_row",
+    name: "Remada Invertida na Barra / TRX (Inverted Row)",
+    bodyPart: "back",
+    target: "Romboides, Trapézio Médio, Dorsais & Core",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Invertida_na_Barra___TRX/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Invertida_na_Barra___TRX/1.jpg",
+    ],
+    instructions: [
+      "Posicione uma barra no Smith ou rack na altura da cintura e deite-se por baixo.",
+      "Segure a barra com pegada pronada na largura dos ombros com corpo em linha reta e calcanhares no chão.",
+      "Puxe o peito em direção à barra mantendo o abdômen e glúteos travados.",
+      "Desça até os braços estenderem totalmente."
+    ],
+    tips: [
+      "Para facilitar, dobre os joelhos e apoie a sola dos pés no chão.",
+      "Para dificultar, apoie os pés sobre um banco reto."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_back_hyperextension",
+    name: "Hiperextensão Lombar no Banco Romano (45°)",
+    bodyPart: "back",
+    target: "Eretores da Espinha, Glúteos & Isquiotibiais",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hiperextens_o_Lombar_no_Banco_Romano/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Hiperextens_o_Lombar_no_Banco_Romano/1.jpg",
+    ],
+    instructions: [
+      "Posicione-se no banco de hiperextensão com o apoio frontal logo abaixo dos ossos do quadril e tornozelos travados.",
+      "Cruze os braços no peito e flexione o tronco para a frente descendo controladamente.",
+      "Suba usando a força dos eretores da espinha e glúteos até alinhar o corpo com as pernas.",
+      "Não faça hiperextensão excessiva além da linha neutra."
+    ],
+    tips: [
+      "Pode ser feito segurando uma anilha no peito para sobrecarga progressiva.",
+      "Fundamental para a saúde da coluna e estabilidade no agachamento e terra."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_cable_shrug",
+    name: "Encolhimento de Trapézio na Polia Baixa",
+    bodyPart: "back",
+    target: "Trapézio Superior",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Encolhimento_de_Trap_zio_na_Polia_Baixa/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Encolhimento_de_Trap_zio_na_Polia_Baixa/1.jpg",
+    ],
+    instructions: [
+      "Segure uma barra reta conectada à polia baixa com pegada na largura dos ombros.",
+      "Fique em pé ereto e eleve os ombros diretamente em direção às orelhas.",
+      "Segure a contração no topo por 2 segundos e desça sentindo o alongamento do trapézio."
+    ],
+    tips: [
+      "A linha de tração do cabo oferece resistência diagonal contínua que ativa o trapézio melhor que halteres livres.",
+      "Nunca rode os ombros em círculos; o movimento deve ser estritamente vertical."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_behind_back_smith_shrug",
+    name: "Encolhimento no Smith Machine por Trás (Haney Shrug)",
+    bodyPart: "back",
+    target: "Trapézio Superior & Médio",
+    equipment: "smith machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Encolhimento_no_Smith_Machine_por_Tr_s/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Encolhimento_no_Smith_Machine_por_Tr_s/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé de costas para a barra do Smith Machine e segure-a por trás com pegada pronada.",
+      "Destrave a barra e eleve os ombros para cima e levemente para trás.",
+      "Aperte o topo do trapézio por 1 a 2 segundos e desça suavemente."
+    ],
+    tips: [
+      "Popularizado pelo 8x Mr. Olympia Lee Haney para criar volume espesso no trapézio superior.",
+      "Evita que os halteres batam nas coxas durante a execução."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_seated_cable_row_wide",
+    name: "Remada Baixa na Polia com Barra Reta Aberta",
+    bodyPart: "back",
+    target: "Trapézio Médio, Romboides e Deltoide Posterior",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Baixa_na_Polia_com_Barra_Reta_Aberta/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Baixa_na_Polia_com_Barra_Reta_Aberta/1.jpg",
+    ],
+    instructions: [
+      "Conecte uma barra reta longa na polia baixa da remada sentada.",
+      "Segure a barra com pegada pronada aberta e sente-se com coluna ereta.",
+      "Puxe a barra em direção ao abdômen superior/esterno com os cotovelos altos e abertos.",
+      "Aperte as escápulas juntas e retorne controladamente."
+    ],
+    tips: [
+      "Enfatiza a espessura da parte superior e média das costas ao invés do latíssimo inferior.",
+      "Mantenha o peito aberto e não curve a coluna."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_incline_lateral_raise",
+    name: "Elevação Lateral no Banco Inclinado (45°)",
+    bodyPart: "shoulders",
+    target: "Deltoide Lateral (Pico de Tensão Inicial)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Lateral_no_Banco_Inclinado/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Lateral_no_Banco_Inclinado/1.jpg",
+    ],
+    instructions: [
+      "Deite de lado em um banco inclinado a 45°-60° segurando um halter com o braço de cima.",
+      "Eleve o halter lateralmente até a linha do ombro mantendo o cotovelo levemente destravado.",
+      "Desça devagar controlando a descida até quase encostar no quadril."
+    ],
+    tips: [
+      "Altera o perfil de resistência colocando maior tensão no início do movimento onde o músculo está alongado.",
+      "Execute de forma unilateral alternando os lados com precisão."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_cable_y_raise",
+    name: "Elevação Y-Raise na Polia Dupla",
+    bodyPart: "shoulders",
+    target: "Deltoide Lateral, Deltoide Posterior e Trapézio Inferior",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Y_Raise_na_Polia_Dupla/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Y_Raise_na_Polia_Dupla/1.jpg",
+    ],
+    instructions: [
+      "Ajuste as polias na altura do joelho ou quadril sem nenhum acessório (segurando a ponta do cabo).",
+      "Cruze os cabos segurando o cabo esquerdo com a mão direita e vice-versa.",
+      "Eleve os braços em diagonal para cima formando a letra 'Y' com o corpo.",
+      "Segure 1 segundo no topo e retorne devagar."
+    ],
+    tips: [
+      "Segue o plano anatômico da escápula (scaption) com risco articular mínimo.",
+      "Gera uma ativação 3D formidável nos deltoides sem impactar o manguito rotador."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_egyptian_cable_lateral_raise",
+    name: "Elevação Lateral Egípcia na Polia",
+    bodyPart: "shoulders",
+    target: "Deltoide Lateral (Tensão Contínua)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Lateral_Eg_pcia_na_Polia/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Lateral_Eg_pcia_na_Polia/1.jpg",
+    ],
+    instructions: [
+      "Posicione a polia baixa, segure a coluna do equipamento com a mão de apoio e incline o corpo a 30° para fora.",
+      "Com o braço livre segurando a manilha, eleve o cabo lateralmente até a altura do ombro.",
+      "Desça lentamente resistindo à tração constante do cabo."
+    ],
+    tips: [
+      "A inclinação do corpo aumenta a amplitude útil de movimento sob sobrecarga.",
+      "Mantenha o punho neutro sem girar o halter para trás."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_seated_z_press",
+    name: "Desenvolvimento Z-Press no Solo com Halteres",
+    bodyPart: "shoulders",
+    target: "Deltoide Anterior, Lateral & Core Profundo",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Desenvolvimento_Z_Press_no_Solo_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Desenvolvimento_Z_Press_no_Solo_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Sente-se no solo com as pernas estendidas à frente em formato de 'V' e tronco totalmente ereto sem encosto.",
+      "Posicione os halteres na altura dos ombros.",
+      "Empurre os halteres para cima acima da cabeça travando o core e a coluna ereta.",
+      "Desça controladamente até a linha do queixo."
+    ],
+    tips: [
+      "Exige flexibilidade dos isquiotibiais e estabilidade brutal do core.",
+      "Não permite nenhum tipo de impulso com pernas ou inclinação lombar."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_single_arm_machine_press",
+    name: "Desenvolvimento Unilateral na Máquina Articulada",
+    bodyPart: "shoulders",
+    target: "Deltoide Anterior & Médio",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Desenvolvimento_Unilateral_na_M_quina_Articulada/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Desenvolvimento_Unilateral_na_M_quina_Articulada/1.jpg",
+    ],
+    instructions: [
+      "Sente-se na máquina de desenvolvimento e segure apenas uma das manoplas com uma mão.",
+      "Empurre a carga para cima até a extensão controlada do braço.",
+      "Desça sentindo a desaceleração muscular até a linha da orelha antes de empurrar novamente."
+    ],
+    tips: [
+      "Permite foco absoluto em cada ombro individualmente corrigindo desbalanços de força.",
+      "Apoie a mão livre no joelho ou assento para estabilizar o tronco."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_kneeling_face_pull",
+    name: "Face Pull Ajoelhado na Polia com Corda",
+    bodyPart: "shoulders",
+    target: "Deltoide Posterior, Manguito Rotador & Romboides",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Face_Pull_Ajoelhado_na_Polia_com_Corda/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Face_Pull_Ajoelhado_na_Polia_com_Corda/1.jpg",
+    ],
+    instructions: [
+      "Prenda a corda na polia alta e ajoelhe-se no solo com um ou ambos os joelhos apoiados.",
+      "Segure as pontas da corda com pegada neutra e puxe em direção ao rosto, abrindo as mãos e rodando os ombros para fora.",
+      "Os cotovelos devem terminar altos e alinhados com as orelhas.",
+      "Segure 2 segundos no pico e retorne devagar."
+    ],
+    tips: [
+      "Ajoelhar elimina o embalo do quadril e estabiliza o tronco.",
+      "Exercício indispensável para a saúde e longevidade da articulação do ombro."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_cross_body_rear_delt_fly",
+    name: "Crucifixo Inverso em X na Polia Dupla (Cross-Body)",
+    bodyPart: "shoulders",
+    target: "Deltoide Posterior (Isolamento Máximo)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Inverso_em_X_na_Polia_Dupla/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Inverso_em_X_na_Polia_Dupla/1.jpg",
+    ],
+    instructions: [
+      "Ajuste as duas roldanas na altura dos olhos sem pegadores.",
+      "Segure o cabo esquerdo com a mão direita e o direito com a mão esquerda com os braços cruzados na frente do rosto.",
+      "Puxe os braços para fora e para trás abrindo em movimento de cruz até ultrapassarem a linha do tronco.",
+      "Retorne controlando a fase excêntrica."
+    ],
+    tips: [
+      "Alinha perfeitamente a linha de tração do cabo com as fibras do deltoide posterior.",
+      "Mantenha os cotovelos travados em leve flexão."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_prone_incline_rear_delt_fly",
+    name: "Crucifixo Inverso no Banco Inclinado com Halteres",
+    bodyPart: "shoulders",
+    target: "Deltoide Posterior & Trapézio Médio",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Inverso_no_Banco_Inclinado_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Crucifixo_Inverso_no_Banco_Inclinado_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Deite de bruços com o peito apoiado em um banco inclinado a 30° segurando dois halteres leves.",
+      "Eleve os halteres lateralmente e para trás liderando pelos cotovelos e mindinhos.",
+      "Aperte o deltoide posterior no topo sem forçar os romboides em excesso.",
+      "Desça lentamente até os braços ficarem pendurados."
+    ],
+    tips: [
+      "O apoio no banco impede impulsos e balanços de corpo.",
+      "Use halteres moderados para manter a pureza técnica."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_external_rotator_cuff",
+    name: "Manguito Rotador Externo na Polia (Rotação Externa)",
+    bodyPart: "shoulders",
+    target: "Infraespinhal, Redondo Menor & Manguito",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Manguito_Rotador_Externo_na_Polia/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Manguito_Rotador_Externo_na_Polia/1.jpg",
+    ],
+    instructions: [
+      "Ajuste a polia na altura do cotovelo e fique de lado para a torre.",
+      "Mantenha o cotovelo flexionado a 90° colado na cintura (pode usar uma toalha enrolada sob o braço).",
+      "Gire o antebraço para fora afastando a mão da barriga em arco.",
+      "Segure 1 segundo e retorne com calma."
+    ],
+    tips: [
+      "Use cargas bem leves; o objetivo é fortalecimento e prevenção de lesões articulares.",
+      "Não afaste o cotovelo do tronco durante o movimento."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_internal_rotator_cuff",
+    name: "Manguito Rotador Interno na Polia (Rotação Interna)",
+    bodyPart: "shoulders",
+    target: "Subescapular & Estabilizadores do Ombro",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Manguito_Rotador_Interno_na_Polia/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Manguito_Rotador_Interno_na_Polia/1.jpg",
+    ],
+    instructions: [
+      "Ajuste a polia na altura do cotovelo e fique posicionado com o braço de trabalho próximo à torre.",
+      "Com o cotovelo a 90° colado ao tronco, puxe a manilha para dentro em direção ao abdômen.",
+      "Retorne controlando a rotação externa."
+    ],
+    tips: [
+      "Execução lenta e contínua com carga leve.",
+      "Complementa a rotação externa para equilíbrio do complexo articular do ombro."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_cable_rope_upright_row",
+    name: "Remada Alta na Polia com Corda",
+    bodyPart: "shoulders",
+    target: "Deltoide Lateral & Trapézio Superior",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Alta_na_Polia_com_Corda/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Remada_Alta_na_Polia_com_Corda/1.jpg",
+    ],
+    instructions: [
+      "Prenda a corda na polia baixa e segure as extremidades com pegada pronada.",
+      "Fique em pé ereto e puxe a corda para cima até a altura do peito, abrindo as pontas da corda para fora.",
+      "Os cotovelos devem liderar o movimento ficando sempre acima das mãos.",
+      "Desça devagar controlando a descida."
+    ],
+    tips: [
+      "A corda permite que os punhos se afastem naturalmente, eliminando o impacto no punho e ombro comum com barras retas.",
+      "Não puxe acima da linha dos ombros para preservar a articulação acromioclavicular."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_bayesian_cable_curl",
+    name: "Rosca Bayesiana na Polia por Trás do Corpo",
+    bodyPart: "upper arms",
+    target: "Bíceps Braquial (Cabeça Longa & Pico de Alongamento)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Bayesiana_na_Polia_por_Tr_s_do_Corpo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Bayesiana_na_Polia_por_Tr_s_do_Corpo/1.jpg",
+    ],
+    instructions: [
+      "Ajuste a polia baixa, segure a manilha e dê dois passos para a frente de costas para a torre.",
+      "O braço deve começar estendido para trás do tronco em alongamento pronunciado.",
+      "Flexione o cotovelo trazendo a mão para a frente sem mover o ombro excessivamente.",
+      "Aperte o bíceps no pico de contração e retorne devagar ao alongamento profundo."
+    ],
+    tips: [
+      "Maximiza a hipertrofia mediada pelo alongamento sob tensão contínua.",
+      "Incline o tronco levemente para a frente para estabilidade."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_incline_hammer_curl",
+    name: "Rosca Martelo no Banco Inclinado 45°",
+    bodyPart: "upper arms",
+    target: "Braquial, Braquiorradial & Bíceps Cabeça Longa",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Martelo_no_Banco_Inclinado_45_/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Martelo_no_Banco_Inclinado_45_/1.jpg",
+    ],
+    instructions: [
+      "Sente-se em um banco inclinado a 45°-60° com as costas apoiadas e braços pendurados com halteres.",
+      "Mantenha a pegada neutra (palmas voltadas uma para a outra).",
+      "Flexione os cotovelos elevando os halteres em padrão martelo sem girar os punhos.",
+      "Aperte os braquiais no topo e desça controladamente."
+    ],
+    tips: [
+      "O banco inclinado alonga a cabeça longa enquanto a pegada neutra recruta o músculo braquial com potência.",
+      "Dá volume e espessura ao braço visto de frente."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_cross_body_hammer_curl",
+    name: "Rosca Martelo Cruzada no Peito (Pinwheel Curl)",
+    bodyPart: "upper arms",
+    target: "Braquial & Braquiorradial (Antebraço)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Martelo_Cruzada_no_Peito/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Martelo_Cruzada_no_Peito/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé ereto segurando dois halteres ao lado do corpo.",
+      "Flexione um dos braços trazendo o halter em diagonal cruzando o peito em direção ao ombro oposto.",
+      "Segure a contração por 1 segundo no pico e desça devagar antes de alternar o braço."
+    ],
+    tips: [
+      "O trajeto em diagonal recruta maciçamente o braquial (músculo que empurra o bíceps para cima).",
+      "Excelente para construir braços densos e antebraços fortes."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_single_arm_preacher_db_curl",
+    name: "Rosca Scott Unilateral com Halter",
+    bodyPart: "upper arms",
+    target: "Bíceps Braquial (Cabeça Curva / Encurtamento)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Scott_Unilateral_com_Halter/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Scott_Unilateral_com_Halter/1.jpg",
+    ],
+    instructions: [
+      "Apoie a axila e a parte posterior do braço no banco Scott segurando um halter com a palma para cima.",
+      "Flexione o antebraço subindo o halter até a contração máxima do bíceps.",
+      "Desça controladamente até estender quase completamente o braço (sem hiperestender a articulação)."
+    ],
+    tips: [
+      "Apoio rígido elimina qualquer tipo de compensação do tronco ou deltoide anterior.",
+      "Trabalha cada braço individualmente com isolamento clínico."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_cable_rope_curl",
+    name: "Rosca na Polia Baixa com Corda",
+    bodyPart: "upper arms",
+    target: "Braquial, Braquiorradial & Bíceps",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_na_Polia_Baixa_com_Corda/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_na_Polia_Baixa_com_Corda/1.jpg",
+    ],
+    instructions: [
+      "Prenda a corda na polia baixa e fique em pé ereto.",
+      "Segure as extremidades da corda com pegada neutra e cotovelos colados ao corpo.",
+      "Puxe flexionando os cotovelos e abra as pontas da corda para fora no final do movimento.",
+      "Desça resistindo à tração do cabo."
+    ],
+    tips: [
+      "A abertura da corda no topo adiciona um componente de supinação para recrutar tanto o bíceps quanto o braquial.",
+      "Mantenha os cotovelos apontando fixamente para o chão."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_zottman_curl",
+    name: "Rosca Zottman com Halteres",
+    bodyPart: "upper arms",
+    target: "Bíceps Braquial (Subida) & Braquiorradial/Antebraço (Descida)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Zottman_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Zottman_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé segurando halteres ao lado do corpo.",
+      "Suba os halteres supinando as mãos (palmas para cima) como uma rosca clássica.",
+      "No topo da contração, gire os punhos 180° deixando as palmas voltadas para baixo (pegada pronada).",
+      "Desça lentamente na pegada pronada resistindo à gravidade até estender os braços, girando novamente para cima para a próxima repetição."
+    ],
+    tips: [
+      "Combina a força concêntrica do bíceps com a sobrecarga excêntrica no antebraço.",
+      "Exercício 2 em 1 altamente eficiente para hipertrofia completa de braço."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_high_cable_overhead_curl",
+    name: "Rosca Duplo Bíceps no Crossover Alto",
+    bodyPart: "upper arms",
+    target: "Bíceps Braquial (Pico de Contração Máxima)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Duplo_B_ceps_no_Crossover_Alto/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Duplo_B_ceps_no_Crossover_Alto/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé no centro do crossover com as duas polias altas com manoplas individuais.",
+      "Com braços abertos na altura dos ombros, flexione os cotovelos trazendo as mãos em direção à cabeça como na pose de duplo bíceps.",
+      "Aperte o bíceps no ponto de pico por 2 segundos e retorne devagar sem baixar os braços."
+    ],
+    tips: [
+      "Isolamento espetacular da cabeça curta do bíceps com zero estresse lombar.",
+      "Mantenha a linha dos braços paralela ao chão do início ao fim."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_reverse_cable_curl",
+    name: "Rosca Inversa na Polia com Barra Reta",
+    bodyPart: "lower arms",
+    target: "Braquiorradial & Extensores do Antebraço",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Inversa_na_Polia_com_Barra_Reta/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Rosca_Inversa_na_Polia_com_Barra_Reta/1.jpg",
+    ],
+    instructions: [
+      "Conecte a barra reta na polia baixa e segure com pegada pronada (dorso das mãos para cima).",
+      "Fique em pé e flexione os cotovelos trazendo a barra até a altura do peito.",
+      "Aperte a musculatura do antebraço e desça devagar."
+    ],
+    tips: [
+      "A tensão contínua do cabo mantém o braquiorradial ativado durante todo o curso.",
+      "Mantenha os punhos firmes e retos sem deixá-los dobrar para baixo."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_wrist_extension_barbell",
+    name: "Extensão de Punho com Barra (Rosca Punho Inversa)",
+    bodyPart: "lower arms",
+    target: "Extensores do Antebraço & Punho",
+    equipment: "barbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Extens_o_de_Punho_com_Barra/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Extens_o_de_Punho_com_Barra/1.jpg",
+    ],
+    instructions: [
+      "Apoie os antebraços sobre as coxas ou em um banco com as palmas voltadas para baixo e mãos penduradas na borda.",
+      "Segure uma barra leve e eleve as mãos para cima estendendo os punhos.",
+      "Segure 1 segundo no topo e desça controladamente."
+    ],
+    tips: [
+      "Use cargas leves e foque na amplitude articular do punho.",
+      "Essencial para prevenir dores e epicondilite lateral (cotovelo de tenista)."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_wrist_curl_dumbbell",
+    name: "Flexão de Punho com Halteres (Rosca Punho)",
+    bodyPart: "lower arms",
+    target: "Flexores do Antebraço & Força de Preensão",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_de_Punho_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_de_Punho_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Apoie os antebraços sobre as coxas com as palmas das mãos voltadas para cima.",
+      "Deixe os halteres rolarem suavemente até a ponta dos dedos e depois feche a mão flexionando os punhos para cima.",
+      "Aperte o antebraço no topo e repita com calma."
+    ],
+    tips: [
+      "Gera densidade muscular notável na parte interna do antebraço.",
+      "Controle a descida para proteger a articulação dos punhos."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_farmers_walk_db",
+    name: "Caminhada do Fazendeiro com Halteres (Farmer's Walk)",
+    bodyPart: "lower arms",
+    target: "Antebraço, Pegada, Trapézio & Core",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Caminhada_do_Fazendeiro_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Caminhada_do_Fazendeiro_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Segure dois halteres pesados ao lado do corpo com postura ereta e peito estufado.",
+      "Caminhe em linha reta com passos curtos e controlados por 30 a 60 segundos.",
+      "Mantenha os ombros travados para trás e o abdômen contraído."
+    ],
+    tips: [
+      "Um dos melhores exercícios do mundo para força de pegada, trapézio e resistência corporal geral.",
+      "Não deixe os halteres balançarem nas pernas."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_katana_triceps_extension",
+    name: "Tríceps Katana na Polia Cruzada",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial (Cabeça Longa & Lateral)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Katana_na_Polia_Cruzada/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Katana_na_Polia_Cruzada/1.jpg",
+    ],
+    instructions: [
+      "Ajuste as duas roldanas na altura dos ombros sem pegadores (segure a borracha do cabo).",
+      "Fique de costas para a torre e cruze as mãos atrás da cabeça segurando os cabos opostos.",
+      "Estenda os dois braços simultaneamente para cima e para fora em diagonal (como sacar duas espadas katana).",
+      "Segure 1 segundo no topo e retorne devagar atrás da nuca."
+    ],
+    tips: [
+      "O ângulo dos cabos se alinha perfeitamente com a mecânica muscular do tríceps.",
+      "Tensão contínua do início ao fim sem nenhum ponto morto."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_cross_body_cable_triceps",
+    name: "Tríceps Unilateral Cruzado na Polia (Cross-Body Extension)",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial (Cabeça Lateral & Medial)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Unilateral_Cruzado_na_Polia/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Unilateral_Cruzado_na_Polia/1.jpg",
+    ],
+    instructions: [
+      "Fique de lado para a polia alta segurando o cabo sem acessório com a mão oposta.",
+      "Mantenha o braço cruzado na frente do corpo e estenda o cotovelo para baixo e para fora em diagonal.",
+      "Aperte o tríceps no final da extensão e retorne controlando."
+    ],
+    tips: [
+      "Elimina a compensação do ombro e permite amplitude articular livre e anatômica.",
+      "Excelente para quem sente estalos no cotovelo na extensão tradicional."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_tate_press_dumbbell",
+    name: "Tríceps Tate Press com Halteres no Banco",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial (Cabeça Medial & Força de Bloqueio)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Tate_Press_com_Halteres_no_Banco/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Tate_Press_com_Halteres_no_Banco/1.jpg",
+    ],
+    instructions: [
+      "Deite em um banco reto segurando dois halteres com os braços estendidos acima do peito (palmas para os pés).",
+      "Flexione os cotovelos para fora apontando os halteres para dentro até tocarem suavemente o esterno.",
+      "Empurre os halteres para cima e para fora usando exclusivamente a força dos tríceps."
+    ],
+    tips: [
+      "Criado pelo powerlifter Dave Tate para construir tríceps densos e fortes no supino.",
+      "Mantenha os cotovelos apontando lateralmente."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_assisted_dip_machine",
+    name: "Tríceps nas Paralelas com Assistência (Graviton)",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial & Peitoral Inferior",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_nas_Paralelas_com_Assist_ncia/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_nas_Paralelas_com_Assist_ncia/1.jpg",
+    ],
+    instructions: [
+      "Selecione a carga de contrapeso no Graviton e apoie os joelhos na plataforma móvel.",
+      "Segure as barras paralelas com pegada neutra e tronco ereto.",
+      "Desça o corpo até os cotovelos dobrarem a 90° mantendo-os colados ao tronco.",
+      "Empurre com força estendendo os braços até o topo."
+    ],
+    tips: [
+      "Quanto mais peso colocar na máquina, mais fácil fica o exercício (ideal para iniciantes e intermediários progredirem até as paralelas livres).",
+      "Mantenha o tronco reto para focar 100% no tríceps."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_single_arm_cable_pushdown",
+    name: "Tríceps Pulley Unilateral com Pegada Supinada (Reverse Pushdown)",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial (Cabeça Medial)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Pulley_Unilateral_com_Pegada_Supinada/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Pulley_Unilateral_com_Pegada_Supinada/1.jpg",
+    ],
+    instructions: [
+      "Prenda uma manilha individual na polia alta e segure com a palma da mão voltada para cima (pegada supinada).",
+      "Com o cotovelo travado ao lado do corpo, empurre a manilha para baixo até a extensão completa do braço.",
+      "Aperte o tríceps no fundo e retorne controlando a subida até 90°."
+    ],
+    tips: [
+      "A pegada supinada ativa a cabeça medial do tríceps com grande precisão.",
+      "Trabalhe com cargas moderadas focando na pureza do movimento."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_jm_press_smith",
+    name: "Tríceps JM Press no Smith Machine",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial (Massa & Força Extrema)",
+    equipment: "smith machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_JM_Press_no_Smith_Machine/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_JM_Press_no_Smith_Machine/1.jpg",
+    ],
+    instructions: [
+      "Deite no banco reto sob a barra do Smith com pegada na largura dos ombros.",
+      "Desça a barra trazendo-a em direção à garganta/queixo enquanto dobra os cotovelos a 45°.",
+      "Pare a 2 cm do queixo e empurre com força explosiva estendendo os tríceps."
+    ],
+    tips: [
+      "Combinação híbrida entre supino fechado e tríceps testa.",
+      "Permite aplicar altas sobrecargas com segurança mecânica guiada."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_french_press_standing_db",
+    name: "Tríceps Francês Unilateral em Pé com Halter",
+    bodyPart: "upper arms",
+    target: "Tríceps Braquial (Cabeça Longa)",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Franc_s_Unilateral_em_P__com_Halter/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tr_ceps_Franc_s_Unilateral_em_P__com_Halter/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé ereto segurando um halter com uma mão acima da cabeça.",
+      "Flexione o cotovelo descendo o halter atrás da nuca mantendo o braço na vertical.",
+      "Estenda o braço de volta para cima contraindo o tríceps no topo."
+    ],
+    tips: [
+      "Pode apoiar a mão oposta no cotovelo ativo para estabilizar a articulação.",
+      "Excelente para corrigir assimetrias de tríceps."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_smith_bulgarian_split_squat",
+    name: "Agachamento Búlgaro no Smith Machine",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Glúteo Máximo & Estabilidade Unilateral",
+    equipment: "smith machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_B_lgaro_no_Smith_Machine/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_B_lgaro_no_Smith_Machine/1.jpg",
+    ],
+    instructions: [
+      "Posicione um banco atrás da barra do Smith e apoie o peito do pé de trás no banco.",
+      "Posicione a perna da frente um passo largo à frente e destrave a barra sobre os trapézios.",
+      "Desça em linha vertical até que a coxa da frente fique paralela ao chão.",
+      "Empurre pelo calcanhar dianteiro retornando ao topo."
+    ],
+    tips: [
+      "O trilho do Smith elimina o balanço de equilíbrio permitindo aplicar alta sobrecarga unilateral.",
+      "Mantenha o joelho dianteiro alinhado com a ponta do pé."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_zercher_squat",
+    name: "Agachamento Zercher com Barra",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Glúteos, Core & Trapézio",
+    equipment: "barbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_Zercher_com_Barra/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_Zercher_com_Barra/1.jpg",
+    ],
+    instructions: [
+      "Apoie a barra na dobra dos cotovelos (com braços cruzados ou mãos unidas contra o peito).",
+      "Mantenha os pés na largura dos ombros e peito aberto.",
+      "Agache profundamente até os cotovelos entrarem entre os joelhos.",
+      "Empurre pelo chão com tronco totalmente ereto."
+    ],
+    tips: [
+      "O centro de gravidade frontal força o tronco a permanecer ereto diminuindo a alavanca de cisalhamento na lombar.",
+      "Use uma almofada ou toalha na barra para proteger os cotovelos."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_pistol_squat",
+    name: "Agachamento Pistol Unilateral no Solo",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Glúteos, Equilíbrio & Força Pura",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_Pistol_Unilateral_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_Pistol_Unilateral_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé sobre uma perna e estenda a outra perna totalmente para a frente.",
+      "Agache com a perna de apoio até a flexão máxima enquanto a perna livre permanece suspensa sem tocar o chão.",
+      "Empurre pelo calcanhar e volte à posição ereta."
+    ],
+    tips: [
+      "Um dos testes máximos de força funcional, mobilidade de tornozelo e controle corporal.",
+      "Pode ser treinado segurando em um suporte ou fita TRX para progressão."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_cossack_squat",
+    name: "Agachamento Cossaco / Lateral no Solo",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Adutores & Mobilidade do Quadril",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_Cossaco___Lateral_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_Cossaco___Lateral_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Afaste as pernas bem além da largura dos ombros com pontas dos pés para fora.",
+      "Transfira o peso para um lado agachando profundamente sobre essa perna enquanto a perna oposta fica estendida com os dedos apontando para cima.",
+      "Empurre de volta ao centro e repita para o outro lado."
+    ],
+    tips: [
+      "Desenvolve incrível flexibilidade nos adutores e mobilidade de quadril.",
+      "Pode ser feito segurando um kettlebell no peito."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_adductor_machine",
+    name: "Cadeira Adutora na Máquina",
+    bodyPart: "upper legs",
+    target: "Adutores da Coxa (Grácil, Pectíneo e Adutores)",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira_Adutora_na_M_quina/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira_Adutora_na_M_quina/1.jpg",
+    ],
+    instructions: [
+      "Sente-se na máquina com as costas apoiadas e joelhos posicionados na parte interna das almofadas.",
+      "Feche as pernas aproximando os joelhos contra a resistência da máquina.",
+      "Segure a contração por 2 segundos no ponto de contato e abra lentamente sentindo o alongamento da virilha."
+    ],
+    tips: [
+      "Essencial para estabilização da pelve e espessura da parte interna das coxas.",
+      "Evite soltar o peso com impacto na abertura."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_narrow_leg_press_45",
+    name: "Leg Press 45° com Pés Fechados",
+    bodyPart: "upper legs",
+    target: "Quadríceps (Foco Vasto Lateral & Varredura Externa)",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Press_45__com_P_s_Fechados/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Press_45__com_P_s_Fechados/1.jpg",
+    ],
+    instructions: [
+      "Posicione os pés no centro da plataforma com espaçamento fechado (4 a 6 dedos de distância) e pontas retas.",
+      "Destrave e desça a plataforma até 90° nos joelhos sem arredondar a lombar do assento.",
+      "Empurre a plataforma pelos pés até a extensão quase completa."
+    ],
+    tips: [
+      "A base estreita e baixa na plataforma aumenta o braço de momento no joelho focando nos vastos do quadríceps.",
+      "Não deixe a lombar descolar do encosto."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_single_leg_press_45",
+    name: "Leg Press 45° Unilateral",
+    bodyPart: "upper legs",
+    target: "Quadríceps & Glúteo (Correção de Assimetrias)",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Press_45__Unilateral/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Leg_Press_45__Unilateral/1.jpg",
+    ],
+    instructions: [
+      "Posicione um pé no centro da plataforma do Leg Press e mantenha a outra perna fora do apoio.",
+      "Desça a plataforma controlando o peso com a perna ativa até 90°.",
+      "Empurre de volta com força focando no quadríceps e glúteo."
+    ],
+    tips: [
+      "Garante trabalho simétrico em ambas as pernas prevenindo compensações comuns no leg press bilateral.",
+      "Comece com a perna mais fraca para calibrar a carga."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_single_leg_extension",
+    name: "Cadeira Extensora Unilateral",
+    bodyPart: "upper legs",
+    target: "Quadríceps (Isolamento Fino & Reto Femoral)",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira_Extensora_Unilateral/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira_Extensora_Unilateral/1.jpg",
+    ],
+    instructions: [
+      "Sente-se na cadeira extensora e posicione o rolo acima do tornozelo de uma das pernas.",
+      "Estenda o joelho elevando a carga até a extensão completa da perna.",
+      "Segure 2 segundos no topo contraindo o quadríceps ao máximo e desça devagar."
+    ],
+    tips: [
+      "Perfeito para reabilitação do joelho e hipertrofia cirúrgica do quadríceps.",
+      "Mantenha o quadril firme no assento segurando as manoplas laterais."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_landmine_squat",
+    name: "Agachamento no Landmine com Barra",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Glúteos & Core",
+    equipment: "barbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_no_Landmine_com_Barra/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Agachamento_no_Landmine_com_Barra/1.jpg",
+    ],
+    instructions: [
+      "Segure a ponta da barra Landmine com as duas mãos contra o peito.",
+      "Fique em pé com pés na largura dos ombros e incline o tronco ligeiramente contra a barra.",
+      "Agache profundamente mantendo o peito apoiado na barra.",
+      "Empurre pelo solo retornando à posição inicial."
+    ],
+    tips: [
+      "A trajetória em arco da barra Landmine guia o corpo em um padrão de agachamento extremamente natural e ergonômico.",
+      "Excelente para quem tem dores na lombar com agachamento livre convencional."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_smith_reverse_lunge",
+    name: "Afundo Reverso no Smith Machine",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Glúteo Máximo & Isquiotibiais",
+    equipment: "smith machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Afundo_Reverso_no_Smith_Machine/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Afundo_Reverso_no_Smith_Machine/1.jpg",
+    ],
+    instructions: [
+      "Apoie a barra do Smith sobre os ombros e fique em pé com pés alinhados.",
+      "Dê um passo para trás com uma das pernas e desça o joelho traseiro até 2 cm do chão.",
+      "Empurre pela perna dianteira trazendo o pé traseiro de volta à posição inicial.",
+      "Alterne as pernas ou complete todas as repetições de um lado."
+    ],
+    tips: [
+      "O passo para trás reduz a pressão patelar no joelho em comparação com o avanço frontal.",
+      "O Smith garante estabilidade lateral perfeita."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_dumbbell_step_ups",
+    name: "Step-up no Banco / Caixa com Halteres",
+    bodyPart: "upper legs",
+    target: "Glúteos, Quadríceps & Isquiotibiais",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Step_up_no_Banco___Caixa_com_Halteres/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Step_up_no_Banco___Caixa_com_Halteres/1.jpg",
+    ],
+    instructions: [
+      "Fique em frente a um banco ou caixa resistente segurando dois halteres ao lado do corpo.",
+      "Apoie toda a sola de um pé sobre o banco.",
+      "Suba empurrando exclusivamente pela perna de cima sem dar impulso com a perna de baixo.",
+      "Desça lentamente controlando a fase excêntrica."
+    ],
+    tips: [
+      "A altura ideal da caixa/banco é na linha do joelho ou ligeiramente acima.",
+      "Não use o pé de baixo para saltar; force a coxa e glúteo da perna de cima."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_side_lunge_dumbbell",
+    name: "Afundo Lateral com Halter",
+    bodyPart: "upper legs",
+    target: "Quadríceps, Adutores & Glúteo Médio",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Afundo_Lateral_com_Halter/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Afundo_Lateral_com_Halter/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé com pés juntos segurando um halter no peito em estilo taça.",
+      "Dê um passo largo para o lado e agache flexionando o joelho dessa perna enquanto a outra permanece estendida.",
+      "Empurre com força pela perna flexionada voltando à posição inicial."
+    ],
+    tips: [
+      "Trabalha o plano frontal que é frequentemente negligenciado na musculação.",
+      "Excelente para atletas e prevenção de lesões esportivas."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_nordic_hamstring_curl",
+    name: "Flexão Nórdica no Solo / Suporte (Nordic Curl)",
+    bodyPart: "upper legs",
+    target: "Isquiotibiais (Força Excêntrica Pura & Bíceps Femoral)",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_N_rdica_no_Solo___Suporte/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flex_o_N_rdica_no_Solo___Suporte/1.jpg",
+    ],
+    instructions: [
+      "Ajoelhe-se em um acolchoado com os tornozelos travados por um parceiro ou sob um suporte pesado.",
+      "Mantenha o corpo reto do joelho à cabeça com glúteos e abdômen contraídos.",
+      "Incline o corpo para a frente o mais lentamente possível resistindo à gravidade com os isquiotibiais.",
+      "Apoie as mãos no chão no final e empurre suavemente para voltar à posição vertical."
+    ],
+    tips: [
+      "Padrão ouro científico para prevenção de estiramentos e lesões de posterior de coxa.",
+      "Foque na descida ultra controlada de 3 a 5 segundos."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_single_leg_rdl",
+    name: "Stiff Unilateral com Halter / Apoio (Single-Leg RDL)",
+    bodyPart: "upper legs",
+    target: "Isquiotibiais, Glúteo Máximo & Médio",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff_Unilateral_com_Halter___Apoio/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff_Unilateral_com_Halter___Apoio/1.jpg",
+    ],
+    instructions: [
+      "Fique sobre uma perna segurando um halter na mão oposta (pode apoiar a mão livre na parede para equilíbrio).",
+      "Empurre o quadril para trás enquanto desce o tronco e eleva a perna de trás em linha reta com o corpo.",
+      "Desça até sentir forte alongamento no posterior da perna de apoio.",
+      "Volte acionando o glúteo e posterior."
+    ],
+    tips: [
+      "O apoio leve da mão livre remove o fator equilíbrio e permite aplicar carga real no músculo alvo.",
+      "Mantenha a coluna perfeitamente neutra."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_single_leg_hip_thrust",
+    name: "Elevação Pélvica Unilateral no Banco",
+    bodyPart: "upper legs",
+    target: "Glúteo Máximo & Isquiotibiais",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_P_lvica_Unilateral_no_Banco/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_P_lvica_Unilateral_no_Banco/1.jpg",
+    ],
+    instructions: [
+      "Apoie as escápulas na borda de um banco com uma perna flexionada e pé no chão e a outra perna suspensa a 90°.",
+      "Desça o quadril em direção ao chão e empurre com força pelo calcanhar de apoio até o alinhamento da pelve com o tronco.",
+      "Aperte o glúteo no topo por 2 segundos antes de descer."
+    ],
+    tips: [
+      "Elimina desequilíbrios de ativação entre os glúteos direito e esquerdo.",
+      "Pode ser feito com um halter ou anilha apoiada sobre a pelve para maior intensidade."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_straight_leg_cable_kickback",
+    name: "Glúteo Coice na Polia com Perna Estendida",
+    bodyPart: "upper legs",
+    target: "Glúteo Máximo (Fibras Superiores)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Gl_teo_Coice_na_Polia_com_Perna_Estendida/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Gl_teo_Coice_na_Polia_com_Perna_Estendida/1.jpg",
+    ],
+    instructions: [
+      "Prenda a tornozeleira na polia baixa e incline o tronco a 45° segurando o suporte da máquina.",
+      "Com a perna ativa quase totalmente estendida, chute para trás e ligeiramente para fora em 30°.",
+      "Segure o aperto máximo no glúteo por 2 segundos no topo e retorne controladamente."
+    ],
+    tips: [
+      "A perna estendida minimiza a ajuda dos isquiotibiais isolando o glúteo máximo.",
+      "Não hiperestenda a coluna lombar; o movimento deve acontecer estritamente na articulação do quadril."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_forward_leaning_abductor",
+    name: "Cadeira Abdutora com Tronco Inclinado à Frente",
+    bodyPart: "upper legs",
+    target: "Glúteo Médio & Porção Superior do Glúteo Máximo",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira_Abdutora_com_Tronco_Inclinado___Frente/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira_Abdutora_com_Tronco_Inclinado___Frente/1.jpg",
+    ],
+    instructions: [
+      "Sente-se na ponta do assento da cadeira abdutora e incline o tronco para a frente a 45° segurando a estrutura da máquina.",
+      "Abra as pernas com força contra as almofadas até a amplitude máxima.",
+      "Segure 2 segundos no pico e retorne devagar sem bater os pesos."
+    ],
+    tips: [
+      "A flexão de quadril alinha o glúteo médio e fibras superiores do glúteo máximo na linha direta de tração da máquina.",
+      "Sentir queimação intensa nas laterais do glúteo."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_standing_hip_abduction_machine",
+    name: "Cadeira / Máquina Abdutora em Pé",
+    bodyPart: "upper legs",
+    target: "Glúteo Médio, Mínimo & Tensor da Fáscia Lata",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira___M_quina_Abdutora_em_P_/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Cadeira___M_quina_Abdutora_em_P_/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé na máquina com a almofada posicionada na parte externa da coxa/joelho.",
+      "Segure as manoplas para estabilização do tronco e empurre a perna lateralmente para fora.",
+      "Segure a contração isométrica por 2 segundos e retorne devagar."
+    ],
+    tips: [
+      "Excelente modelador do contorno lateral dos quadris.",
+      "Mantenha a perna de apoio com joelho levemente destravado."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_frog_pumps",
+    name: "Glúteo Frog Pump no Solo",
+    bodyPart: "upper legs",
+    target: "Glúteo Máximo (Pico Metabólico)",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Gl_teo_Frog_Pump_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Gl_teo_Frog_Pump_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Deite de costas no solo e una as solas dos pés juntas abrindo os joelhos para os lados em formato de borboleta/sapo.",
+      "Pressione os pés um contra o outro e eleve a pelve contraindo os glúteos com força.",
+      "Desça e repita em ritmo contínuo para altas repetições (20 a 30 reps)."
+    ],
+    tips: [
+      "A rotação externa das pernas ativa as fibras profundas do glúteo.",
+      "Perfeito como ativador antes do agachamento ou como finalizador de treino."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_lateral_band_walk",
+    name: "Caminhada Lateral com Mini Band (Monster Walk)",
+    bodyPart: "upper legs",
+    target: "Glúteo Médio, Mínimo & Estabilizadores Pélvicos",
+    equipment: "band",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Caminhada_Lateral_com_Mini_Band/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Caminhada_Lateral_com_Mini_Band/1.jpg",
+    ],
+    instructions: [
+      "Coloque uma mini band elástica acima dos joelhos ou ao redor dos tornozelos.",
+      "Fique em meia posição de agachamento com peito ereto e abdômen firme.",
+      "Dê passos laterais mantendo a tensão elástica constante sem deixar os pés se juntarem completamente.",
+      "Percorra 10 a 15 passos para um lado e depois retorne para o outro."
+    ],
+    tips: [
+      "Não deixe os joelhos colapsarem para dentro.",
+      "Ativação fundamental antes de treinos pesados de pernas e agachamento."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_b_stance_rdl",
+    name: "RDL com Halteres em B-Stance (Stiff com Pé de Apoio)",
+    bodyPart: "upper legs",
+    target: "Isquiotibiais & Glúteo Máximo",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/RDL_com_Halteres_em_B_Stance/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/RDL_com_Halteres_em_B_Stance/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé com um pé totalmente apoiado à frente e o outro pé posicionado ligeiramente atrás apoiado apenas na ponta dos dedos (como um tripé de suporte).",
+      "Segure dois halteres e empurre o quadril para trás descendo os halteres rentes à perna dianteira.",
+      "Sinta o alongamento no posterior da perna da frente e retorne apertando o glúteo."
+    ],
+    tips: [
+      "Oferece todos os benefícios do trabalho unilateral sem o risco de desequilíbrio do single-leg RDL livre.",
+      "80% a 90% do peso deve ficar sobre o calcanhar da perna da frente."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_single_lying_leg_curl",
+    name: "Mesa Flexora Unilateral",
+    bodyPart: "upper legs",
+    target: "Isquiotibiais (Bíceps Femoral & Semitendíneo)",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Mesa_Flexora_Unilateral/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Mesa_Flexora_Unilateral/1.jpg",
+    ],
+    instructions: [
+      "Deite de bruços na mesa flexora com o rolo posicionado acima do calcanhar de uma das pernas.",
+      "Segure as manoplas e flexione o joelho puxando o calcanhar em direção ao glúteo.",
+      "Segure 1 segundo no pico de flexão e desça resistindo à descida."
+    ],
+    tips: [
+      "Identifica e corrige assimetrias de força entre os posteriores das pernas.",
+      "Mantenha o osso da bacia colado no acolchoado sem arquear a lombar."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_standing_cable_leg_curl",
+    name: "Flexora em Pé na Polia com Tornozeleira",
+    bodyPart: "upper legs",
+    target: "Isquiotibiais (Pico de Contração)",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flexora_em_P__na_Polia_com_Tornozeleira/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flexora_em_P__na_Polia_com_Tornozeleira/1.jpg",
+    ],
+    instructions: [
+      "Prenda a tornozeleira na polia baixa e fique em pé de frente para a torre com joelho de apoio levemente destravado.",
+      "Flexione o joelho da perna ativa elevando o calcanhar em direção ao glúteo.",
+      "Aperte o posterior no topo e desça controladamente."
+    ],
+    tips: [
+      "Trabalha a flexão do joelho com quadril estendido, atingindo uma ativação neuromuscular única dos isquiotibiais.",
+      "Não balance o tronco durante o movimento."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_horizontal_leg_press_calf",
+    name: "Panturrilha no Leg Press Horizontal",
+    bodyPart: "lower legs",
+    target: "Gastrocnêmio & Sóleo",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_no_Leg_Press_Horizontal/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_no_Leg_Press_Horizontal/1.jpg",
+    ],
+    instructions: [
+      "Sente-se no Leg Press Horizontal e apoie apenas as pontas dos pés na borda inferior da plataforma com calcanhares livres.",
+      "Com as pernas quase estendidas, empurre a plataforma para a frente com as pontas dos pés (flexão plantar).",
+      "Segure 2 segundos de contração máxima e retorne sentindo o alongamento completo dos calcanhares."
+    ],
+    tips: [
+      "Faça pausas de 2 segundos no ponto mais fundo para dissipar a energia elástica do tendão de Aquiles.",
+      "Foco na contração pura da musculatura da panturrilha."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_smith_calf_raise_block",
+    name: "Panturrilha no Smith Machine sobre Bloco / Degrau",
+    bodyPart: "lower legs",
+    target: "Gastrocnêmio (Cabeça Medial & Lateral)",
+    equipment: "smith machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_no_Smith_Machine_sobre_Bloco___Degrau/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_no_Smith_Machine_sobre_Bloco___Degrau/1.jpg",
+    ],
+    instructions: [
+      "Coloque um bloco ou step de madeira sob a barra do Smith e apoie a ponta dos pés na borda.",
+      "Destrave a barra sobre os trapézios com corpo ereto.",
+      "Desça os calcanhares abaixo da linha do degrau em alongamento profundo.",
+      "Suba o mais alto possível nas pontas dos pés apertando as panturrilhas."
+    ],
+    tips: [
+      "O apoio no degrau dobra a amplitude útil de movimento em relação ao chão plano.",
+      "Mantenha os joelhos estendidos (sem hiperestensão) para focar no gastrocnêmio."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_single_leg_bodyweight_calf",
+    name: "Panturrilha Unilateral no Solo / Degrau",
+    bodyPart: "lower legs",
+    target: "Gastrocnêmio, Sóleo & Equilíbrio",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_Unilateral_no_Solo___Degrau/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_Unilateral_no_Solo___Degrau/1.jpg",
+    ],
+    instructions: [
+      "Fique sobre um pé na borda de um degrau com uma mão apoiada na parede para equilíbrio.",
+      "Desça o calcanhar ao máximo e eleve o corpo subindo na ponta do pé.",
+      "Segure 2 segundos no topo e desça lentamente."
+    ],
+    tips: [
+      "Excelente para treinar em casa com o peso corporal.",
+      "Pode segurar um halter na mão livre para sobrecarga progressiva."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_donkey_calf_raise",
+    name: "Panturrilha Tipo Burrinho na Máquina (Donkey Calf Raise)",
+    bodyPart: "lower legs",
+    target: "Gastrocnêmio & Sóleo (Alongamento Pronunciado)",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_Tipo_Burrinho_na_M_quina/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Panturrilha_Tipo_Burrinho_na_M_quina/1.jpg",
+    ],
+    instructions: [
+      "Posicione-se na máquina com o tronco flexionado a 90° e almofada apoiada sobre a região sacral/lombar baixa.",
+      "Apoie as pontas dos pés no degrau com calcanhares livres.",
+      "Eleve os calcanhares ao máximo contraindo as panturrilhas e desça em alongamento completo."
+    ],
+    tips: [
+      "A flexão do quadril coloca o gastrocnêmio em pré-alongamento ideal para pico de torque.",
+      "Um dos exercícios favoritos da Era de Ouro do fisiculturismo."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_tibialis_anterior_raise",
+    name: "Elevação Tibial Anterior no Solo / Parede",
+    bodyPart: "lower legs",
+    target: "Tibial Anterior & Estabilidade do Tornozelo",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Tibial_Anterior_no_Solo___Parede/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Eleva__o_Tibial_Anterior_no_Solo___Parede/1.jpg",
+    ],
+    instructions: [
+      "Encoste as costas e quadril em uma parede com calcanhares apoiados a 30 cm de distância da parede.",
+      "Com as pernas estendidas, puxe as pontas dos pés para cima em direção às canelas (dorsiflexão).",
+      "Segure 1 segundo no topo e desça sem encostar totalmente as pontas dos pés no chão."
+    ],
+    tips: [
+      "Fortalece a frente da canela, prevenindo canelite e melhorando a absorção de impacto na corrida e saltos.",
+      "Faça séries de 20 a 25 repetições até sentir queimação no músculo tibial."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_bicycle_crunches",
+    name: "Abdominal Bicicleta no Solo (Bicycle Crunches)",
+    bodyPart: "waist",
+    target: "Oblíquos, Reto Abdominal & Core",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Bicicleta_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Bicicleta_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Deite de costas com mãos atrás das orelhas e pernas elevadas com joelhos a 90°.",
+      "Traga o cotovelo direito em direção ao joelho esquerdo enquanto estende a perna direita para a frente.",
+      "Alterne os lados em movimento fluido e ritmado como pedalar uma bicicleta."
+    ],
+    tips: [
+      "Estudos eletromiográficos comprovam que é um dos exercícios mais eficazes para os oblíquos e reto abdominal.",
+      "Gire os ombros e não apenas puxe o cotovelo."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_v_ups_jackknife",
+    name: "Abdominal Canivete / V-Up no Solo",
+    bodyPart: "waist",
+    target: "Reto Abdominal (Supra e Infra) & Core",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Canivete___V_Up_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Canivete___V_Up_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Deite totalmente estendido no solo com braços esticados acima da cabeça e pernas juntas.",
+      "Em um movimento explosivo e controlado, eleve simultaneamente o tronco e as pernas estendidas formando um 'V' no ar.",
+      "Toque as mãos nas canelas ou pontas dos pés no topo e retorne devagar sem relaxar no chão."
+    ],
+    tips: [
+      "Exige coordenação e força integrada de todo o abdômen.",
+      "Mantenha a descida controlada para proteger a lombar."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_scissor_kicks",
+    name: "Abdominal Tesoura no Solo (Scissor Kicks)",
+    bodyPart: "waist",
+    target: "Abdômen Inferior (Infra) & Flexores do Quadril",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Tesoura_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Tesoura_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Deite de costas com mãos sob os glúteos para suporte lombar e pernas estendidas elevadas a 15 cm do chão.",
+      "Cruze uma perna sobre a outra em movimento alternado de tesoura horizontal.",
+      "Mantenha a respiração estável e o abdômen colado na coluna."
+    ],
+    tips: [
+      "Mantenha a lombar sempre em contato com o solo.",
+      "Quanto mais baixas as pernas (sem arquear a coluna), maior o desafio."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_lying_leg_raise",
+    name: "Abdominal Infra no Solo com Elevação de Pernas",
+    bodyPart: "waist",
+    target: "Reto Abdominal Inferior & Transverso",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Infra_no_Solo_com_Eleva__o_de_Pernas/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Infra_no_Solo_com_Eleva__o_de_Pernas/1.jpg",
+    ],
+    instructions: [
+      "Deite de costas no solo com braços ao lado do corpo ou mãos sob o quadril.",
+      "Com pernas juntas e estendidas, eleve-as até 90° em relação ao solo elevando ligeiramente o quadril no topo.",
+      "Desça lentamente as pernas até quase encostar os calcanhares no solo e suba novamente."
+    ],
+    tips: [
+      "Não deixe a coluna lombar descolar do chão durante a descida das pernas.",
+      "Concentre a força na puxada da pelve em direção ao tórax."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_situps_rowing",
+    name: "Abdominal Remador Completo",
+    bodyPart: "waist",
+    target: "Reto Abdominal & Condicionamento",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Remador_Completo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Remador_Completo/1.jpg",
+    ],
+    instructions: [
+      "Deite com corpo estendido e braços acima da cabeça.",
+      "Flexione o tronco e dobre os joelhos simultaneamente abraçando as pernas no topo sentado sobre os ísquios.",
+      "Estenda o corpo novamente de volta ao solo de forma controlada."
+    ],
+    tips: [
+      "Clássico de testes de aptidão física militar e funcional.",
+      "Mantenha ritmo constante e fluido."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_cross_crunches",
+    name: "Abdominal Oblíquo Cruzado no Solo",
+    bodyPart: "waist",
+    target: "Oblíquos Internos e Externos",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Obl_quo_Cruzado_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Obl_quo_Cruzado_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Deite de costas e cruze o tornozelo de uma perna sobre o joelho oposto.",
+      "Com a mão oposta atrás da cabeça, flexione a coluna levando o cotovelo em direção ao joelho cruzado.",
+      "Aperte o oblíquo no topo por 1 segundo e desça devagar."
+    ],
+    tips: [
+      "Realize todas as repetições de um lado antes de trocar a perna cruzada.",
+      "Foque na rotação torácica."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_cable_woodchopper",
+    name: "Abdominal Lenhador na Polia com Rotação (Woodchopper)",
+    bodyPart: "waist",
+    target: "Oblíquos, Transverso do Abdômen & Potência Rotacional",
+    equipment: "cable",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Lenhador_na_Polia_com_Rota__o/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Lenhador_na_Polia_com_Rota__o/1.jpg",
+    ],
+    instructions: [
+      "Ajuste a polia na altura do ombro ou alta, fique de lado com base firme e segure a manilha com ambas as mãos.",
+      "Gire o tronco em diagonal puxando o cabo para baixo e para o lado oposto em movimento de corte de machado.",
+      "Gire sobre a ponta do pé de trás transferindo a força pelo core.",
+      "Retorne controlando a rotação."
+    ],
+    tips: [
+      "Fundamental para potência esportiva (lutas, tênis, golfe, futebol).",
+      "Mantenha os braços estendidos para usar o core como motor principal."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_plank_shoulder_taps",
+    name: "Prancha com Toque nos Ombros (Shoulder Taps)",
+    bodyPart: "waist",
+    target: "Core Anti-Rotacional & Estabilidade dos Ombros",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Prancha_com_Toque_nos_Ombros/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Prancha_com_Toque_nos_Ombros/1.jpg",
+    ],
+    instructions: [
+      "Fique em posição de prancha alta com as mãos alinhadas aos ombros e pés na largura do quadril.",
+      "Mantendo o quadril totalmente imóvel, tire a mão direita do solo e toque o ombro esquerdo.",
+      "Volte a mão ao solo e toque o ombro direito com a mão esquerda.",
+      "Alterne os toques com controle absoluto."
+    ],
+    tips: [
+      "O objetivo não é a velocidade, mas sim impedir que o quadril balance de um lado para o outro.",
+      "Afaste mais os pés para facilitar a estabilidade."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_hollow_body_hold",
+    name: "Prancha Canoa / Hollow Body Isométrica",
+    bodyPart: "waist",
+    target: "Transverso do Abdômen & Reto Abdominal Profundo",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Prancha_Canoa___Hollow_Body_Isom_trica/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Prancha_Canoa___Hollow_Body_Isom_trica/1.jpg",
+    ],
+    instructions: [
+      "Deite de costas no solo com braços estendidos acima da cabeça e pernas estendidas.",
+      "Pressione a lombar com força contra o chão e eleve simultaneamente os ombros e as pernas a 15 cm do solo.",
+      "Mantenha a posição de canoa rígida sustentando a respiração estável por 30 a 45 segundos."
+    ],
+    tips: [
+      "Se a lombar descolar do chão, flexione os joelhos temporariamente.",
+      "Base de força da ginástica olímpica e calistenia avançada."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_dragon_flag",
+    name: "Abdominal Dragão no Banco (Dragon Flag)",
+    bodyPart: "waist",
+    target: "Reto Abdominal, Oblíquos & Core Inteiro",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Drag_o_no_Banco/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Abdominal_Drag_o_no_Banco/1.jpg",
+    ],
+    instructions: [
+      "Deite em um banco reto e segure a borda do banco atrás da cabeça com firmeza.",
+      "Eleve todo o corpo em linha reta apoiado apenas na parte superior dos ombros e escápulas.",
+      "Desça o corpo reto lentamente como uma prancha sólida sem dobrar o quadril até quase tocar o banco.",
+      "Suba novamente usando a força brutal do abdômen."
+    ],
+    tips: [
+      "Imortalizado por Bruce Lee e Sylvester Stallone.",
+      "Nível de exigência extremo; inicie com pernas flexionadas (tuck) antes da versão completa."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_hanging_windshield_wipers",
+    name: "Limpador de Pára-brisa na Barra Fixa",
+    bodyPart: "waist",
+    target: "Oblíquos, Reto Abdominal & Pegada",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Limpador_de_P_ra_brisa_na_Barra_Fixa/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Limpador_de_P_ra_brisa_na_Barra_Fixa/1.jpg",
+    ],
+    instructions: [
+      "Pendure-se na barra fixa e eleve as pernas retas até a barra (posição invertida).",
+      "Gire as pernas unidas de um lado para o outro em arco controlado como palhetas de limpador de pára-brisa.",
+      "Controle a desaceleração lateral e reverta o movimento."
+    ],
+    tips: [
+      "Requer força fantástica de tração dorsal, pegada e oblíquos.",
+      "Pode ser executado no solo deitado de costas como versão preliminar."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_spiderman_plank",
+    name: "Prancha Spiderman no Solo",
+    bodyPart: "waist",
+    target: "Oblíquos, Reto Abdominal & Flexores",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Prancha_Spiderman_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Prancha_Spiderman_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Fique em posição de prancha baixa apoiado nos antebraços.",
+      "Traga o joelho direito lateralmente por fora em direção ao cotovelo direito.",
+      "Aperte o oblíquo, retorne o pé atrás e repita com o joelho esquerdo no cotovelo esquerdo."
+    ],
+    tips: [
+      "Mantenha o quadril nivelado durante todo o percurso.",
+      "Movimento lento e focado na contração lateral."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_full_burpee",
+    name: "Burpee Completo com Flexão e Salto",
+    bodyPart: "cardio",
+    target: "Condicionamento Geral, Queima Calórica & Potência",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Burpee_Completo_com_Flex_o_e_Salto/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Burpee_Completo_com_Flex_o_e_Salto/1.jpg",
+    ],
+    instructions: [
+      "Em pé, agache e apoie as mãos no solo jogando os pés para trás em prancha.",
+      "Execute uma flexão de braço completa encostando o peito no chão.",
+      "Empurre o solo, recolha os pés para perto das mãos em agachamento e salte verticalmente estendendo os braços com palma acima da cabeça."
+    ],
+    tips: [
+      "Mantenha ritmo respiratório constante para aguentar séries longas.",
+      "Amorteça a queda com os pés inteiros no solo."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_kettlebell_swing",
+    name: "Balanço com Kettlebell Russo (Kettlebell Swing)",
+    bodyPart: "cardio",
+    target: "Cadeia Posterior, Glúteos, Core & Cardio",
+    equipment: "dumbbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Balan_o_com_Kettlebell_Russo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Balan_o_com_Kettlebell_Russo/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé com pés mais largos que os ombros segurando o kettlebell com as duas mãos.",
+      "Flexione o quadril para trás passando o kettlebell entre as pernas com coluna neutra.",
+      "Exploda os glúteos e quadris para a frente lançando o kettlebell até a altura do peito/olhos.",
+      "Deixe a gravidade trazer o peso de volta flexionando o quadril em dobradiça contínua."
+    ],
+    tips: [
+      "O movimento é uma dobradiça de quadril (hip hinge) e NÃO um agachamento.",
+      "Os braços servem apenas como cordas; a força propulsora vem 100% dos glúteos e quadris."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_battle_ropes",
+    name: "Corda Naval Ondulada (Battle Ropes)",
+    bodyPart: "cardio",
+    target: "Ombros, Braços, Core & Capacidade Cardiorrespiratória",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Corda_Naval_Ondulada/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Corda_Naval_Ondulada/1.jpg",
+    ],
+    instructions: [
+      "Fique em posição de meio agachamento com postura atlética segurando uma ponta da corda em cada mão.",
+      "Bata as cordas no solo alternadamente criando ondas rápidas e contínuas até a âncora.",
+      "Mantenha o core rígido e os braços em alta cadência."
+    ],
+    tips: [
+      "Gera pico de frequência cardíaca com impacto zero nas articulações inferiores.",
+      "Varie entre ondas alternadas, ondas simultâneas e batidas duplas com salto."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_med_ball_slams",
+    name: "Arremesso de Medicine Ball no Solo (Slam Ball)",
+    bodyPart: "cardio",
+    target: "Dorsais, Abdômen, Ombros & Liberação de Potência",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Arremesso_de_Medicine_Ball_no_Solo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Arremesso_de_Medicine_Ball_no_Solo/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé segurando uma slam ball pesada com ambas as mãos.",
+      "Estenda o corpo e leve a bola acima e atrás da cabeça com extensão completa.",
+      "Arremesse a bola com máxima fúria e força contra o solo flexionando o tronco e agachando.",
+      "Recolha a bola na subida e repita sem interrupção."
+    ],
+    tips: [
+      "Use uma bola sem quique (slam ball de borracha com areia).",
+      "Excelente para alívio de estresse e potência do core anterior."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_jumping_jacks",
+    name: "Polichinelo Clássico com Ritmo",
+    bodyPart: "cardio",
+    target: "Aquecimento Sistêmico, Panturrilhas & Cardio",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Polichinelo_Cl_ssico_com_Ritmo/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Polichinelo_Cl_ssico_com_Ritmo/1.jpg",
+    ],
+    instructions: [
+      "Comece em pé com pés juntos e braços ao lado do corpo.",
+      "Dê um salto afastando as pernas lateralmente enquanto bate as palmas das mãos acima da cabeça.",
+      "Salte novamente retornando pés e mãos à posição inicial em cadência rítmica constante."
+    ],
+    tips: [
+      "Aterrisse suavemente nas pontas dos pés para amortecer o impacto.",
+      "Excelente para aquecimento articular e sessões aeróbicas leves."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_shadow_boxing",
+    name: "Boxe Sombra com Esquivas (Shadow Boxing)",
+    bodyPart: "cardio",
+    target: "Agilidade, Ombros, Core & Coordenação",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Boxe_Sombra_com_Esquivas/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Boxe_Sombra_com_Esquivas/1.jpg",
+    ],
+    instructions: [
+      "Fique em guarda de luta com joelhos soltos e queixo protegido.",
+      "Desfira combinações de golpes diretos (jab, direto), ganchos (cross) e cruzados (uppercuts).",
+      "Incorpore pêndulos de esquiva, passadas e giros de quadril mantendo o ritmo acelerado."
+    ],
+    tips: [
+      "Gire o tronco e o calcanhar em cada soco para engajar o abdômen oblíquo.",
+      "Mantenha os ombros relaxados para economizar energia."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_high_knees",
+    name: "Corrida Estacionária com Joelhos Altos (High Knees)",
+    bodyPart: "cardio",
+    target: "Flexores do Quadril, Panturrilhas & VO2 Max",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Corrida_Estacion_ria_com_Joelhos_Altos/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Corrida_Estacion_ria_com_Joelhos_Altos/1.jpg",
+    ],
+    instructions: [
+      "Fique em pé e corra no mesmo lugar elevando os joelhos alternadamente até a altura do quadril (90°).",
+      "Bombeie os braços coordenadamente em ritmo vigoroso.",
+      "Mantenha a postura ereta e pontas dos pés ativas."
+    ],
+    tips: [
+      "Mantenha contato breve com o solo.",
+      "Exercício dinâmico potente para queima de calorias em espaços compactos."
+    ],
+    difficulty: "Iniciante",
+  },
+  {
+    id: "ex_sled_push",
+    name: "Empurrar Trenó com Carga no Gramado (Prowler Sled Push)",
+    bodyPart: "cardio",
+    target: "Quadríceps, Glúteos, Panturrilhas & Potência Metabólica",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Empurrar_Tren__com_Carga_no_Gramado/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Empurrar_Tren__com_Carga_no_Gramado/1.jpg",
+    ],
+    instructions: [
+      "Apoie as mãos nas hastes verticais do trenó com braços estendidos e tronco inclinado a 45°.",
+      "Empurre o chão com passos potentes e firmes conduzindo o trenó pela pista.",
+      "Mantenha o core contraído e respiração profunda."
+    ],
+    tips: [
+      "Sem impacto articular e sem fase excêntrica dolorosa, permitindo alto volume de trabalho anaeróbico.",
+      "Pressione pelas pontas dos pés com tração contínua."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_sled_pull",
+    name: "Puxar Trenó com Corda / Fita (Sled Drag / Pull)",
+    bodyPart: "cardio",
+    target: "Isquiotibiais, Glúteos, Costas & Força Funcional",
+    equipment: "body weight",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxar_Tren__com_Corda___Fita/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Puxar_Tren__com_Corda___Fita/1.jpg",
+    ],
+    instructions: [
+      "Conecte a fita ou corda ao trenó com carga.",
+      "Caminhe de costas puxando o trenó em passos firmes, ou puxe a corda mão sobre mão em pé com base estável.",
+      "Mantenha postura firme e tensão ininterrupta."
+    ],
+    tips: [
+      "Caminhar de costas puxando o trenó é excelente para saúde e fortalecimento do tendão patelar dos joelhos.",
+      "Cadência controlada e contínua."
+    ],
+    difficulty: "Intermediário",
+  },
+  {
+    id: "ex_treadmill_sprints",
+    name: "Tiro de Sprint na Esteira (Sprint Intervals)",
+    bodyPart: "cardio",
+    target: "Potência Anaeróbica, Fibras Rápidas & Queima Lipídica",
+    equipment: "machine",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tiro_de_Sprint_na_Esteira/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tiro_de_Sprint_na_Esteira/1.jpg",
+    ],
+    instructions: [
+      "Ajuste a esteira para velocidade elevada (ex: 15 a 18 km/h).",
+      "Segure nas laterais, salte para o centro da lona e corra em velocidade máxima com passadas vigorosas por 15 a 30 segundos.",
+      "Apoie os pés nas laterais da esteira para recuperar por 30 a 45 segundos e repita o ciclo HIIT."
+    ],
+    tips: [
+      "Aumente a inclinação para 1% a 2% para simular a resistência do vento.",
+      "Apenas realize após aquecimento cardiovascular prévio."
+    ],
+    difficulty: "Avançado",
+  },
+  {
+    id: "ex_trap_bar_carry",
+    name: "Caminhada com Barra Hexagonal (Trap Bar Carry)",
+    bodyPart: "cardio",
+    target: "Trapézio, Antebraços, Pernas & Core Inteiro",
+    equipment: "barbell",
+    mediaFrames: [
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Caminhada_com_Barra_Hexagonal/0.jpg",
+      "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Caminhada_com_Barra_Hexagonal/1.jpg",
+    ],
+    instructions: [
+      "Posicione-se dentro da barra hexagonal carregada com anilhas e faça o levantamento até ficar em pé ereto.",
+      "Caminhe para a frente com passos calmos, postura nobre e ombros travados para trás.",
+      "Percorra a distância desejada e pouse a barra no solo com técnica de terra."
+    ],
+    tips: [
+      "Permite carregar cargas substancialmente maiores que halteres sem colidir nas pernas.",
+      "Excelente para desenvolver carcaça atlética e força bruta."
+    ],
+    difficulty: "Intermediário",
+  },
 ];
 
 // -------------------------------------------------------------
@@ -2727,6 +4994,34 @@ export function getAllExercises(): ExerciseDBItem[] {
   return [...custom, ...LOCAL_EXERCISE_DB];
 }
 
+export function matchBodyPartCategory(bodyPart: string, filter: string): boolean {
+  if (!filter || filter === "todos") return true;
+  const bp = (bodyPart || "").toLowerCase();
+  const f = filter.toLowerCase();
+  if (f === "legs" || f === "pernas" || f === "upper legs" || f === "lower legs") {
+    return bp === "upper legs" || bp === "lower legs" || bp === "legs" || bp.includes("leg") || bp.includes("perna");
+  }
+  if (f === "arms" || f === "braços" || f === "bracos" || f === "upper arms" || f === "lower arms") {
+    return bp === "upper arms" || bp === "lower arms" || bp === "arms" || bp.includes("arm") || bp.includes("braç");
+  }
+  if (f === "chest" || f === "peito" || f === "peitoral") {
+    return bp === "chest" || bp.includes("chest") || bp.includes("peito");
+  }
+  if (f === "back" || f === "costas" || f === "dorsal") {
+    return bp === "back" || bp.includes("back") || bp.includes("costa");
+  }
+  if (f === "shoulders" || f === "ombros" || f === "ombro") {
+    return bp === "shoulders" || bp.includes("shoulder") || bp.includes("ombro");
+  }
+  if (f === "waist" || f === "core" || f === "abdômen" || f === "abdomen") {
+    return bp === "waist" || bp === "core" || bp.includes("waist") || bp.includes("abdo");
+  }
+  if (f === "cardio" || f === "aeróbico" || f === "aerobico") {
+    return bp === "cardio" || bp.includes("cardio");
+  }
+  return bp === f;
+}
+
 // -------------------------------------------------------------
 // SERVIÇO DE BUSCA E INTEGRAÇÃO DE EXERCÍCIOS
 // -------------------------------------------------------------
@@ -2774,7 +5069,7 @@ export async function searchExercises(
   let filtered = getAllExercises();
 
   if (filters?.bodyPart && filters.bodyPart !== "todos") {
-    filtered = filtered.filter((ex) => ex.bodyPart.toLowerCase() === filters.bodyPart?.toLowerCase());
+    filtered = filtered.filter((ex) => matchBodyPartCategory(ex.bodyPart, filters.bodyPart!));
   }
 
   if (filters?.equipment && filters.equipment !== "todos") {

@@ -36,6 +36,7 @@ import {
   getAllExercises,
   saveCustomExercise,
   ExerciseDBItem,
+  matchBodyPartCategory,
 } from "@/lib/exercisedb";
 import { ExerciseGifModal, ExerciseModalData } from "./ExerciseGifModal";
 import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
@@ -814,9 +815,9 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
                     { id: "todos", label: "Todos" },
                     { id: "chest", label: "Peito" },
                     { id: "back", label: "Costas" },
-                    { id: "upper legs", label: "Pernas / Glúteos" },
+                    { id: "legs", label: "Pernas / Glúteos" },
                     { id: "shoulders", label: "Ombros" },
-                    { id: "upper arms", label: "Braços" },
+                    { id: "arms", label: "Braços" },
                     { id: "waist", label: "Abdômen" },
                     { id: "cardio", label: "Cardio" },
                   ].map((filter) => (
@@ -842,10 +843,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
                 <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1">
                   {getAllExercises()
                     .filter((item) => {
-                      if (
-                        catalogMuscleFilter !== "todos" &&
-                        item.bodyPart?.toLowerCase() !== catalogMuscleFilter.toLowerCase()
-                      ) {
+                      if (!matchBodyPartCategory(item.bodyPart, catalogMuscleFilter)) {
                         return false;
                       }
                       if (catalogSearch.trim()) {
@@ -853,12 +851,13 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
                         return (
                           item.name.toLowerCase().includes(term) ||
                           item.target.toLowerCase().includes(term) ||
-                          item.equipment.toLowerCase().includes(term)
+                          item.equipment.toLowerCase().includes(term) ||
+                          item.bodyPart.toLowerCase().includes(term)
                         );
                       }
                       return true;
                     })
-                    .slice(0, 40)
+                    .slice(0, 100)
                     .map((item) => (
                       <div
                         key={item.id}

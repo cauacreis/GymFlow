@@ -1112,10 +1112,11 @@ export function CoachDashboard({
                       { id: "todos", label: "Todos" },
                       { id: "chest", label: "Peito" },
                       { id: "back", label: "Costas" },
-                      { id: "upper legs", label: "Pernas" },
+                      { id: "legs", label: "Pernas / Glúteos" },
                       { id: "shoulders", label: "Ombros" },
-                      { id: "upper arms", label: "Braços" },
+                      { id: "arms", label: "Braços" },
                       { id: "waist", label: "Abdômen" },
+                      { id: "cardio", label: "Cardio" },
                     ].map((filter) => (
                       <button
                         key={filter.id}
@@ -1137,8 +1138,8 @@ export function CoachDashboard({
                 </div>
 
                 {/* Lista de Resultados do Catálogo */}
-                <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto pr-1">
-                  {searchResults.slice(0, 35).map((item) => (
+                <div className="flex flex-col gap-2 max-h-[340px] overflow-y-auto pr-1">
+                  {searchResults.slice(0, 100).map((item) => (
                     <div
                       key={item.id}
                       className="p-2.5 rounded-xl bg-zinc-950 border border-white/[0.06] flex items-center justify-between gap-2"
