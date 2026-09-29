@@ -270,12 +270,9 @@ export function AuthModal({
   const handleOAuthSignIn = async (provider: "google" | "facebook") => {
     setIsLoading(true);
     setErrorMessage(null);
+    triggerHaptic("medium");
     try {
       if (mode === "signup") {
-        const deviceCheck = await canRegisterAccountOnDevice("");
-        if (!deviceCheck.allowed && deviceCheck.reason?.includes("aparelho")) {
-          throw new Error(deviceCheck.reason);
-        }
         if (typeof window !== "undefined") {
           localStorage.setItem("gymflow_oauth_role", selectedRole);
         }
@@ -294,7 +291,7 @@ export function AuthModal({
       const client = getSupabase();
       if (client) {
         const redirectTo = getAuthRedirectUrl("/auth/callback");
-        const { error } = await client.auth.signInWithOAuth({
+        const { data, error } = await client.auth.signInWithOAuth({
           provider,
           options: {
             redirectTo,
@@ -314,6 +311,10 @@ export function AuthModal({
             throw new Error(`URL de redirecionamento não autorizada no Supabase. Adicione '${window.location.origin}/auth/callback' em Authentication > URL Configuration > Redirect URLs.`);
           }
           throw new Error(translateSupabaseError(error.message));
+        }
+
+        if (data?.url && typeof window !== "undefined") {
+          window.location.href = data.url;
         }
       } else {
         triggerHaptic("warning");
