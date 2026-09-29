@@ -416,21 +416,31 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
         </button>
       </div>
 
-      {/* Card do Professor / Prescrição Oficial */}
+      {/* Card do Professor / Prescrição Oficial ou Treino Adaptado */}
       {workoutMode === "gym" ? (
         <div className="rounded-2xl p-3.5 bg-gradient-to-br from-emerald-950/40 via-zinc-900 to-zinc-950 border border-emerald-500/30 shadow-lg relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                <UserCheck className="w-5 h-5" />
+                {workoutPackage.prescribedBy ? <UserCheck className="w-5 h-5" /> : <Dumbbell className="w-5 h-5" />}
               </div>
               <div>
                 <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> Prescrição Profissional
+                  {workoutPackage.prescribedBy ? (
+                    <>
+                      <ShieldCheck className="w-3 h-3" /> Prescrição Profissional
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3" /> Ficha de Treino Adaptada
+                    </>
+                  )}
                 </span>
                 <h3 className="text-xs font-black text-white">{workoutPackage.routineTitle}</h3>
                 <p className="text-[10px] text-zinc-400">
-                  {workoutPackage.prescribedBy} • {workoutPackage.prescribedAt}
+                  {workoutPackage.prescribedBy
+                    ? `${workoutPackage.prescribedBy} • ${workoutPackage.prescribedAt}`
+                    : "Exercícios essenciais configurados para o seu objetivo"}
                 </p>
               </div>
             </div>

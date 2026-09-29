@@ -283,6 +283,14 @@ export function AccountCustomizationModal({
   const [newModalityInput, setNewModalityInput] = useState<string>("");
   const [showAddModalityInput, setShowAddModalityInput] = useState<boolean>(false);
 
+  // Configuração de PIX do Personal Trainer
+  const [pixKeyType, setPixKeyType] = useState<"phone" | "cpf" | "cnpj" | "email" | "random">(
+    (user.pixKeyType as any) || "phone"
+  );
+  const [pixKey, setPixKey] = useState<string>(user.pixKey || "");
+  const [pixName, setPixName] = useState<string>(user.pixName || "");
+  const [pixBank, setPixBank] = useState<string>(user.pixBank || "");
+
   // Termos & LGPD (Passo 5)
   const [termsAccepted, setTermsAccepted] = useState(Boolean(user.termsAccepted));
   const [hasReadTermsToBottom, setHasReadTermsToBottom] = useState(Boolean(user.termsAccepted));
@@ -315,6 +323,11 @@ export function AccountCustomizationModal({
     if (user.serviceModality) setServiceModality(user.serviceModality);
     if (user.operatingRadiusKm) setOperatingRadiusKm(user.operatingRadiusKm);
     if (user.location) setOperatingLocation(user.location);
+
+    if (user.pixKeyType) setPixKeyType(user.pixKeyType as any);
+    if (user.pixKey) setPixKey(user.pixKey);
+    if (user.pixName) setPixName(user.pixName);
+    if (user.pixBank) setPixBank(user.pixBank);
 
     if (user.goal) {
       const isPreset = ["Hipertrofia", "Emagrecimento", "Força & Performance", "Condicionamento Geral"].includes(
@@ -781,6 +794,10 @@ export function AccountCustomizationModal({
         bio: role === "coach" ? sanitizeInput(bio.trim()) : user.bio,
         pricing: role === "coach" ? pricingObj : user.pricing,
         coachPlans: role === "coach" ? coachPlans : user.coachPlans,
+        pixKey: role === "coach" ? sanitizeInput(pixKey.trim()) || undefined : user.pixKey,
+        pixKeyType: role === "coach" ? pixKeyType : user.pixKeyType,
+        pixName: role === "coach" ? sanitizeInput(pixName.trim()) || undefined : user.pixName,
+        pixBank: role === "coach" ? sanitizeInput(pixBank.trim()) || undefined : user.pixBank,
         profileCompleted: true,
         termsAccepted: true,
         termsAcceptedAt: user.termsAcceptedAt || new Date().toISOString(),
@@ -827,6 +844,9 @@ export function AccountCustomizationModal({
             cref: updatedUserPayload.cref,
             specialty: updatedUserPayload.specialty,
             bio: updatedUserPayload.bio,
+            pix_key: updatedUserPayload.pixKey,
+            pix_key_type: updatedUserPayload.pixKeyType,
+            pix_name: updatedUserPayload.pixName,
             ...(safeAvatarMeta ? { avatar_url: safeAvatarMeta } : {}),
             profile_completed: true,
             terms_accepted: true,
@@ -860,15 +880,20 @@ export function AccountCustomizationModal({
           operatingRadiusKm: updatedUserPayload.operatingRadiusKm,
           coachPlans: coachPlans,
           pricing: pricingObj,
+          pixKey: updatedUserPayload.pixKey,
+          pixKeyType: updatedUserPayload.pixKeyType,
+          pixName: updatedUserPayload.pixName,
+          pixBank: updatedUserPayload.pixBank,
         });
       } else {
-        // Se for aluno, cadastra na lista local de alunos
+        // Se for aluno, cadastra na lista local de alunos vinculando o ID real
         saveNewStudent({
+          id: updatedUserPayload.id,
           name: updatedUserPayload.name,
           email: updatedUserPayload.email,
           phone: updatedUserPayload.phone,
           goal: finalGoal,
-          plan: "Plano Trimestral Pro",
+          plan: "App GymFlow Pro",
           age: 26,
           avatarUrl: updatedUserPayload.avatarUrl,
           isOfflineStudent: false,
@@ -1957,6 +1982,100 @@ export function AccountCustomizationModal({
                     )}
                   </div>
                 )}
+
+                {/* --------------------------------------------------------- */}
+                {/* 8. CONFIGURAÇÃO DA CHAVE PIX DO PERSONAL TRAINER */}
+                {/* --------------------------------------------------------- */}
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-amber-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">💳</span>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Chave PIX para Recebimentos</h4>
+                        <p className="text-[10px] text-zinc-400">
+                          Seus alunos verão esta chave ao realizarem pagamentos de planos
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold uppercase">
+                      Configurável
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* Tipo de Chave */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { type: "phone", label: "📱 Celular / WhatsApp" },
+                        { type: "cpf", label: "📄 CPF" },
+                        { type: "cnpj", label: "🏢 CNPJ" },
+                        { type: "email", label: "✉️ E-mail" },
+                        { type: "random", label: "🔑 Aleatória (EVP)" },
+                      ].map((item) => (
+                        <button
+                          key={item.type}
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("selection");
+                            setPixKeyType(item.type as any);
+                            if (item.type === "phone" && !pixKey) {
+                              setPixKey(phone);
+                            } else if (item.type === "email" && !pixKey) {
+                              setPixKey(user.email);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all ${
+                            pixKeyType === item.type
+                              ? "bg-amber-500 text-zinc-950 border-amber-400 font-black shadow-sm"
+                              : "bg-zinc-900/90 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Inputs da Chave e Titular */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                          Chave PIX:
+                        </label>
+                        <input
+                          type="text"
+                          value={pixKey}
+                          onChange={(e) => setPixKey(e.target.value)}
+                          placeholder={
+                            pixKeyType === "phone"
+                              ? "(11) 99999-9999"
+                              : pixKeyType === "cpf"
+                              ? "000.000.000-00"
+                              : pixKeyType === "cnpj"
+                              ? "00.000.000/0001-00"
+                              : pixKeyType === "email"
+                              ? "seu-email@pix.com"
+                              : "Chave aleatória UUID"
+                          }
+                          className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 transition-colors font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                          Nome do Titular / Banco (opcional):
+                        </label>
+                        <input
+                          type="text"
+                          value={pixName}
+                          onChange={(e) => setPixName(e.target.value)}
+                          placeholder="Ex: Prof. Silva • Nubank"
+                          maxLength={60}
+                          className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2019,10 +2138,16 @@ export function AccountCustomizationModal({
                     </>
                   ) : (
                     <>
-                      <div className="col-span-2">
+                      <div>
                         <span className="text-[10px] text-zinc-500 block">Especialidade:</span>
                         <span className="text-amber-400 font-semibold truncate block">
                           {specialty === "Outra / Personalizada" ? customSpecialtyInput || "Personal Trainer" : specialty}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-zinc-500 block">Chave PIX:</span>
+                        <span className="font-mono text-amber-300 font-semibold truncate block">
+                          {pixKey ? `${pixKey} (${pixKeyType.toUpperCase()})` : "Não configurada"}
                         </span>
                       </div>
 

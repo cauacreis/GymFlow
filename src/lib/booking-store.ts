@@ -51,6 +51,11 @@ export interface CoachTrainer {
     monthlyPlan?: number;
   };
   coachPlans?: CoachPlanOption[];
+  // Configuração PIX do Personal
+  pixKey?: string;
+  pixKeyType?: "cpf" | "cnpj" | "email" | "phone" | "random";
+  pixName?: string;
+  pixBank?: string;
   slots: TrainerSlot[];
 }
 
@@ -515,6 +520,10 @@ export function getStoredCoaches(): CoachTrainer[] {
         operatingRadiusKm: c.operatingRadiusKm ?? initial?.operatingRadiusKm,
         serviceModality: c.serviceModality || initial?.serviceModality || "presencial",
         coachPlans: c.coachPlans || initial?.coachPlans,
+        pixKey: c.pixKey || initial?.pixKey,
+        pixKeyType: c.pixKeyType || initial?.pixKeyType,
+        pixName: c.pixName || initial?.pixName,
+        pixBank: c.pixBank || initial?.pixBank,
         pricing: {
           basicMonthly: basic,
           proMonthly: pro,
@@ -1203,6 +1212,10 @@ export function updateCoachPublicProfile(coachId: string, profile: Partial<Coach
       operatingRadiusKm: profile.operatingRadiusKm,
       serviceModality: profile.serviceModality || "presencial",
       coachPlans: profile.coachPlans,
+      pixKey: profile.pixKey,
+      pixKeyType: profile.pixKeyType,
+      pixName: profile.pixName,
+      pixBank: profile.pixBank,
       pricing: profile.pricing || {
         basicMonthly: 35,
         proMonthly: 45,

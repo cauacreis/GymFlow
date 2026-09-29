@@ -40,7 +40,7 @@ interface StudentReminderBannerProps {
 }
 
 export function StudentReminderBanner({
-  studentId = "student_carlos",
+  studentId,
   onNavigateToAgenda,
 }: StudentReminderBannerProps) {
   const [student, setStudent] = useState<StudentProfile | null>(null);
@@ -53,24 +53,32 @@ export function StudentReminderBanner({
   useEffect(() => {
     const loadData = () => {
       const students = getStoredStudents();
-      const currentStudent =
-        students.find((s) => s.id === studentId) ||
-        students.find((s) => s.id === "student_carlos") ||
-        students[0];
+      const currentStudent = studentId ? students.find((s) => s.id === studentId) : null;
 
       setStudent(currentStudent || null);
 
       const coaches = getStoredCoaches();
-      setCoach(coaches[0] || null);
+      let matchedCoach: CoachTrainer | null = null;
+      if (currentStudent?.prescribedBy) {
+        matchedCoach =
+          coaches.find(
+            (c) =>
+              c.name.toLowerCase().includes(currentStudent.prescribedBy.toLowerCase()) ||
+              currentStudent.prescribedBy.toLowerCase().includes(c.name.toLowerCase())
+          ) || null;
+      }
+      setCoach(matchedCoach || null);
 
       const bookings = getStoredBookings();
-      const activeBookingToday = bookings.find(
-        (b) =>
-          b.studentId === currentStudent?.id &&
-          isSlotToday(b.slotDay) &&
-          b.status === "accepted" &&
-          b.attendanceStatus !== "attended"
-      );
+      const activeBookingToday = currentStudent
+        ? bookings.find(
+            (b) =>
+              b.studentId === currentStudent.id &&
+              isSlotToday(b.slotDay) &&
+              b.status === "accepted" &&
+              b.attendanceStatus !== "attended"
+          )
+        : null;
       setTodayBooking(activeBookingToday || null);
 
       if (typeof window !== "undefined" && isBrowserNotificationSupported()) {
@@ -91,15 +99,14 @@ export function StudentReminderBanner({
 
   if (dismissed) return null;
 
-  // Verifica se há aula hoje
+  // Verifica se há aula com personal hoje
   const hasClassToday = Boolean(
     todayBooking || (student?.todayAttendanceStatus === "agendado" && student?.scheduledTimeToday)
   );
   const classTime = todayBooking?.slotTime || student?.scheduledTimeToday || "16:00";
 
-  // Verifica status financeiro
-  const isOverdue = student?.paymentStatus === "atrasado";
-  const isPending = student?.paymentStatus === "pendente";
+  // Só verifica status financeiro se o aluno tiver um Personal Trainer vinculado
+  const hasLinkedCoach = Boolean(student?.prescribedBy || todayBooking?.coachId);
 
   const todayDate = new Date().getDate();
   let isDueToday = false;
@@ -110,10 +117,14 @@ export function StudentReminderBanner({
     }
   }
 
-  const coachPhone = coach?.phone ? coach.phone.replace(/\D/g, "") : "11999990000";
-  const pixKey = coachPhone;
+  const isOverdue = hasLinkedCoach && (student?.paymentStatus === "atrasado" || todayBooking?.paymentStatus === "overdue");
+  const isPending = hasLinkedCoach && isDueToday && student?.paymentStatus === "pendente";
+
+  const coachPhone = coach?.phone ? coach.phone.replace(/\D/g, "") : "";
+  const pixKey = coach?.pixKey || coachPhone;
 
   const handleCopyPix = () => {
+    if (!pixKey) return;
     triggerHaptic("success");
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(pixKey);
@@ -123,6 +134,7 @@ export function StudentReminderBanner({
   };
 
   const handleOpenWhatsAppProof = () => {
+    if (!coachPhone) return;
     triggerHaptic("selection");
     const firstName = student?.name ? student.name.split(" ")[0] : "Aluno";
     const text = `Olá, professor! Aqui está o comprovante da minha mensalidade do GymFlow (${
@@ -138,8 +150,8 @@ export function StudentReminderBanner({
     setBrowserPermission(perm);
   };
 
-  // Se não tem aula hoje, não tem pendência de pagamento e já tem permissão de push, não precisa exibir o banner
-  if (!hasClassToday && !isOverdue && !isPending && !isDueToday && browserPermission === "granted") {
+  // Se não tem aula hoje, nem pendência de pagamento com personal, não exibe banner algum
+  if (!hasClassToday && !isOverdue && !isPending && (browserPermission === "granted" || !hasLinkedCoach)) {
     return null;
   }
 

@@ -167,6 +167,14 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
   const [newModalityInput, setNewModalityInput] = useState<string>("");
   const [showAddModalityInput, setShowAddModalityInput] = useState<boolean>(false);
 
+  // Configuração PIX do Personal
+  const [pixKeyType, setPixKeyType] = useState<"phone" | "cpf" | "cnpj" | "email" | "random">(
+    (profile.pixKeyType as any) || "phone"
+  );
+  const [pixKey, setPixKey] = useState(profile.pixKey || "");
+  const [pixName, setPixName] = useState(profile.pixName || "");
+  const [pixBank, setPixBank] = useState(profile.pixBank || "");
+
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Estado para ativação de Modo Professor a partir de conta de Aluno
@@ -214,6 +222,11 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       setBio(current.bio || "");
       setInstagram(current.instagram || "@rodrigo.gymflow");
       setLocation(current.location || "Salão Principal • Musculação");
+
+      setPixKeyType((current.pixKeyType as any) || "phone");
+      setPixKey(current.pixKey || "");
+      setPixName(current.pixName || "");
+      setPixBank(current.pixBank || "");
       
       // Sincroniza localização
       setState(current.state || "SP");
@@ -532,6 +545,10 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       operatingRadiusKm,
       coachPlans: isCoach ? coachPlans : profile.coachPlans,
       pricing: pricingObj,
+      pixKey: isCoach ? sanitizeInput(pixKey.trim()) || undefined : profile.pixKey,
+      pixKeyType: isCoach ? pixKeyType : profile.pixKeyType,
+      pixName: isCoach ? sanitizeInput(pixName.trim()) || undefined : profile.pixName,
+      pixBank: isCoach ? sanitizeInput(pixBank.trim()) || undefined : profile.pixBank,
     });
 
     // Salva de forma assíncrona no Supabase
@@ -557,6 +574,10 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
         operatingRadiusKm,
         coachPlans: coachPlans,
         pricing: pricingObj,
+        pixKey: updated.pixKey,
+        pixKeyType: updated.pixKeyType,
+        pixName: updated.pixName,
+        pixBank: updated.pixBank,
       });
     }
 
@@ -1356,6 +1377,97 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                       )}
                     </div>
                   )}
+                </div>
+
+                {/* CONFIGURAÇÃO DA CHAVE PIX DO PERSONAL */}
+                <div className="sm:col-span-2 p-4 rounded-2xl bg-zinc-950/90 border border-amber-500/30 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-amber-500/20">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">💳</span>
+                      <div>
+                        <span className="text-xs font-bold text-amber-300 block">
+                          Chave PIX para Recebimentos
+                        </span>
+                        <span className="text-[10px] text-zinc-400 block">
+                          Disponibilizada automaticamente aos seus alunos para pagamento de mensalidades e aulas.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {/* Tipo de Chave */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { type: "phone", label: "📱 Celular / WhatsApp" },
+                        { type: "cpf", label: "📄 CPF" },
+                        { type: "cnpj", label: "🏢 CNPJ" },
+                        { type: "email", label: "✉️ E-mail" },
+                        { type: "random", label: "🔑 Aleatória (EVP)" },
+                      ].map((item) => (
+                        <button
+                          key={item.type}
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("selection");
+                            setPixKeyType(item.type as any);
+                            if (item.type === "phone" && !pixKey) {
+                              setPixKey(phone);
+                            } else if (item.type === "email" && !pixKey) {
+                              setPixKey(email);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all ${
+                            pixKeyType === item.type
+                              ? "bg-amber-500 text-zinc-950 border-amber-400 font-black shadow-sm"
+                              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Inputs da Chave e Titular */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                          Chave PIX:
+                        </label>
+                        <input
+                          type="text"
+                          value={pixKey}
+                          onChange={(e) => setPixKey(e.target.value)}
+                          placeholder={
+                            pixKeyType === "phone"
+                              ? "(11) 99999-9999"
+                              : pixKeyType === "cpf"
+                              ? "000.000.000-00"
+                              : pixKeyType === "cnpj"
+                              ? "00.000.000/0001-00"
+                              : pixKeyType === "email"
+                              ? "seu-email@pix.com"
+                              : "Chave aleatória UUID"
+                          }
+                          className="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 transition-colors font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                          Nome do Titular / Banco (opcional):
+                        </label>
+                        <input
+                          type="text"
+                          value={pixName}
+                          onChange={(e) => setPixName(e.target.value)}
+                          placeholder="Ex: Prof. Carlos Silva • Nubank"
+                          maxLength={60}
+                          className="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2">

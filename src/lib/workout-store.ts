@@ -445,21 +445,21 @@ export function saveNewStudent(studentData: {
       phone: studentData.phone || "",
       matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
       goal: studentData.goal,
-      plan: studentData.plan || "Mensal VIP Presencial",
+      plan: studentData.plan || "App GymFlow Pro",
       status: "ativo",
-      paymentStatus: "pendente",
+      paymentStatus: "pago",
       paymentDueDate: studentData.paymentDueDate || formatDueDayString(getCoachDefaultDueDay()),
       monthlyPresence: 0,
       monthlyAbsences: 0,
       totalClasses: 0,
-      hasWorkoutSheet: false, // Ficha não é obrigatória!
-      isOfflineStudent: studentData.isOfflineStudent ?? true,
+      hasWorkoutSheet: true,
+      isOfflineStudent: studentData.isOfflineStudent ?? false,
       age: studentData.age || 25,
       emergencyContact: studentData.emergencyContact || "",
       avatarUrl: studentData.avatarUrl || "",
-      currentRoutineTitle: "Acompanhamento Presencial Livre",
+      currentRoutineTitle: "Treino Personalizado",
       prescribedBy: "",
-      prescribedAt: "Sem Ficha Fixa",
+      prescribedAt: "Sem Personal Vinculado",
     };
     students.unshift(targetStudent);
   }
@@ -743,14 +743,15 @@ export function recordStudentAttendance(
 
 export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
   const defaultRoutine = PREFORMED_ROUTINES[0];
+  const currentUser = getCurrentUser();
 
   if (typeof window === "undefined") {
     return {
       studentId,
       routineTitle: defaultRoutine.name,
-      prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
-      prescribedAt: "09/Set/2026",
-      coachNotes: "Cadência 3-0-1 em todos os compostos.",
+      prescribedBy: "",
+      prescribedAt: "Ficha Inicial",
+      coachNotes: "Mantenha a postura e execute as repetições com boa técnica.",
       splits: defaultRoutine.splits,
     };
   }
@@ -763,21 +764,25 @@ export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
       return workoutsMap[studentId];
     }
 
-    // Se ainda não tiver ficha salva para esse aluno, associa a inicial
+    // Se ainda não tiver ficha salva para esse aluno, associa de acordo com seu objetivo real
     const student = getStoredStudents().find((s) => s.id === studentId);
+    const userGoal = student?.goal || (currentUser?.id === studentId ? currentUser.goal : "Hipertrofia");
+
     let matchedRoutine = PREFORMED_ROUTINES[0];
-    if (student?.currentRoutineTitle.includes("Glúteos")) {
+    if (userGoal === "Emagrecimento" || student?.currentRoutineTitle?.includes("Glúteos")) {
       matchedRoutine = PREFORMED_ROUTINES[1] || PREFORMED_ROUTINES[0];
-    } else if (student?.currentRoutineTitle.includes("Força")) {
+    } else if (userGoal === "Força & Performance" || student?.currentRoutineTitle?.includes("Força")) {
       matchedRoutine = PREFORMED_ROUTINES[2] || PREFORMED_ROUTINES[0];
     }
 
     const initialPackage: StudentWorkoutPackage = {
       studentId,
-      routineTitle: matchedRoutine.name,
-      prescribedBy: student?.prescribedBy || "Prof. Rodrigo Costa (CREF 08412-SP)",
-      prescribedAt: student?.prescribedAt || "09/Set/2026",
-      coachNotes: student?.notesFromCoach || "Foco na amplitude completa e controle excêntrico.",
+      routineTitle: student?.currentRoutineTitle && student.currentRoutineTitle !== "Acompanhamento Presencial Livre"
+        ? student.currentRoutineTitle
+        : matchedRoutine.name,
+      prescribedBy: student?.prescribedBy || "",
+      prescribedAt: student?.prescribedAt || "Ficha Inicial",
+      coachNotes: student?.notesFromCoach || "Foco na postura, cadência controlada e respiração correta.",
       splits: matchedRoutine.splits,
     };
 
@@ -788,8 +793,8 @@ export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
     return {
       studentId,
       routineTitle: defaultRoutine.name,
-      prescribedBy: "Prof. Rodrigo Costa (CREF 08412-SP)",
-      prescribedAt: "09/Set/2026",
+      prescribedBy: "",
+      prescribedAt: "Ficha Inicial",
       splits: defaultRoutine.splits,
     };
   }

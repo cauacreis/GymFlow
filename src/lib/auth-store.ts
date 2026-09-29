@@ -50,6 +50,11 @@ export interface UserProfile {
   };
   coachPlans?: CoachPlanOption[];
   defaultPaymentDueDay?: number; // Dia de vencimento padrão para alunos do personal (1 a 31, ex: 10)
+  // Configuração de Pagamento & PIX do Personal Trainer
+  pixKey?: string;
+  pixKeyType?: "cpf" | "cnpj" | "email" | "phone" | "random";
+  pixName?: string;
+  pixBank?: string;
   // Gestão de Assinatura & Acesso Paywall
   subscriptionStatus?: "trial" | "active" | "past_due" | "expired" | "pending_choice";
   subscriptionPlan?: "trial_7d" | "monthly_recurring" | "monthly_pix" | "annual_pro" | "basico" | "pro" | "vip" | string;
