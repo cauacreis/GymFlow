@@ -1586,96 +1586,116 @@ export function AccountCustomizationModal({
               </div>
 
               {/* CONFIGURADOR DINÂMICO DE PLANOS & SERVIÇOS DO PERSONAL */}
-              <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-amber-500/30 space-y-3">
-                <div className="flex items-center justify-between pb-1 border-b border-amber-500/20">
-                  <div className="flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-xs font-bold text-amber-300">
-                      Personalizar Planos, Aulas, Horas e Modalidades
-                    </span>
+              <div className="p-4 rounded-2xl bg-zinc-900/70 border border-amber-500/30 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-amber-500/20">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                      <Layers className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-amber-300 block">
+                        Seus Planos e Aulas de Atendimento
+                      </span>
+                      <span className="text-[10px] text-zinc-400 block">
+                        Personalize os valores, frequência semanal e o que está incluso em cada plano.
+                      </span>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddNewPlan}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95"
+                    className="px-2.5 py-1.5 rounded-xl bg-amber-500 text-zinc-950 hover:bg-amber-400 text-[10px] font-black flex items-center gap-1 transition-all active:scale-95 shadow-sm shadow-amber-500/20 shrink-0"
                   >
-                    <Plus className="w-3 h-3" />
-                    <span>Novo Plano</span>
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Criar Novo Plano</span>
                   </button>
                 </div>
 
-                {/* Abas de Planos */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                  {coachPlans.map((p, idx) => {
-                    const isSelected = idx === activePlanIndex;
-                    return (
-                      <button
-                        key={p.id || idx}
-                        type="button"
-                        onClick={() => {
-                          setActivePlanIndex(idx);
-                          triggerHaptic("selection");
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5 ${
-                          isSelected
-                            ? "bg-amber-500 text-zinc-950 border-amber-400 shadow-sm shadow-amber-500/20"
-                            : "bg-zinc-950/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
-                        }`}
-                      >
-                        <span>{p.name || `Plano ${idx + 1}`}</span>
-                        <span className={`text-[10px] font-mono ${isSelected ? "text-zinc-950 font-black" : "text-amber-400"}`}>
-                          R${p.price}
-                        </span>
-                      </button>
-                    );
-                  })}
+                {/* 1. SELETOR DE PLANO (ABAS COM ALTO CONTRASTE) */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                    1. Escolha o plano para editar:
+                  </span>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    {coachPlans.map((p, idx) => {
+                      const isSelected = idx === activePlanIndex;
+                      return (
+                        <button
+                          key={p.id || idx}
+                          type="button"
+                          onClick={() => {
+                            setActivePlanIndex(idx);
+                            triggerHaptic("selection");
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all border shrink-0 flex items-center gap-2 ${
+                            isSelected
+                              ? "bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/25 ring-2 ring-amber-400/30 scale-[1.02]"
+                              : "bg-zinc-950/90 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          <span>{p.name || `Plano ${idx + 1}`}</span>
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${isSelected ? "bg-zinc-950 text-amber-400 font-bold" : "bg-zinc-800 text-amber-300 font-semibold"}`}>
+                            R${p.price}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Editor do Plano Ativo */}
                 {activePlan && (
-                  <div className="p-3 rounded-xl bg-zinc-950/90 border border-zinc-800 space-y-3 animate-in fade-in duration-150">
-                    {/* Nome, Preço e Periodicidade */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div className="sm:col-span-2 space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-300 block">Nome do Plano</label>
-                        <input
-                          type="text"
-                          maxLength={45}
-                          value={activePlan.name}
-                          onChange={(e) => updateActivePlan({ name: e.target.value })}
-                          placeholder="Ex: Mensal Pro, Corrida & Hipertrofia..."
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-amber-300 block">Preço (R$)</label>
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-zinc-400">
-                            R$
-                          </span>
+                  <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-3.5 animate-in fade-in duration-150">
+                    {/* 2. NOME E PREÇO */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                        2. Identificação e Preço Mensal:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="text-[10px] font-semibold text-zinc-300 block">Nome do Plano</label>
                           <input
-                            type="number"
-                            min={0}
-                            max={9999}
-                            value={activePlan.price}
-                            onChange={(e) => updateActivePlan({ price: Number(e.target.value) || 0 })}
-                            className="w-full pl-8 pr-2.5 py-1.5 rounded-lg bg-zinc-900 border border-amber-500/40 text-xs font-mono font-bold text-white focus:outline-none focus:border-amber-400"
+                            type="text"
+                            maxLength={45}
+                            value={activePlan.name}
+                            onChange={(e) => updateActivePlan({ name: e.target.value })}
+                            placeholder="Ex: Mensal Pro, Corrida & Hipertrofia..."
+                            className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 transition-colors"
                           />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold text-amber-300 block">Valor Mensal (R$)</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">
+                              R$
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={9999}
+                              value={activePlan.price}
+                              onChange={(e) => updateActivePlan({ price: Number(e.target.value) || 0 })}
+                              className="w-full pl-9 pr-3 py-2 rounded-xl bg-zinc-900 border border-amber-500/40 text-xs font-mono font-black text-white focus:outline-none focus:border-amber-400 transition-colors"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Frequência (Aulas Semanais) */}
+                    {/* 3. FREQUÊNCIA (AULAS SEMANAIS) */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-zinc-300 flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-amber-400" />
-                          <span>Aulas Semanais / Frequência:</span>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                          <span>3. Aulas Semanais / Frequência:</span>
+                        </label>
+                        <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                          {activePlan.frequency || "2x na semana"}
                         </span>
-                        <span className="text-[9px] text-amber-400 font-medium">{activePlan.frequency || "2x na semana"}</span>
-                      </label>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {FREQUENCY_OPTIONS.map((freq) => {
                           const isSelected = activePlan.frequency === freq;
                           return (
@@ -1686,29 +1706,36 @@ export function AccountCustomizationModal({
                                 updateActivePlan({ frequency: freq });
                                 triggerHaptic("selection");
                               }}
-                              className={`p-1.5 rounded-lg text-[10px] font-semibold border transition-all text-center ${
+                              className={`py-2 px-2.5 rounded-xl text-[11px] font-bold border transition-all text-center flex items-center justify-center gap-1.5 active:scale-95 ${
                                 isSelected
-                                  ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
-                                  : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                                  ? "bg-amber-500 text-zinc-950 font-black border-amber-400 shadow-md shadow-amber-500/25 ring-2 ring-amber-400/40"
+                                  : "bg-zinc-900/90 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
                               }`}
                             >
-                              {freq}
+                              {isSelected ? (
+                                <Check className="w-3.5 h-3.5 stroke-[3] text-zinc-950" />
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                              )}
+                              <span>{freq}</span>
                             </button>
                           );
                         })}
                       </div>
                     </div>
 
-                    {/* Duração da Aula / Horas por Dia */}
+                    {/* 4. DURAÇÃO DA AULA / HORAS POR DIA */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-zinc-300 flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-amber-400" />
-                          <span>Duração da Aula / Horas por Dia:</span>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          <span>4. Duração de Cada Aula:</span>
+                        </label>
+                        <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                          {activePlan.duration || "1h / aula"}
                         </span>
-                        <span className="text-[9px] text-amber-400 font-medium">{activePlan.duration || "1h / aula"}</span>
-                      </label>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                         {DURATION_OPTIONS.map((dur) => {
                           const isSelected = activePlan.duration === dur;
                           return (
@@ -1719,33 +1746,38 @@ export function AccountCustomizationModal({
                                 updateActivePlan({ duration: dur });
                                 triggerHaptic("selection");
                               }}
-                              className={`p-1.5 rounded-lg text-[10px] font-semibold border transition-all text-center ${
+                              className={`py-2 px-2.5 rounded-xl text-[11px] font-bold border transition-all text-center flex items-center justify-center gap-1.5 active:scale-95 ${
                                 isSelected
-                                  ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
-                                  : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                                  ? "bg-amber-500 text-zinc-950 font-black border-amber-400 shadow-md shadow-amber-500/25 ring-2 ring-amber-400/40"
+                                  : "bg-zinc-900/90 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
                               }`}
                             >
-                              {dur}
+                              {isSelected ? (
+                                <Check className="w-3.5 h-3.5 stroke-[3] text-zinc-950" />
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                              )}
+                              <span>{dur}</span>
                             </button>
                           );
                         })}
                       </div>
                     </div>
 
-                    {/* Modalidades Inclusas (Musculação, Corrida, Funcional, etc.) */}
+                    {/* 5. MODALIDADES INCLUSAS COM ALTO CONTRASTE */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-zinc-300 flex items-center gap-1">
-                          <Dumbbell className="w-3 h-3 text-amber-400" />
-                          <span>Modalidades & Atividades Inclusas:</span>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                          <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
+                          <span>5. Modalidades e Atividades Inclusas:</span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setShowAddModalityInput(!showAddModalityInput)}
-                          className="text-[9px] text-amber-400 hover:underline flex items-center gap-0.5"
+                          className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20"
                         >
-                          <Plus className="w-2.5 h-2.5" />
-                          <span>Outra Modalidade</span>
+                          <Plus className="w-3 h-3" />
+                          <span>Outra Atividade</span>
                         </button>
                       </div>
 
@@ -1757,35 +1789,41 @@ export function AccountCustomizationModal({
                               key={mod.id}
                               type="button"
                               onClick={() => togglePlanModality(mod.id)}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border flex items-center gap-1 transition-all active:scale-95 ${
+                              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all active:scale-95 ${
                                 isChecked
-                                  ? "bg-amber-500/20 border-amber-400/80 text-amber-300 font-bold shadow-sm"
-                                  : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                                  ? "bg-amber-500 text-zinc-950 font-black border-amber-400 shadow-md shadow-amber-500/20 ring-1 ring-amber-400/40"
+                                  : "bg-zinc-900/90 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
                               }`}
                             >
                               <span>{mod.icon}</span>
                               <span>{mod.label}</span>
-                              {isChecked && <Check className="w-2.5 h-2.5 text-amber-300 ml-0.5 stroke-[3]" />}
+                              {isChecked ? (
+                                <Check className="w-3.5 h-3.5 stroke-[3] ml-0.5 text-zinc-950" />
+                              ) : (
+                                <Plus className="w-3 h-3 ml-0.5 text-zinc-500" />
+                              )}
                             </button>
                           );
                         })}
 
-                        {/* Modalidades customizadas adicionadas pelo usuário */}
+                        {/* Modalidades customizadas adicionadas pelo personal */}
                         {(activePlan.modalities || [])
                           .filter((m) => !AVAILABLE_MODALITIES.some((am) => am.id === m))
                           .map((customMod) => (
                             <span
                               key={customMod}
-                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/25 border border-amber-400 text-amber-200 flex items-center gap-1"
+                              className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-amber-500 text-zinc-950 border border-amber-400 flex items-center gap-1.5 shadow-sm"
                             >
                               <span>🎯</span>
                               <span>{customMod}</span>
+                              <Check className="w-3 h-3 stroke-[3]" />
                               <button
                                 type="button"
                                 onClick={() => handleRemoveCustomModality(customMod)}
-                                className="hover:text-rose-400 ml-0.5 p-0.5"
+                                className="hover:bg-zinc-950/20 rounded p-0.5 ml-0.5 text-zinc-950"
+                                title="Remover modalidade"
                               >
-                                <X className="w-2.5 h-2.5" />
+                                <X className="w-3 h-3" />
                               </button>
                             </span>
                           ))}
@@ -1793,7 +1831,7 @@ export function AccountCustomizationModal({
 
                       {/* Input para adicionar nova modalidade personalizada */}
                       {showAddModalityInput && (
-                        <div className="flex items-center gap-1.5 pt-1 animate-in fade-in">
+                        <div className="flex items-center gap-2 pt-1 animate-in fade-in">
                           <input
                             type="text"
                             value={newModalityInput}
@@ -1806,13 +1844,13 @@ export function AccountCustomizationModal({
                             }}
                             placeholder="Ex: Pilates, Calistenia, Cross..."
                             maxLength={30}
-                            className="flex-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-amber-500/50 text-xs text-white placeholder-zinc-500 focus:outline-none"
+                            className="flex-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-amber-500/50 text-xs text-white placeholder-zinc-500 focus:outline-none"
                             autoFocus
                           />
                           <button
                             type="button"
                             onClick={handleAddCustomModality}
-                            className="px-3 py-1 rounded-lg bg-amber-500 text-zinc-950 font-bold text-xs"
+                            className="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs hover:bg-amber-400 transition-colors"
                           >
                             Adicionar
                           </button>
@@ -1822,15 +1860,63 @@ export function AccountCustomizationModal({
 
                     {/* Descrição curta / Benefício */}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-400 block">Destaque / Descrição do Plano</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                        6. Destaque / Descrição do Plano:
+                      </label>
                       <input
                         type="text"
                         maxLength={100}
                         value={activePlan.description || ""}
                         onChange={(e) => updateActivePlan({ description: e.target.value })}
-                        placeholder="Ex: Treino essencial com acompanhamento e foco biomecânico"
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                        placeholder="Ex: Treino essencial com foco biomecânico e acompanhamento direto"
+                        className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400 transition-colors"
                       />
+                    </div>
+
+                    {/* 7. PRÉVIA EM TEMPO REAL PARA O ALUNO (WYSIWYG) */}
+                    <div className="pt-2 border-t border-zinc-800/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                          <span>👁️ Prévia em Tempo Real (Como o Aluno Verá)</span>
+                        </span>
+                        <span className="text-[9px] text-zinc-500">Atualizado ao vivo</span>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-950 border border-amber-500/30 shadow-md flex items-center justify-between gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-white truncate">
+                              {activePlan.name || "Nome do Plano"}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              {activePlan.frequency || "2x na semana"}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-zinc-400 line-clamp-1">
+                            {activePlan.description || "Acompanhamento profissional sob medida."}
+                          </p>
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {(activePlan.modalities || ["Musculação"]).map((m) => (
+                              <span
+                                key={m}
+                                className="text-[9px] text-zinc-300 bg-zinc-800/80 px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
+                              >
+                                <Check className="w-2.5 h-2.5 text-amber-400 stroke-[3]" />
+                                <span>{m}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="block text-sm font-black font-mono text-amber-400">
+                            R$ {activePlan.price}
+                          </span>
+                          <span className="block text-[9px] text-zinc-500 uppercase font-semibold">
+                            /mês
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Botão de Excluir Plano (se houver mais de 1) */}
@@ -1839,9 +1925,9 @@ export function AccountCustomizationModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveActivePlan(activePlanIndex)}
-                          className="text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1 transition-colors"
+                          className="text-[11px] text-rose-400 hover:text-rose-300 flex items-center gap-1 transition-colors px-2 py-1 rounded-lg hover:bg-rose-500/10 font-semibold"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-3.5 h-3.5" />
                           <span>Excluir este plano</span>
                         </button>
                       </div>

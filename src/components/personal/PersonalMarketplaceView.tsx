@@ -28,6 +28,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   RotateCcw,
+  Check,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser, saveUserProfile, UserProfile } from "@/lib/auth-store";
@@ -1072,7 +1073,7 @@ export function PersonalMarketplaceView({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {coachPlanOptions.map((plan) => {
                 const isSelected = selectedPlanType === plan.id;
                 return (
@@ -1084,43 +1085,57 @@ export function PersonalMarketplaceView({
                       setSelectedPlanType(plan.id);
                       setSelectedTimeSlot("");
                     }}
-                    className={`relative p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                    className={`relative p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between active:scale-[0.98] ${
                       isSelected
-                        ? "bg-emerald-500/15 border-emerald-500/60 text-emerald-300 shadow-md shadow-emerald-500/10 scale-[1.01]"
-                        : "bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/20"
+                        ? "bg-gradient-to-b from-emerald-950/60 to-zinc-900 border-emerald-400 text-white shadow-lg shadow-emerald-500/15 ring-2 ring-emerald-400/40 scale-[1.01]"
+                        : "bg-zinc-950/80 border-white/[0.08] text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
                     }`}
                   >
                     {plan.badge && (
-                      <span className="absolute -top-2 right-2 text-[7px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 px-1.5 py-0.2 rounded-full whitespace-nowrap shadow">
+                      <span className="absolute -top-2.5 right-3 text-[8px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 px-2 py-0.5 rounded-full whitespace-nowrap shadow-md">
                         {plan.badge}
                       </span>
                     )}
                     <div>
-                      <span className="text-xs font-black text-white block truncate">{plan.title}</span>
-                      <span className="text-[10px] text-zinc-300 font-medium block mt-0.5">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className={`text-xs font-black block truncate ${isSelected ? "text-emerald-300" : "text-white"}`}>
+                          {plan.title}
+                        </span>
+                        {isSelected && (
+                          <span className="w-4 h-4 rounded-full bg-emerald-400 text-zinc-950 flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-zinc-300 font-semibold block mt-1">
                         {plan.frequency} • {plan.duration}
                       </span>
                       {plan.modalities && plan.modalities.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
+                        <div className="flex flex-wrap gap-1 mt-2">
                           {plan.modalities.slice(0, 3).map((m) => (
                             <span
                               key={m}
-                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-white/[0.05] text-zinc-300 border border-white/[0.06]"
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                                isSelected
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                  : "bg-zinc-800/80 text-zinc-300 border border-zinc-700/60"
+                              }`}
                             >
-                              {m}
+                              <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
+                              <span>{m}</span>
                             </span>
                           ))}
                           {plan.modalities.length > 3 && (
-                            <span className="text-[8px] font-bold px-1 py-0.5 rounded-md bg-white/[0.05] text-zinc-400">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-400">
                               +{plan.modalities.length - 3}
                             </span>
                           )}
                         </div>
                       )}
                     </div>
-                    <div className="pt-2 mt-1 border-t border-white/[0.06] flex items-center justify-between">
-                      <span className="text-[9px] text-zinc-400 font-medium">Investimento:</span>
-                      <span className="text-xs font-mono font-black text-emerald-400">
+                    <div className="pt-2.5 mt-2 border-t border-white/[0.08] flex items-center justify-between">
+                      <span className="text-[10px] text-zinc-400 font-medium">Investimento:</span>
+                      <span className={`text-sm font-mono font-black ${isSelected ? "text-emerald-300" : "text-emerald-400"}`}>
                         R$ {plan.price}{plan.period}
                       </span>
                     </div>
