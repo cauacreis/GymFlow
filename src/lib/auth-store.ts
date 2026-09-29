@@ -170,29 +170,19 @@ export function isProfileComplete(user?: UserProfile): boolean {
   const u = user || getCurrentUser();
   if (!isUserAuthenticated(u)) return false;
 
-  // 1. Deve ter nome com pelo menos 2 caracteres
+  // 1. Se a flag explícita de conclusão de perfil estiver marcada, retorna true
+  if (u.profileCompleted) return true;
+
+  // 2. Deve ter nome com pelo menos 2 caracteres
   if (!u.name || u.name.trim().length < 2) return false;
-
-  // 2. WhatsApp com DDD obrigatório (mínimo 10 dígitos numéricos e DDD válido)
-  let phoneDigits = (u.phone || "").replace(/\D/g, "");
-  if (phoneDigits.length > 11 && phoneDigits.startsWith("55")) {
-    phoneDigits = phoneDigits.slice(2);
-  }
-  if (phoneDigits.length < 10) return false;
-
-  const ddd = parseInt(phoneDigits.slice(0, 2), 10);
-  if (ddd < 11 || ddd > 99) return false;
-
-  // Evita números compostos por dígitos repetidos (ex: 11111111111, 0000000000)
-  if (/^(\d)\1+$/.test(phoneDigits)) return false;
 
   // 3. Validação por Papel Ativo
   if (u.activeRole === "coach") {
-    // CREF é opcional
+    // Especialidade para treinadores
     if (!u.specialty || u.specialty.trim().length < 2) return false;
   } else {
+    // Objetivo para alunos
     if (!u.goal) return false;
-    if (!u.experienceLevel) return false;
   }
 
   // 4. Termos de Uso e LGPD aceitos

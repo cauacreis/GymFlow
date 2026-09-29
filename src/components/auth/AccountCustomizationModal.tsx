@@ -744,13 +744,16 @@ export function AccountCustomizationModal({
         saveCoachPlans(coachPlans);
       }
 
+      const rawPhoneDigits = phone.replace(/\D/g, "");
+      const formattedPhone = rawPhoneDigits.length >= 10 ? formatPhone(rawPhoneDigits) : user.phone || phone;
+
       const updatedUserPayload: UserProfile = {
         ...user,
         id: user.id,
         email: user.email,
         name: trimmedName,
         avatarUrl: avatarUrl || undefined,
-        phone: formatPhone(rawPhoneDigits),
+        phone: formattedPhone || undefined,
         activeRole: role,
         enabledRoles:
           role === "coach"
@@ -786,7 +789,16 @@ export function AccountCustomizationModal({
             ? "active"
             : user.subscriptionStatus === "active" && user.subscriptionPlan
             ? "active"
-            : "pending_choice",
+            : "trial",
+        subscriptionPlan:
+          role === "coach"
+            ? "coach_unlimited"
+            : user.subscriptionPlan || "trial_7d",
+        trialEndsAt:
+          role === "student" && (!user.trialEndsAt || user.subscriptionStatus !== "active")
+            ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            : user.trialEndsAt,
+        planTier: "pro",
       };
 
       // 1. Atualiza metadados no Supabase Auth
@@ -863,7 +875,12 @@ export function AccountCustomizationModal({
         });
       }
 
-      // 5. Confetes e transição
+      // 5. Notifica eventos globais de atualização
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("gymflow:auth-changed"));
+      }
+
+      // 6. Confetes e transição imediata para o app
       try {
         confetti({
           particleCount: 65,
@@ -877,8 +894,9 @@ export function AccountCustomizationModal({
 
       setTimeout(() => {
         setIsLoading(false);
+        if (onClose) onClose();
         onComplete(updatedUserPayload);
-      }, 1000);
+      }, 700);
     } catch (err: any) {
       console.error("Erro ao salvar dados de personalização:", err);
       setErrorMessage(err?.message || "Ocorreu um erro ao salvar seu perfil. Tente novamente.");

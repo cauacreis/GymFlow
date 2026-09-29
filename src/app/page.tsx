@@ -24,6 +24,7 @@ import { AccountCustomizationModal } from "@/components/auth/AccountCustomizatio
 import { SubscriptionOnboardingModal } from "@/components/subscription/SubscriptionOnboardingModal";
 import {
   getCurrentUser,
+  saveUserProfile,
   switchUserRole,
   subscribeToAuthChanges,
   initAuthSession,
@@ -290,8 +291,9 @@ export default function GymFlowApp() {
         isOpen={true}
         user={userProfile}
         onComplete={(completedUser) => {
-          setUserProfile(completedUser);
-          if (completedUser.activeRole === "coach") {
+          const fresh = saveUserProfile(completedUser);
+          setUserProfile(fresh);
+          if (fresh.activeRole === "coach") {
             setCurrentTab("alunos");
           } else {
             setCurrentTab("treino");
