@@ -376,23 +376,70 @@ export function AuthModal({
           }
 
           if (data?.user) {
+            const currentLocal = getCurrentUser();
+            const isSameUser =
+              currentLocal.id === data.user.id ||
+              (currentLocal.email && currentLocal.email.toLowerCase() === email.trim().toLowerCase());
+
             const cloudProfile = await fetchProfileFromSupabase(data.user.id);
-            if (cloudProfile) {
-              loggedUser = saveUserProfile(cloudProfile);
-            } else {
-              const meta = data.user.user_metadata || {};
-              loggedUser = saveUserProfile({
-                id: data.user.id,
-                email: email.trim(),
-                name: extractFullName(meta, email.trim()),
-                activeRole: (meta.role as UserRole) || "student",
-                phone: meta.phone || "",
-                cref: meta.cref || undefined,
-                specialty: meta.specialty || undefined,
-                bio: meta.bio || undefined,
-                goal: meta.goal || "Hipertrofia",
-              });
-            }
+            const meta = data.user.user_metadata || {};
+            const metaName = extractFullName(meta, email.trim());
+            const resolvedName =
+              cloudProfile?.name ||
+              (isSameUser && currentLocal.name && currentLocal.name !== "Usuário" && currentLocal.name !== "Aluno Convidado"
+                ? currentLocal.name
+                : metaName);
+            const resolvedRole =
+              (meta.role as UserRole) ||
+              cloudProfile?.activeRole ||
+              (isSameUser ? currentLocal.activeRole : "student");
+            const resolvedGoal =
+              cloudProfile?.goal ||
+              (isSameUser ? currentLocal.goal : undefined) ||
+              meta.goal ||
+              "Hipertrofia";
+            const resolvedSpecialty =
+              cloudProfile?.specialty ||
+              (isSameUser ? currentLocal.specialty : undefined) ||
+              meta.specialty ||
+              (resolvedRole === "coach" ? "Musculação & Hipertrofia" : undefined);
+            const resolvedProfileCompleted = Boolean(
+              cloudProfile?.profileCompleted ||
+              (isSameUser && currentLocal.profileCompleted) ||
+              meta.profile_completed ||
+              (resolvedName && resolvedName !== "Usuário" && resolvedName !== "Aluno Convidado" && (resolvedRole === "coach" ? resolvedSpecialty : resolvedGoal))
+            );
+
+            loggedUser = saveUserProfile({
+              ...(cloudProfile || {}),
+              id: data.user.id,
+              email: email.trim(),
+              name: resolvedName,
+              avatarUrl: cloudProfile?.avatarUrl || meta.avatar_url || (isSameUser ? currentLocal.avatarUrl : undefined),
+              activeRole: resolvedRole,
+              enabledRoles:
+                cloudProfile?.enabledRoles ||
+                (isSameUser ? currentLocal.enabledRoles : undefined) ||
+                (resolvedRole === "coach" ? ["coach", "student"] : ["student"]),
+              phone: cloudProfile?.phone || (isSameUser ? currentLocal.phone : undefined) || meta.phone || "",
+              cref: cloudProfile?.cref || (isSameUser ? currentLocal.cref : undefined) || meta.cref,
+              specialty: resolvedSpecialty,
+              bio: cloudProfile?.bio || (isSameUser ? currentLocal.bio : undefined) || meta.bio,
+              goal: resolvedGoal,
+              profileCompleted: resolvedProfileCompleted,
+              subscriptionStatus:
+                cloudProfile?.subscriptionStatus ||
+                (isSameUser ? currentLocal.subscriptionStatus : undefined) ||
+                (resolvedRole === "coach" ? "active" : "trial"),
+              subscriptionPlan:
+                cloudProfile?.subscriptionPlan ||
+                (isSameUser ? currentLocal.subscriptionPlan : undefined) ||
+                (resolvedRole === "coach" ? "coach_unlimited" : "trial_7d"),
+              trialEndsAt:
+                cloudProfile?.trialEndsAt ||
+                (isSameUser ? currentLocal.trialEndsAt : undefined) ||
+                new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            });
           } else {
             loggedUser = getCurrentUser();
           }

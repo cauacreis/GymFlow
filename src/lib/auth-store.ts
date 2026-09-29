@@ -178,23 +178,26 @@ export function isProfileComplete(user?: UserProfile): boolean {
   // 1. Se a flag explícita de conclusão de perfil estiver marcada, retorna true
   if (u.profileCompleted) return true;
 
-  // 2. Deve ter nome com pelo menos 2 caracteres
-  if (!u.name || u.name.trim().length < 2) return false;
+  // 2. Valida se possui nome com pelo menos 2 caracteres e não é o nome genérico padrão
+  const hasValidName = Boolean(
+    u.name &&
+    u.name.trim().length >= 2 &&
+    u.name !== "Usuário" &&
+    u.name !== "Aluno Convidado"
+  );
 
   // 3. Validação por Papel Ativo
-  if (u.activeRole === "coach") {
-    // Especialidade para treinadores
-    if (!u.specialty || u.specialty.trim().length < 2) return false;
-  } else {
-    // Objetivo para alunos
-    if (!u.goal) return false;
+  const hasRoleData =
+    u.activeRole === "coach"
+      ? Boolean(u.specialty && u.specialty.trim().length >= 2)
+      : Boolean(u.goal && u.goal.trim().length >= 2);
+
+  // 4. Se tiver nome e dados de objetivo/especialidade preenchidos
+  if (hasValidName && hasRoleData) {
+    return true;
   }
 
-  // 4. Termos de Uso e LGPD aceitos
-  if (!u.termsAccepted) return false;
-
-  // 5. Flag explícita de conclusão
-  return Boolean(u.profileCompleted);
+  return false;
 }
 
 /**
@@ -424,10 +427,10 @@ export function registerNewUser(data: {
     data.profileCompleted !== undefined
       ? data.profileCompleted
       : Boolean(
-          data.phone &&
-          data.phone.replace(/\D/g, "").length >= 10 &&
-          (data.role === "coach" ? Boolean(data.specialty) : Boolean(data.goal && data.experienceLevel)) &&
-          data.termsAccepted
+          data.name &&
+          data.name.trim().length >= 2 &&
+          (data.role === "coach" ? Boolean(data.specialty) : Boolean(data.goal)) &&
+          (data.termsAccepted ?? true)
         );
 
   const newUser: UserProfile = {
@@ -441,7 +444,7 @@ export function registerNewUser(data: {
     enabledRoles: data.role === "coach" ? ["coach", "student"] : ["student"],
     matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
     goal: data.goal || "Hipertrofia",
-    experienceLevel: data.experienceLevel || (data.role === "student" ? "Iniciante" : undefined),
+    experienceLevel: data.experienceLevel || (data.role === "student" ? "Iniciante" : "Avançado"),
     cref: data.cref?.trim() || undefined,
     specialty: data.specialty || (data.role === "coach" ? "Musculação & Hipertrofia" : undefined),
     bio: data.bio || (data.role === "coach" ? "Treinador especialista em performance e técnica perfeita." : undefined),
@@ -449,10 +452,12 @@ export function registerNewUser(data: {
     height: data.height,
     weight: data.weight,
     profileCompleted: isCompleted,
-    termsAccepted: data.termsAccepted ?? false,
+    termsAccepted: data.termsAccepted ?? true,
     termsAcceptedAt: data.termsAccepted ? new Date().toISOString() : undefined,
-    // Status de Assinatura: Alunos novos caem em pending_choice para escolher o plano/trial
-    subscriptionStatus: data.role === "coach" ? "active" : "pending_choice",
+    subscriptionStatus: data.role === "coach" ? "active" : "trial",
+    subscriptionPlan: data.role === "coach" ? "coach_unlimited" : "trial_7d",
+    planTier: "pro",
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   };
 
   if (typeof window !== "undefined") {
@@ -489,10 +494,15 @@ export function initAuthSession(): () => void {
   const syncUserFromSession = async (user: any) => {
     if (!user) return;
     try {
+      const currentLocal = getCurrentUser();
+      const isSameUser =
+        currentLocal.id === user.id ||
+        (currentLocal.email && user.email && currentLocal.email.toLowerCase() === user.email.toLowerCase());
+
       const cloudProfile = await fetchProfileFromSupabase(user.id);
       const meta = user.user_metadata || {};
 
-      let chosenRole: UserRole = (meta.role as UserRole) || "student";
+      let chosenRole: UserRole = (meta.role as UserRole) || (isSameUser ? currentLocal.activeRole : "student");
       let hadExplicitRole = false;
       if (typeof window !== "undefined") {
         const cachedRole = localStorage.getItem("gymflow_oauth_role") as UserRole | null;
@@ -503,45 +513,111 @@ export function initAuthSession(): () => void {
         }
       }
 
-      const name = extractFullName(meta, user.email);
-      const avatarUrl = meta.avatar_url || meta.picture || undefined;
+      const metaName = extractFullName(meta, user.email);
+      const avatarUrl = meta.avatar_url || meta.picture || (isSameUser ? currentLocal.avatarUrl : undefined);
 
-      let saved: UserProfile;
-      if (cloudProfile) {
-        const activeRole = hadExplicitRole ? chosenRole : (cloudProfile.activeRole || chosenRole);
-        saved = saveUserProfile({
-          ...cloudProfile,
-          name: cloudProfile.name || name,
-          avatarUrl: cloudProfile.avatarUrl || avatarUrl,
-          activeRole,
-          subscriptionStatus: activeRole === "coach" ? "active" : cloudProfile.subscriptionStatus || "pending_choice",
-          termsAccepted: cloudProfile.termsAccepted ?? Boolean(meta.terms_accepted),
-          termsAcceptedAt: cloudProfile.termsAcceptedAt || meta.terms_accepted_at,
-          profileCompleted: cloudProfile.profileCompleted ?? Boolean(meta.profile_completed),
-          experienceLevel: cloudProfile.experienceLevel || meta.experience_level,
-        });
-      } else {
-        saved = saveUserProfile({
-          id: user.id,
-          email: user.email || "",
-          name,
-          avatarUrl,
-          activeRole: chosenRole,
-          enabledRoles: chosenRole === "coach" ? ["coach", "student"] : ["student"],
-          phone: meta.phone || "",
-          cref: meta.cref || undefined,
-          specialty: meta.specialty || undefined,
-          bio: meta.bio || undefined,
-          goal: meta.goal || undefined,
-          experienceLevel: meta.experience_level || undefined,
-          profileCompleted: Boolean(meta.profile_completed),
-          subscriptionStatus: chosenRole === "coach" ? "active" : "pending_choice",
-          subscriptionPlan: "trial_7d",
-          planTier: "pro",
-          termsAccepted: Boolean(meta.terms_accepted),
-          termsAcceptedAt: meta.terms_accepted_at || undefined,
-        });
-      }
+      const resolvedName =
+        cloudProfile?.name ||
+        (isSameUser && currentLocal.name && currentLocal.name !== "Usuário" && currentLocal.name !== "Aluno Convidado"
+          ? currentLocal.name
+          : metaName);
+      const resolvedRole = hadExplicitRole
+        ? chosenRole
+        : (cloudProfile?.activeRole || (isSameUser ? currentLocal.activeRole : chosenRole));
+      const resolvedPhone =
+        cloudProfile?.phone ||
+        (isSameUser ? currentLocal.phone : undefined) ||
+        meta.phone ||
+        "";
+      const resolvedGoal =
+        cloudProfile?.goal ||
+        (isSameUser ? currentLocal.goal : undefined) ||
+        meta.goal ||
+        "Hipertrofia";
+      const resolvedSpecialty =
+        cloudProfile?.specialty ||
+        (isSameUser ? currentLocal.specialty : undefined) ||
+        meta.specialty ||
+        (resolvedRole === "coach" ? "Musculação & Hipertrofia" : undefined);
+      const resolvedProfileCompleted = Boolean(
+        cloudProfile?.profileCompleted ||
+        (isSameUser && currentLocal.profileCompleted) ||
+        meta.profile_completed ||
+        (resolvedName && resolvedName !== "Usuário" && resolvedName !== "Aluno Convidado" && (resolvedRole === "coach" ? resolvedSpecialty : resolvedGoal))
+      );
+
+      const resolvedSubscriptionStatus =
+        cloudProfile?.subscriptionStatus ||
+        (isSameUser ? currentLocal.subscriptionStatus : undefined) ||
+        (resolvedRole === "coach" ? "active" : "trial");
+      const resolvedSubscriptionPlan =
+        cloudProfile?.subscriptionPlan ||
+        (isSameUser ? currentLocal.subscriptionPlan : undefined) ||
+        (resolvedRole === "coach" ? "coach_unlimited" : "trial_7d");
+      const resolvedTrialEndsAt =
+        cloudProfile?.trialEndsAt ||
+        (isSameUser ? currentLocal.trialEndsAt : undefined) ||
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const mergedUser: UserProfile = {
+        id: user.id,
+        email: user.email || (isSameUser ? currentLocal.email : ""),
+        name: resolvedName,
+        phone: resolvedPhone,
+        avatarUrl: cloudProfile?.avatarUrl || avatarUrl,
+        activeRole: resolvedRole,
+        enabledRoles:
+          cloudProfile?.enabledRoles ||
+          (isSameUser ? currentLocal.enabledRoles : undefined) ||
+          (resolvedRole === "coach" ? ["coach", "student"] : ["student"]),
+        matricula:
+          cloudProfile?.matricula ||
+          (isSameUser ? currentLocal.matricula : undefined) ||
+          `GF-${user.id.slice(0, 5)}`,
+        goal: resolvedGoal,
+        experienceLevel:
+          cloudProfile?.experienceLevel ||
+          (isSameUser ? currentLocal.experienceLevel : undefined) ||
+          meta.experience_level ||
+          "Iniciante",
+        cref: cloudProfile?.cref || (isSameUser ? currentLocal.cref : undefined) || meta.cref,
+        specialty: resolvedSpecialty,
+        bio: cloudProfile?.bio || (isSameUser ? currentLocal.bio : undefined) || meta.bio,
+        height: cloudProfile?.height ?? (isSameUser ? currentLocal.height : undefined),
+        weight: cloudProfile?.weight ?? (isSameUser ? currentLocal.weight : undefined),
+        city: cloudProfile?.city || (isSameUser ? currentLocal.city : undefined),
+        state: cloudProfile?.state || (isSameUser ? currentLocal.state : undefined),
+        neighborhood: cloudProfile?.neighborhood || (isSameUser ? currentLocal.neighborhood : undefined),
+        latitude: cloudProfile?.latitude ?? (isSameUser ? currentLocal.latitude : undefined),
+        longitude: cloudProfile?.longitude ?? (isSameUser ? currentLocal.longitude : undefined),
+        location: cloudProfile?.location || (isSameUser ? currentLocal.location : undefined),
+        operatingRadiusKm: cloudProfile?.operatingRadiusKm ?? (isSameUser ? currentLocal.operatingRadiusKm : undefined),
+        serviceModality: cloudProfile?.serviceModality || (isSameUser ? currentLocal.serviceModality : undefined),
+        pricing: cloudProfile?.pricing || (isSameUser ? currentLocal.pricing : undefined),
+        coachPlans: cloudProfile?.coachPlans || (isSameUser ? currentLocal.coachPlans : undefined),
+        pixKey: cloudProfile?.pixKey || (isSameUser ? currentLocal.pixKey : undefined),
+        pixKeyType: cloudProfile?.pixKeyType || (isSameUser ? currentLocal.pixKeyType : undefined),
+        pixName: cloudProfile?.pixName || (isSameUser ? currentLocal.pixName : undefined),
+        pixBank: cloudProfile?.pixBank || (isSameUser ? currentLocal.pixBank : undefined),
+        termsAccepted:
+          cloudProfile?.termsAccepted ??
+          (isSameUser ? currentLocal.termsAccepted : undefined) ??
+          Boolean(meta.terms_accepted) ??
+          true,
+        termsAcceptedAt:
+          cloudProfile?.termsAcceptedAt ||
+          (isSameUser ? currentLocal.termsAcceptedAt : undefined) ||
+          meta.terms_accepted_at ||
+          new Date().toISOString(),
+        profileCompleted: resolvedProfileCompleted,
+        subscriptionStatus: resolvedSubscriptionStatus,
+        subscriptionPlan: resolvedSubscriptionPlan,
+        planTier: cloudProfile?.planTier || (isSameUser ? currentLocal.planTier : undefined) || "pro",
+        trialEndsAt: resolvedTrialEndsAt,
+        subscriptionEndsAt: cloudProfile?.subscriptionEndsAt || (isSameUser ? currentLocal.subscriptionEndsAt : undefined),
+      };
+
+      const saved = saveUserProfile(mergedUser);
 
       // 🛡️ Proteção Anti-Abuso Silenciosa: vincula o dispositivo à conta autenticada
       if (user.email && user.id) {
@@ -549,7 +625,7 @@ export function initAuthSession(): () => void {
           email: user.email,
           userId: user.id,
           trialUsed: false,
-          plan: saved.subscriptionPlan || "pending_choice",
+          plan: saved.subscriptionPlan || "trial_7d",
         }).catch(() => {});
       }
     } catch (err) {
