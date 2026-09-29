@@ -285,6 +285,7 @@ export function AccountCustomizationModal({
 
   // Termos & LGPD (Passo 5)
   const [termsAccepted, setTermsAccepted] = useState(Boolean(user.termsAccepted));
+  const [hasReadTermsToBottom, setHasReadTermsToBottom] = useState(Boolean(user.termsAccepted));
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Estados de Imagem
@@ -352,7 +353,10 @@ export function AccountCustomizationModal({
       const stored = getStoredCoachPlans();
       if (stored && stored.length > 0) setCoachPlans(stored);
     }
-    if (user.termsAccepted) setTermsAccepted(true);
+    if (user.termsAccepted) {
+      setTermsAccepted(true);
+      setHasReadTermsToBottom(true);
+    }
   }, [user]);
 
   // Trava scroll do body enquanto o modal estiver aberto
@@ -678,9 +682,10 @@ export function AccountCustomizationModal({
     if (e) e.preventDefault();
     setErrorMessage(null);
 
-    if (!termsAccepted) {
-      setErrorMessage("É obrigatório concordar com os Termos de Uso e Proteção de Dados LGPD.");
+    if (!termsAccepted || !hasReadTermsToBottom) {
+      setErrorMessage("É obrigatório abrir, ler até o final e concordar com os Termos de Uso e Proteção de Dados LGPD.");
       triggerHaptic("warning");
+      setShowTermsModal(true);
       return;
     }
 
@@ -2034,26 +2039,85 @@ export function AccountCustomizationModal({
               </div>
 
               {/* Termos de Uso e LGPD */}
-              <div className="p-3.5 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 space-y-2">
-                <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                    className="mt-0.5 rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0 w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-[11px] text-zinc-300 leading-relaxed">
-                    Concordo com os{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowTermsModal(true)}
-                      className="text-emerald-400 underline hover:text-emerald-300 font-semibold"
-                    >
-                      Termos de Uso e Política de Privacidade & LGPD
-                    </button>{" "}
-                    do GymFlow para armazenamento seguro dos meus treinos e dados.
-                  </span>
-                </label>
+              <div
+                onClick={() => {
+                  if (!hasReadTermsToBottom) {
+                    triggerHaptic("selection");
+                    setShowTermsModal(true);
+                  }
+                }}
+                className={`p-4 rounded-2xl border transition-all select-none space-y-2 cursor-pointer ${
+                  termsAccepted && hasReadTermsToBottom
+                    ? "bg-emerald-500/10 border-emerald-500/40 shadow-sm shadow-emerald-500/10"
+                    : "bg-zinc-900/60 border-zinc-800/80 hover:border-amber-500/50 hover:bg-zinc-900/80"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!hasReadTermsToBottom) {
+                        triggerHaptic("warning");
+                        setShowTermsModal(true);
+                      } else {
+                        triggerHaptic("selection");
+                        setTermsAccepted(!termsAccepted);
+                      }
+                    }}
+                    className={`mt-0.5 w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                      termsAccepted && hasReadTermsToBottom
+                        ? "bg-emerald-500 border-emerald-400 text-zinc-950 shadow-sm"
+                        : "bg-zinc-950 border-zinc-700 hover:border-amber-400/80"
+                    }`}
+                  >
+                    {termsAccepted && hasReadTermsToBottom && (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-white">
+                        Termos de Uso & Proteção de Dados LGPD
+                      </span>
+                      {hasReadTermsToBottom ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          <span>100% Lido & Aceito</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <FileText className="w-2.5 h-2.5" />
+                          <span>Ler obrigatório</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-zinc-300 leading-relaxed">
+                      {hasReadTermsToBottom ? (
+                        <span>
+                          Concordo com os{" "}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerHaptic("light");
+                              setShowTermsModal(true);
+                            }}
+                            className="text-emerald-400 underline hover:text-emerald-300 font-semibold"
+                          >
+                            Termos de Uso e Política de Privacidade & LGPD
+                          </button>{" "}
+                          do GymFlow para armazenamento seguro dos meus treinos e dados.
+                        </span>
+                      ) : (
+                        <span className="text-amber-200/90 font-medium">
+                          Clique aqui para abrir os termos. O botão de aceite só é liberado após você rolar e ler o documento até o final.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2095,10 +2159,10 @@ export function AccountCustomizationModal({
               <button
                 type="button"
                 onClick={() => handleSubmitFinal()}
-                disabled={isLoading || isSuccess || !termsAccepted}
+                disabled={isLoading || isSuccess || !termsAccepted || !hasReadTermsToBottom}
                 className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-zinc-950 flex items-center gap-2 transition-all active:scale-95 shadow-lg ${
-                  !termsAccepted
-                    ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                  !termsAccepted || !hasReadTermsToBottom
+                    ? "bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed"
                     : isCoach
                     ? "bg-amber-500 hover:bg-amber-400 shadow-amber-500/20"
                     : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
@@ -2159,8 +2223,11 @@ export function AccountCustomizationModal({
           onClose={() => setShowTermsModal(false)}
           onAccept={() => {
             setTermsAccepted(true);
+            setHasReadTermsToBottom(true);
             setShowTermsModal(false);
+            setErrorMessage(null);
           }}
+          hasAlreadyAccepted={hasReadTermsToBottom}
         />
       )}
     </div>

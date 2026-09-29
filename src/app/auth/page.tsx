@@ -23,6 +23,7 @@ import {
   RotateCcw,
   KeyRound,
   Shield,
+  FileText,
 } from "lucide-react";
 import {
   registerNewUser,
@@ -172,6 +173,7 @@ function AuthPageContent() {
   // Flags
   const [rememberMe, setRememberMe] = useState(true);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [hasReadTermsToBottom, setHasReadTermsToBottom] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1008,36 +1010,87 @@ function AuthPageContent() {
 
           {/* Termos & LGPD */}
           {mode === "signup" && (
-            <div className="p-3 rounded-xl bg-zinc-900/60 border border-white/[0.08] flex items-start gap-2.5">
-              <input
-                type="checkbox"
-                id="page-terms-checkbox"
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded bg-zinc-950 border-white/20 text-emerald-500 focus:ring-emerald-500 accent-emerald-500 shrink-0 cursor-pointer"
-              />
-              <label htmlFor="page-terms-checkbox" className="text-[10px] text-zinc-300 leading-relaxed cursor-pointer select-none">
-                Li e concordo com os{" "}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+            <div
+              onClick={() => {
+                if (!hasReadTermsToBottom) {
+                  triggerHaptic("selection");
+                  setShowTermsModal(true);
+                }
+              }}
+              className={`p-3 rounded-xl border flex items-start gap-2.5 transition-all select-none cursor-pointer ${
+                termsAccepted && hasReadTermsToBottom
+                  ? "bg-emerald-500/10 border-emerald-500/40 shadow-sm"
+                  : "bg-zinc-900/60 border-white/[0.08] hover:border-amber-500/50 hover:bg-zinc-900/80"
+              }`}
+            >
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!hasReadTermsToBottom) {
+                    triggerHaptic("warning");
                     setShowTermsModal(true);
-                  }}
-                  className="text-emerald-400 hover:text-emerald-300 underline font-semibold inline-flex items-center gap-0.5"
-                >
-                  Termos de Uso e Política de Privacidade (LGPD)
-                </button>{" "}
-                do GymFlow.
-              </label>
+                  } else {
+                    triggerHaptic("selection");
+                    setTermsAccepted(!termsAccepted);
+                  }
+                }}
+                className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                  termsAccepted && hasReadTermsToBottom
+                    ? "bg-emerald-500 border-emerald-400 text-zinc-950"
+                    : "bg-zinc-950 border-white/20 hover:border-amber-400"
+                }`}
+              >
+                {termsAccepted && hasReadTermsToBottom && (
+                  <Check className="w-3 h-3 stroke-[3]" />
+                )}
+              </div>
+
+              <div className="flex-1 text-[10px] leading-relaxed">
+                <div className="flex items-center justify-between gap-1 mb-0.5">
+                  <span className="font-bold text-white">Termos de Uso & LGPD</span>
+                  {hasReadTermsToBottom ? (
+                    <span className="text-[9px] text-emerald-400 font-bold flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" /> 100% Lido
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-amber-300 font-bold flex items-center gap-0.5">
+                      <FileText className="w-2.5 h-2.5" /> Ler obrigatório
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-zinc-300">
+                  {hasReadTermsToBottom ? (
+                    <span>
+                      Li e concordo com os{" "}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          triggerHaptic("light");
+                          setShowTermsModal(true);
+                        }}
+                        className="text-emerald-400 hover:text-emerald-300 underline font-semibold inline-flex items-center gap-0.5"
+                      >
+                        Termos de Uso e LGPD
+                      </button>{" "}
+                      do GymFlow.
+                    </span>
+                  ) : (
+                    <span className="text-amber-200/90 font-medium">
+                      Clique aqui para ler os termos. O botão de aceite só é liberado após rolar até o final.
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
           )}
 
           {/* Botão de Envio */}
           <button
             type="submit"
-            disabled={isLoading || (mode === "signup" && !termsAccepted)}
+            disabled={isLoading || (mode === "signup" && (!termsAccepted || !hasReadTermsToBottom))}
             className="group/btn relative w-full h-11 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-black font-bold text-xs uppercase tracking-wider shadow-[0_4px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_6px_25px_rgba(16,185,129,0.45)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden mt-1 flex items-center justify-center gap-2"
           >
             <span>
@@ -1188,10 +1241,11 @@ function AuthPageContent() {
         onClose={() => setShowTermsModal(false)}
         onAccept={() => {
           setTermsAccepted(true);
+          setHasReadTermsToBottom(true);
           setShowTermsModal(false);
           setErrorMessage(null);
         }}
-        hasAlreadyAccepted={termsAccepted}
+        hasAlreadyAccepted={hasReadTermsToBottom}
       />
     </div>
   );
