@@ -214,7 +214,7 @@ export function TurnstileCheckinModal({
             {/* Aviso de Segurança */}
             <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>Token criptografado com rotação automática a cada 30 segundos.</span>
+              <span>QR Code de acesso com atualização contínua.</span>
             </div>
           </>
         )}

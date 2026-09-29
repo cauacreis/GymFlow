@@ -216,7 +216,7 @@ export function ShoppingBagDrawer({
 
           <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-400">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Ambiente Seguro Sandbox • Tokenização Criptografada</span>
+            <span>Ambiente 100% Seguro</span>
           </div>
         </div>
       )}

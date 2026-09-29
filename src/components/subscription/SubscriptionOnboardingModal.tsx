@@ -615,7 +615,7 @@ export function SubscriptionOnboardingModal({
             <div className="pt-2 text-center space-y-2">
               <div className="text-[11px] text-zinc-500 flex items-center justify-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>Pagamentos processados com criptografia bancária via Mercado Pago.</span>
+                <span>Pagamentos processados com total segurança via Mercado Pago.</span>
               </div>
 
               {currentUser?.email && currentUser.id !== "user_me" && (

@@ -156,7 +156,7 @@ export function UserProfileDrawer({
           >
             <div className="flex items-center gap-2">
               <Download className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Baixar Meus Dados (JSON)</span>
+              <span>Exportar Meus Dados (LGPD)</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
           </button>

@@ -191,7 +191,7 @@ export function MercadoPagoModal({
               </div>
 
               <span className="text-[10px] text-zinc-400">
-                🔒 Dados criptografados ponta-a-ponta direto no Mercado Pago SDK.
+                🔒 Pagamento processado com segurança pelo Mercado Pago.
               </span>
             </div>
           )}

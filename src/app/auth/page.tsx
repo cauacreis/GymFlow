@@ -1170,7 +1170,7 @@ function AuthPageContent() {
         <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-[10px] text-zinc-400">
           <div className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Supabase Auth & TLS Criptografado</span>
+            <span>Ambiente 100% Seguro & Protegido</span>
           </div>
           <button
             type="button"

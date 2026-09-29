@@ -466,7 +466,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                   </div>
 
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Você será redirecionado para a tela oficial e criptografada do Mercado Pago para efetuar o pagamento com proteção total contra fraudes.
+                    Você será redirecionado para a tela segura do Mercado Pago para concluir o pagamento.
                   </p>
 
                   <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-zinc-400 flex items-center justify-between">
