@@ -181,7 +181,7 @@ export function StudentAgendaCalendar({
   const currentCoachName =
     activeCoachBooking?.coachName || student?.prescribedBy || "Prof. Rodrigo";
   const currentCoachPhone = activeCoachBooking?.coachPhone || "11988887777";
-  const currentCoachId = activeCoachBooking?.coachId || "coach_principal";
+  const currentCoachId = activeCoachBooking?.coachId || "coach_rodrigo";
 
   // Aluno solicita remanejamento
   const handleSendRescheduleRequest = (e: React.FormEvent) => {

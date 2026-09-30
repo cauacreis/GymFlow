@@ -503,8 +503,16 @@ export function getStoredCoaches(): CoachTrainer[] {
       return INITIAL_COACHES;
     }
     const list: CoachTrainer[] = JSON.parse(raw);
+
+    // Purga terminantemente o treinador fake legado ("Treinador Principal" / "coach_principal")
+    const filteredList = Array.isArray(list)
+      ? list.filter((c) => c && c.id !== "coach_principal" && c.name !== "Treinador Principal")
+      : INITIAL_COACHES;
+
+    const hasRemovedFake = Array.isArray(list) && filteredList.length !== list.length;
+
     // Normalização defensiva: garante preços 35/45/55 e migra dados geográficos de INITIAL_COACHES
-    const normalized = list.map((c) => {
+    const normalized = filteredList.map((c) => {
       const initial = INITIAL_COACHES.find((ic) => ic.id === c.id);
       const basic = c.pricing?.basicMonthly && c.pricing.basicMonthly <= 60 ? c.pricing.basicMonthly : 35;
       const pro = c.pricing?.proMonthly && c.pricing.proMonthly <= 75 ? c.pricing.proMonthly : 45;
@@ -534,7 +542,12 @@ export function getStoredCoaches(): CoachTrainer[] {
         },
       };
     });
-    return normalized;
+
+    if (hasRemovedFake) {
+      localStorage.setItem(STORAGE_COACHES, JSON.stringify(normalized.length > 0 ? normalized : INITIAL_COACHES));
+    }
+
+    return normalized.length > 0 ? normalized : INITIAL_COACHES;
   } catch {
     return INITIAL_COACHES;
   }
@@ -575,7 +588,13 @@ export function getStoredBookings(): BookingRequest[] {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    const cleaned = parsed.filter((b: any) => !/^b_(seg|ter|qua|qui|sex|sab)_/i.test(b.id));
+    const cleaned = parsed.filter(
+      (b: any) =>
+        b &&
+        !/^b_(seg|ter|qua|qui|sex|sab)_/i.test(b.id) &&
+        b.coachId !== "coach_principal" &&
+        b.coachName !== "Treinador Principal"
+    );
     if (cleaned.length !== parsed.length) {
       localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(cleaned));
     }

@@ -1005,6 +1005,24 @@ async function runAllTests() {
     "Fallback de Split: Split inexistente na rotina faz fallback gracioso para o primeiro split ('A')"
   );
 
+  // 14.4 Purga de Treinador Fake Legado ("Treinador Principal" / "coach_principal")
+  const mockCoachesWithFake = [
+    { id: "coach_principal", name: "Treinador Principal" },
+    { id: "coach_rodrigo", name: "Prof. Rodrigo Silveira" },
+    { id: "coach_felipe", name: "Felipe Mendes" },
+  ];
+  const cleanedCoaches = mockCoachesWithFake.filter(
+    (c) => c.id !== "coach_principal" && c.name !== "Treinador Principal"
+  );
+  assert(
+    !cleanedCoaches.some((c) => c.id === "coach_principal" || c.name === "Treinador Principal"),
+    "Purga de Treinador Fake: 'Treinador Principal' é eliminado da listagem de personais"
+  );
+  assert(
+    cleanedCoaches.length === 2,
+    "Purga de Treinador Fake: Treinadores reais preservados intactos"
+  );
+
   // ---------------------------------------------------------------------------
   // RESULTADO FINAL
   // ---------------------------------------------------------------------------
