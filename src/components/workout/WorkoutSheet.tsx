@@ -92,7 +92,26 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
   const [workoutPackage, setWorkoutPackage] = useState<StudentWorkoutPackage>(() =>
     getStudentWorkout(studentId)
   );
-  const [selectedSplitId, setSelectedSplitId] = useState<string>("A");
+  const [selectedSplitId, setSelectedSplitId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(`gymflow_active_split_${studentId}`);
+        if (saved) return saved;
+      } catch {}
+    }
+    return "A";
+  });
+
+  const handleSelectSplit = (id: string) => {
+    triggerHaptic("selection");
+    setSelectedSplitId(id);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`gymflow_active_split_${studentId}`, id);
+      } catch {}
+    }
+  };
+
   const [splits, setSplits] = useState<WorkoutSplit[]>([]);
 
   // Modal de Animação GIF / Execução
@@ -304,8 +323,17 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
       }));
 
       setSplits(mappedSplits);
-      if (mappedSplits.length > 0 && !mappedSplits.some((s) => s.id === selectedSplitId)) {
-        setSelectedSplitId(mappedSplits[0].id);
+      const savedSplit = typeof window !== "undefined" ? localStorage.getItem(`gymflow_active_split_${studentId}`) : null;
+      if (savedSplit && mappedSplits.some((s) => s.id === savedSplit)) {
+        setSelectedSplitId(savedSplit);
+      } else if (mappedSplits.length > 0 && !mappedSplits.some((s) => s.id === selectedSplitId)) {
+        const fallback = mappedSplits[0].id;
+        setSelectedSplitId(fallback);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(`gymflow_active_split_${studentId}`, fallback);
+          } catch {}
+        }
       }
     };
 
@@ -671,10 +699,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
             return (
               <button
                 key={split.id}
-                onClick={() => {
-                  triggerHaptic("selection");
-                  setSelectedSplitId(split.id);
-                }}
+                onClick={() => handleSelectSplit(split.id)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
                   isSelected
                     ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/25"

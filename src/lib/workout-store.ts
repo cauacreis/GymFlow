@@ -764,6 +764,21 @@ export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
       return workoutsMap[studentId];
     }
 
+    // Se o aluno ainda não tiver ficha salva com este ID (por exemplo, após login ou sincronização de usuário),
+    // mas houver uma rotina configurada em "student_me" ou "user_me", preserva os dados personalizados do usuário
+    if (studentId !== "student_me" && studentId !== "user_me") {
+      const fallbackPkg = workoutsMap["student_me"] || workoutsMap["user_me"];
+      if (fallbackPkg && fallbackPkg.splits && fallbackPkg.splits.length > 0) {
+        const migratedPackage: StudentWorkoutPackage = {
+          ...fallbackPkg,
+          studentId,
+        };
+        workoutsMap[studentId] = migratedPackage;
+        localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
+        return migratedPackage;
+      }
+    }
+
     // Se ainda não tiver ficha salva para esse aluno, associa de acordo com seu objetivo real
     const student = getStoredStudents().find((s) => s.id === studentId);
     const userGoal = student?.goal || (currentUser?.id === studentId ? currentUser.goal : "Hipertrofia");

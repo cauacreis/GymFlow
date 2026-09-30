@@ -34,6 +34,7 @@ import {
   isProfileComplete,
   hasActiveAccess,
   activatePaidPlanForUser,
+  areProfilesEqual,
 } from "@/lib/auth-store";
 import { getRemainingTrialDays } from "@/lib/subscription-features";
 
@@ -59,10 +60,31 @@ export default function GymFlowApp() {
   const [userProfile, setUserProfile] = useState<UserProfile>(() => getCurrentUser());
   const viewMode: UserRole = userProfile.activeRole;
 
-  // Aba ativa da navegação inferior
-  const [currentTab, setCurrentTab] = useState<GymTabType>(
-    userProfile.activeRole === "coach" ? "alunos" : "treino"
-  );
+  // Aba ativa da navegação inferior com persistência contínua
+  const [currentTab, setCurrentTab] = useState<GymTabType>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const savedTab = localStorage.getItem("gymflow_active_tab_v2") as GymTabType | null;
+        if (savedTab) {
+          const isCoach = userProfile.activeRole === "coach";
+          const coachTabs: GymTabType[] = ["alunos", "fichas", "analytics"];
+          const studentTabs: GymTabType[] = ["treino", "agenda", "personal", "aulas", "evolucao"];
+          if (isCoach && coachTabs.includes(savedTab)) return savedTab;
+          if (!isCoach && studentTabs.includes(savedTab)) return savedTab;
+        }
+      } catch {}
+    }
+    return userProfile.activeRole === "coach" ? "alunos" : "treino";
+  });
+
+  const changeTab = (tab: GymTabType) => {
+    setCurrentTab(tab);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("gymflow_active_tab_v2", tab);
+      } catch {}
+    }
+  };
 
   // Notificações
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -82,9 +104,6 @@ export default function GymFlowApp() {
   // Inicialização e Sincronização Contínua com Supabase Auth
   useEffect(() => {
     const unsubSession = initAuthSession();
-    const unsubAuthChanges = subscribeToAuthChanges((updatedUser) => {
-      setUserProfile(updatedUser);
-    });
 
     const handlePasswordRecovery = () => {
       setAuthInitialMode("update-password");
@@ -140,7 +159,6 @@ export default function GymFlowApp() {
 
     return () => {
       unsubSession();
-      unsubAuthChanges();
       window.removeEventListener("gymflow:password-recovery", handlePasswordRecovery);
     };
   }, []);
@@ -210,14 +228,20 @@ export default function GymFlowApp() {
   // Sincronização reativa com Auth Store
   useEffect(() => {
     const handleAuthChange = (updated: UserProfile) => {
-      setUserProfile(updated);
+      setUserProfile((prev) => (areProfilesEqual(prev, updated) ? prev : updated));
       setCurrentTab((prevTab) => {
+        let nextTab = prevTab;
         if (updated.activeRole === "coach" && (prevTab === "treino" || prevTab === "personal" || prevTab === "evolucao" || prevTab === "aulas")) {
-          return "alunos";
+          nextTab = "alunos";
         } else if (updated.activeRole === "student" && (prevTab === "alunos" || prevTab === "fichas" || prevTab === "analytics")) {
-          return "treino";
+          nextTab = "treino";
         }
-        return prevTab;
+        if (nextTab !== prevTab && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("gymflow_active_tab_v2", nextTab);
+          } catch {}
+        }
+        return nextTab;
       });
     };
 
@@ -253,7 +277,7 @@ export default function GymFlowApp() {
     triggerHaptic("medium");
     const updated = switchUserRole(nextRole);
     setUserProfile(updated);
-    setCurrentTab(nextRole === "coach" ? "alunos" : "treino");
+    changeTab(nextRole === "coach" ? "alunos" : "treino");
   };
 
   const handleTabSelect = (tab: GymTabType) => {
@@ -262,7 +286,7 @@ export default function GymFlowApp() {
       setIsProfileOpen(true);
       return;
     }
-    setCurrentTab(tab);
+    changeTab(tab);
   };
 
   const isCoach = viewMode === "coach";
@@ -295,9 +319,9 @@ export default function GymFlowApp() {
           const fresh = saveUserProfile(completedUser);
           setUserProfile(fresh);
           if (fresh.activeRole === "coach") {
-            setCurrentTab("alunos");
+            changeTab("alunos");
           } else {
-            setCurrentTab("treino");
+            changeTab("treino");
           }
         }}
       />
@@ -383,7 +407,7 @@ export default function GymFlowApp() {
             {/* Lembretes Inteligentes de Treino Hoje & Pagamento */}
             <StudentReminderBanner
               studentId={userProfile.id}
-              onNavigateToAgenda={() => setCurrentTab("agenda")}
+              onNavigateToAgenda={() => changeTab("agenda")}
             />
 
             {/* Banner Informativo de Período de Testes de 7 Dias */}
@@ -436,8 +460,8 @@ export default function GymFlowApp() {
               <div className="flex flex-col gap-4 animate-in fade-in duration-200">
                 <StudentAgendaCalendar
                   studentId={userProfile.id}
-                  onNavigateToWorkout={() => setCurrentTab("treino")}
-                  onNavigateToPersonal={() => setCurrentTab("personal")}
+                  onNavigateToWorkout={() => changeTab("treino")}
+                  onNavigateToPersonal={() => changeTab("personal")}
                 />
               </div>
             )}
@@ -543,7 +567,7 @@ export default function GymFlowApp() {
           const current = getCurrentUser();
           setUserProfile(current);
           if (userData.role) {
-            setCurrentTab(userData.role === "coach" ? "alunos" : "treino");
+            changeTab(userData.role === "coach" ? "alunos" : "treino");
           }
         }}
       />

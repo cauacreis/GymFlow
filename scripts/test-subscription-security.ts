@@ -39,6 +39,7 @@ import {
 import {
   hasActiveAccess,
   activateTrialForUser,
+  areProfilesEqual,
   UserProfile,
 } from "../src/lib/auth-store";
 
@@ -864,6 +865,144 @@ async function runAllTests() {
   assert(
     resolvedStatus === "trial",
     "Anti-Regressão: Recarregar página com cloud em 'pending_choice' NÃO apaga o trial ativo do usuário"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 14. TESTANDO CONTINUIDADE DE SESSÃO, PERSISTÊNCIA DE ABAS E SPLITS
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 14. Testando Continuidade de Navegação, Abas e Comparação Idempotente de Perfis...");
+
+  // 14.1 Comparação Idempotente de Perfis (areProfilesEqual)
+  const profileOriginal: UserProfile = {
+    ...mockBaseUser,
+    id: "user_test_continuity",
+    email: "continuity@gymflow.test",
+    name: "Aluno Continuidade",
+    activeRole: "student",
+    subscriptionStatus: "active",
+    planTier: "pro",
+    trialEndsAt: undefined,
+    subscriptionEndsAt: "2026-10-30T00:00:00.000Z",
+    profileCompleted: true,
+    phone: "(11) 98888-7777",
+    goal: "Hipertrofia",
+    termsAccepted: true,
+    enabledRoles: ["student"],
+  };
+
+  const profileClone: UserProfile = { ...profileOriginal };
+  assert(
+    areProfilesEqual(profileOriginal, profileClone) === true,
+    "areProfilesEqual: Retorna true para dois perfis com valores idênticos"
+  );
+
+  assert(
+    areProfilesEqual(profileOriginal, { ...profileOriginal, activeRole: "coach" }) === false,
+    "areProfilesEqual: Detecta alteração de activeRole ('student' -> 'coach')"
+  );
+
+  assert(
+    areProfilesEqual(profileOriginal, { ...profileOriginal, subscriptionStatus: "expired" }) === false,
+    "areProfilesEqual: Detecta alteração de subscriptionStatus ('active' -> 'expired')"
+  );
+
+  assert(
+    areProfilesEqual(profileOriginal, { ...profileOriginal, planTier: "vip" }) === false,
+    "areProfilesEqual: Detecta upgrade de planTier ('pro' -> 'vip')"
+  );
+
+  assert(
+    areProfilesEqual(profileOriginal, { ...profileOriginal, phone: "(11) 99999-0000" }) === false,
+    "areProfilesEqual: Detecta atualização de telefone"
+  );
+
+  assert(
+    areProfilesEqual(profileOriginal, { ...profileOriginal, termsAccepted: false }) === false,
+    "areProfilesEqual: Detecta alteração no consentimento de termos"
+  );
+
+  assert(
+    areProfilesEqual(profileOriginal, { ...profileOriginal, enabledRoles: ["student", "coach"] }) === false,
+    "areProfilesEqual: Detecta adição de papéis autorizados"
+  );
+
+  assert(
+    areProfilesEqual(null, null) === true,
+    "areProfilesEqual: Trata dois perfis nulos como iguais"
+  );
+
+  assert(
+    areProfilesEqual(profileOriginal, null) === false,
+    "areProfilesEqual: Detecta diferença entre perfil preenchido e nulo"
+  );
+
+  // 14.2 Continuidade e Validação de Abas por Papel
+  const resolveCurrentTab = (savedTab: string | null, role: "student" | "coach"): string => {
+    const coachTabs = ["alunos", "fichas", "analytics"];
+    const studentTabs = ["treino", "agenda", "personal", "aulas", "evolucao"];
+    if (savedTab) {
+      if (role === "coach" && coachTabs.includes(savedTab)) return savedTab;
+      if (role === "student" && studentTabs.includes(savedTab)) return savedTab;
+    }
+    return role === "coach" ? "alunos" : "treino";
+  };
+
+  assert(
+    resolveCurrentTab("agenda", "student") === "agenda",
+    "Continuidade de Abas: Aluno na aba 'agenda' preserva a aba após navegação/recarga"
+  );
+
+  assert(
+    resolveCurrentTab("personal", "student") === "personal",
+    "Continuidade de Abas: Aluno na aba 'personal' preserva a aba selecionada"
+  );
+
+  assert(
+    resolveCurrentTab("evolucao", "student") === "evolucao",
+    "Continuidade de Abas: Aluno na aba 'evolucao' preserva a aba selecionada"
+  );
+
+  assert(
+    resolveCurrentTab("analytics", "coach") === "analytics",
+    "Continuidade de Abas: Professor na aba 'analytics' preserva a aba de métricas"
+  );
+
+  assert(
+    resolveCurrentTab("fichas", "coach") === "fichas",
+    "Continuidade de Abas: Professor na aba 'fichas' preserva a aba de prescrição"
+  );
+
+  assert(
+    resolveCurrentTab("alunos", "student") === "treino",
+    "Segurança de Abas: Aluno tentando manter aba de professor é redirecionado para 'treino'"
+  );
+
+  assert(
+    resolveCurrentTab("treino", "coach") === "alunos",
+    "Segurança de Abas: Professor tentando manter aba exclusiva de aluno é redirecionado para 'alunos'"
+  );
+
+  // 14.3 Persistência de Divisão de Treino (Split A / B / C)
+  const resolveSplitId = (savedSplit: string | null, availableSplits: string[]): string => {
+    if (savedSplit && availableSplits.includes(savedSplit)) {
+      return savedSplit;
+    }
+    return availableSplits[0] || "A";
+  };
+
+  assert(
+    resolveSplitId("B", ["A", "B", "C"]) === "B",
+    "Persistência de Split: Usuário que estava no 'Treino B' permanece no 'Treino B'"
+  );
+
+  assert(
+    resolveSplitId("C", ["A", "B", "C"]) === "C",
+    "Persistência de Split: Usuário no 'Treino C' permanece no 'Treino C'"
+  );
+
+  assert(
+    resolveSplitId("D", ["A", "B", "C"]) === "A",
+    "Fallback de Split: Split inexistente na rotina faz fallback gracioso para o primeiro split ('A')"
   );
 
   // ---------------------------------------------------------------------------

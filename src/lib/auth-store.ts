@@ -311,6 +311,35 @@ export function getCurrentUser(): UserProfile {
   }
 }
 
+export function areProfilesEqual(a?: UserProfile | null, b?: UserProfile | null): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return (
+    a.id === b.id &&
+    a.email === b.email &&
+    a.name === b.name &&
+    a.activeRole === b.activeRole &&
+    a.subscriptionStatus === b.subscriptionStatus &&
+    a.subscriptionPlan === b.subscriptionPlan &&
+    a.planTier === b.planTier &&
+    a.trialEndsAt === b.trialEndsAt &&
+    a.subscriptionEndsAt === b.subscriptionEndsAt &&
+    a.profileCompleted === b.profileCompleted &&
+    a.phone === b.phone &&
+    a.goal === b.goal &&
+    a.specialty === b.specialty &&
+    a.avatarUrl === b.avatarUrl &&
+    a.matricula === b.matricula &&
+    a.city === b.city &&
+    a.state === b.state &&
+    a.neighborhood === b.neighborhood &&
+    a.latitude === b.latitude &&
+    a.longitude === b.longitude &&
+    a.termsAccepted === b.termsAccepted &&
+    (a.enabledRoles?.join(",") === b.enabledRoles?.join(","))
+  );
+}
+
 export function saveUserProfile(updated: Partial<UserProfile>): UserProfile {
   const current = getCurrentUser();
   const merged: UserProfile = {
@@ -321,17 +350,25 @@ export function saveUserProfile(updated: Partial<UserProfile>): UserProfile {
       : (current.enabledRoles || [current.activeRole || "student"]),
   };
 
+  const hasChanged = !areProfilesEqual(current, merged);
+
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(merged));
+    if (hasChanged) {
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(merged));
+    }
     // Seta cookie para o middleware reconhecer sessões autenticadas
     if (merged.email && merged.id !== "user_me") {
       document.cookie = "gymflow_session=active; path=/; max-age=2592000; SameSite=Lax";
     }
-    window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: merged }));
+    if (hasChanged) {
+      window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: merged }));
+    }
   }
 
-  // Sincroniza em segundo plano com Supabase se estiver configurado
-  saveProfileToSupabase(merged).catch(() => {});
+  // Sincroniza em segundo plano com Supabase apenas se houve alteração real
+  if (hasChanged) {
+    saveProfileToSupabase(merged).catch(() => {});
+  }
 
   return merged;
 }
@@ -683,6 +720,12 @@ export function initAuthSession(): () => void {
         subscriptionEndsAt: resolvedSubscriptionEndsAt,
       };
 
+      if (areProfilesEqual(currentLocal, mergedUser)) {
+        // Dados de perfil e sessão já estão idênticos.
+        // Não re-grava nem dispara eventos de re-renderização ao alternar entre abas do navegador!
+        return;
+      }
+
       const saved = saveUserProfile(mergedUser);
 
       // Se o trial estiver ativo mas ainda não estiver sincronizado na nuvem, persiste agora
@@ -733,18 +776,31 @@ export function initAuthSession(): () => void {
 
 export function subscribeToAuth(callback: () => void): () => void {
   if (typeof window === "undefined") return () => {};
-  window.addEventListener(EVENT_AUTH_CHANGED, callback);
-  window.addEventListener("storage", callback);
+  let lastKnown = getCurrentUser();
+  const handler = () => {
+    const current = getCurrentUser();
+    if (!areProfilesEqual(lastKnown, current)) {
+      lastKnown = current;
+      callback();
+    }
+  };
+  window.addEventListener(EVENT_AUTH_CHANGED, handler);
+  window.addEventListener("storage", handler);
   return () => {
-    window.removeEventListener(EVENT_AUTH_CHANGED, callback);
-    window.removeEventListener("storage", callback);
+    window.removeEventListener(EVENT_AUTH_CHANGED, handler);
+    window.removeEventListener("storage", handler);
   };
 }
 
 export function subscribeToAuthChanges(callback: (user: UserProfile) => void): () => void {
   if (typeof window === "undefined") return () => {};
+  let lastKnown = getCurrentUser();
   const handler = () => {
-    callback(getCurrentUser());
+    const current = getCurrentUser();
+    if (!areProfilesEqual(lastKnown, current)) {
+      lastKnown = current;
+      callback(current);
+    }
   };
   window.addEventListener(EVENT_AUTH_CHANGED, handler);
   window.addEventListener("storage", handler);
