@@ -17,11 +17,99 @@ export interface ExerciseDBItem {
   isCustom?: boolean;
 }
 
+export type WorkoutSetType =
+  | "normal"
+  | "warmup"
+  | "feeder"
+  | "top"
+  | "backoff"
+  | "drop"
+  | "rest_pause"
+  | "failure";
+
+export interface SetTypeMetadata {
+  type: WorkoutSetType;
+  label: string;
+  shortLabel: string;
+  description: string;
+  badgeClass: string;
+  dotColor: string;
+}
+
+export const SET_TYPES_METADATA: Record<WorkoutSetType, SetTypeMetadata> = {
+  normal: {
+    type: "normal",
+    label: "Série Normal",
+    shortLabel: "N",
+    description: "Série convencional com carga e repetições planejadas.",
+    badgeClass: "bg-white/[0.06] text-zinc-300 border-white/[0.1]",
+    dotColor: "bg-zinc-400",
+  },
+  warmup: {
+    type: "warmup",
+    label: "Aquecimento",
+    shortLabel: "W",
+    description: "Carga leve (40-50%) para aquecer articulações e o SNC.",
+    badgeClass: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    dotColor: "bg-amber-400",
+  },
+  feeder: {
+    type: "feeder",
+    label: "Preparatória (Feeder)",
+    shortLabel: "F",
+    description: "Carga intermediária com 2-3 reps para aclimatação sem fadiga.",
+    badgeClass: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    dotColor: "bg-sky-400",
+  },
+  top: {
+    type: "top",
+    label: "Top Set (Principal)",
+    shortLabel: "T",
+    description: "A série mais pesada do dia com foco em sobrecarga progressiva.",
+    badgeClass: "bg-amber-500/25 text-amber-300 border-amber-400/40 font-black",
+    dotColor: "bg-amber-400",
+  },
+  backoff: {
+    type: "backoff",
+    label: "Back-off Set",
+    shortLabel: "B",
+    description: "Redução de 10-20% da carga da Top Set para volume com técnica perfeita.",
+    badgeClass: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+    dotColor: "bg-indigo-400",
+  },
+  drop: {
+    type: "drop",
+    label: "Drop Set",
+    shortLabel: "D",
+    description: "Levar à falha, reduzir a carga em 20-30% sem descanso e continuar.",
+    badgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/35",
+    dotColor: "bg-rose-400",
+  },
+  rest_pause: {
+    type: "rest_pause",
+    label: "Rest-Pause",
+    shortLabel: "R",
+    description: "Falha, pausa curta de 10-15s e mais repetições máximas com mesmo peso.",
+    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/35",
+    dotColor: "bg-emerald-400",
+  },
+  failure: {
+    type: "failure",
+    label: "Até a Falha (AMRAP)",
+    shortLabel: "⚡",
+    description: "Máximo de repetições possíveis até a falha concêntrica total.",
+    badgeClass: "bg-red-500/25 text-red-300 border-red-500/40 font-black",
+    dotColor: "bg-red-500",
+  },
+};
+
 export interface WorkoutSetTemplate {
   setNumber: number;
   reps: number | string;
   weightKg: number;
   completed?: boolean;
+  type?: WorkoutSetType;
+  rpe?: number;
 }
 
 export interface ExerciseInWorkout {

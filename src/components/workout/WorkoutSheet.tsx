@@ -19,6 +19,9 @@ import {
   Trash2,
   Search,
   X,
+  HelpCircle,
+  Edit3,
+  Check,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -27,6 +30,7 @@ import {
   StudentWorkoutPackage,
   addExerciseToStudentSplit,
   removeExerciseFromStudentSplit,
+  updateStudentSplitExercises,
 } from "@/lib/workout-store";
 import {
   getExerciseDetails,
@@ -37,6 +41,8 @@ import {
   ExerciseDBItem,
   matchBodyPartCategory,
   normalizeSearchString,
+  WorkoutSetType,
+  SET_TYPES_METADATA,
 } from "@/lib/exercisedb";
 import { ExerciseGifModal, ExerciseModalData } from "./ExerciseGifModal";
 import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
@@ -47,6 +53,8 @@ export interface ExerciseSet {
   reps: number | string;
   weightKg: number;
   completed: boolean;
+  type?: WorkoutSetType;
+  rpe?: number;
 }
 
 export interface Exercise {
@@ -97,6 +105,21 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
   const [addModalTab, setAddModalTab] = useState<"catalog" | "custom">("catalog");
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogMuscleFilter, setCatalogMuscleFilter] = useState("todos");
+
+  // Modal de Seleção de Tipo de Série
+  const [setTypeModalData, setSetTypeModalData] = useState<{
+    exerciseId: string;
+    exerciseName: string;
+    setNumber: number;
+    currentType: WorkoutSetType;
+  } | null>(null);
+
+  // Modal de Guia Explicativo dos Tipos de Séries
+  const [isTypesGuideOpen, setIsTypesGuideOpen] = useState(false);
+
+  // Inline editing para reps e peso
+  const [editingRepsKey, setEditingRepsKey] = useState<string | null>(null);
+  const [editingWeightKey, setEditingWeightKey] = useState<string | null>(null);
 
   // Inputs para criação de exercício personalizado pelo aluno
   const [customName, setCustomName] = useState("");
@@ -175,6 +198,8 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
           reps: set.reps,
           weightKg: set.weightKg,
           completed: set.completed || false,
+          type: set.type || "normal",
+          rpe: set.rpe,
         })),
       };
     });
@@ -317,51 +342,242 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
     );
   }, 0);
 
+  // Persistência das alterações de séries e repetições
+  const persistSplitsChange = (updatedSplits: WorkoutSplit[]) => {
+    setSplits(updatedSplits);
+    const targetSplit = updatedSplits.find((s) => s.id === selectedSplitId);
+    if (targetSplit) {
+      const rawExercises: ExerciseInWorkout[] = targetSplit.exercises.map((ex) => ({
+        id: ex.id,
+        exerciseId: ex.exerciseId || ex.name,
+        name: ex.name,
+        muscle: ex.muscle,
+        equipment: ex.equipment,
+        target: ex.target,
+        restSeconds: ex.restSeconds || 60,
+        notes: ex.notes,
+        gifUrl: ex.gifUrl,
+        mediaFrames: ex.mediaFrames,
+        instructions: ex.instructions,
+        tips: ex.tips,
+        isCustom: ex.isCustom,
+        sets: ex.sets.map((s) => ({
+          setNumber: s.setNumber,
+          reps: s.reps,
+          weightKg: s.weightKg,
+          completed: s.completed,
+          type: s.type || "normal",
+          rpe: s.rpe,
+        })),
+      }));
+      updateStudentSplitExercises(studentId, selectedSplitId, rawExercises);
+    }
+  };
+
   // Toggle de conclusão de série
   const handleToggleSet = (exerciseId: string, setNumber: number) => {
     triggerHaptic("medium");
-    setSplits((prev) =>
-      prev.map((split) => {
-        if (split.id !== selectedSplitId) return split;
-        return {
-          ...split,
-          exercises: split.exercises.map((ex) => {
-            if (ex.id !== exerciseId) return ex;
-            return {
-              ...ex,
-              sets: ex.sets.map((s) => {
-                if (s.setNumber !== setNumber) return s;
-                return { ...s, completed: !s.completed };
-              }),
-            };
-          }),
-        };
-      })
-    );
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s) => {
+              if (s.setNumber !== setNumber) return s;
+              return { ...s, completed: !s.completed };
+            }),
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
   };
 
-  // Ajuste de carga (+/- 2kg)
+  // Ajuste de carga (+/- delta kg)
   const handleAdjustWeight = (exerciseId: string, setNumber: number, delta: number) => {
     triggerHaptic("light");
-    setSplits((prev) =>
-      prev.map((split) => {
-        if (split.id !== selectedSplitId) return split;
-        return {
-          ...split,
-          exercises: split.exercises.map((ex) => {
-            if (ex.id !== exerciseId) return ex;
-            return {
-              ...ex,
-              sets: ex.sets.map((s) => {
-                if (s.setNumber !== setNumber) return s;
-                const newWeight = Math.max(0, s.weightKg + delta);
-                return { ...s, weightKg: newWeight };
-              }),
-            };
-          }),
-        };
-      })
-    );
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s) => {
+              if (s.setNumber !== setNumber) return s;
+              const newWeight = Math.max(0, s.weightKg + delta);
+              return { ...s, weightKg: newWeight };
+            }),
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
+  };
+
+  // Definição direta de carga
+  const handleSetWeight = (exerciseId: string, setNumber: number, weightKg: number) => {
+    triggerHaptic("selection");
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s) => {
+              if (s.setNumber !== setNumber) return s;
+              return { ...s, weightKg: Math.max(0, Math.round(weightKg * 10) / 10) };
+            }),
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
+  };
+
+  // Ajuste de repetições (+/- 1)
+  const handleAdjustReps = (exerciseId: string, setNumber: number, delta: number) => {
+    triggerHaptic("light");
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s) => {
+              if (s.setNumber !== setNumber) return s;
+              let currentVal = 10;
+              if (typeof s.reps === "number") {
+                currentVal = s.reps;
+              } else if (typeof s.reps === "string") {
+                const match = s.reps.match(/\d+/);
+                if (match) currentVal = parseInt(match[0], 10);
+              }
+              const nextVal = Math.max(1, currentVal + delta);
+              return { ...s, reps: nextVal };
+            }),
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
+  };
+
+  // Definição direta de repetições
+  const handleSetReps = (exerciseId: string, setNumber: number, rawVal: string | number) => {
+    triggerHaptic("selection");
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s) => {
+              if (s.setNumber !== setNumber) return s;
+              let finalReps: string | number = rawVal;
+              if (typeof rawVal === "string") {
+                const trimmed = rawVal.trim();
+                const asNum = Number(trimmed);
+                if (!isNaN(asNum) && trimmed !== "") {
+                  finalReps = Math.max(1, asNum);
+                } else if (trimmed) {
+                  finalReps = trimmed;
+                } else {
+                  finalReps = 10;
+                }
+              }
+              return { ...s, reps: finalReps };
+            }),
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
+  };
+
+  // Alteração do tipo de série
+  const handleSelectSetType = (newType: WorkoutSetType) => {
+    if (!setTypeModalData) return;
+    const { exerciseId, setNumber } = setTypeModalData;
+    triggerHaptic("selection");
+
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s) => {
+              if (s.setNumber !== setNumber) return s;
+              return { ...s, type: newType };
+            }),
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
+    setSetTypeModalData(null);
+  };
+
+  // Adicionar nova série ao exercício
+  const handleAddSet = (exerciseId: string) => {
+    triggerHaptic("success");
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          const lastSet = ex.sets[ex.sets.length - 1];
+          const newSet: ExerciseSet = {
+            setNumber: ex.sets.length + 1,
+            reps: lastSet ? lastSet.reps : 10,
+            weightKg: lastSet ? lastSet.weightKg : 20,
+            completed: false,
+            type: "normal",
+          };
+          return {
+            ...ex,
+            sets: [...ex.sets, newSet],
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
+  };
+
+  // Remover série do exercício
+  const handleRemoveSet = (exerciseId: string, setNumber: number) => {
+    triggerHaptic("heavy");
+    const updated = splits.map((split) => {
+      if (split.id !== selectedSplitId) return split;
+      return {
+        ...split,
+        exercises: split.exercises.map((ex) => {
+          if (ex.id !== exerciseId) return ex;
+          if (ex.sets.length <= 1) return ex; // Mantém no mínimo 1 série
+          const filtered = ex.sets.filter((s) => s.setNumber !== setNumber);
+          const reindexed = filtered.map((s, idx) => ({ ...s, setNumber: idx + 1 }));
+          return {
+            ...ex,
+            sets: reindexed,
+          };
+        }),
+      };
+    });
+    persistSplitsChange(updated);
   };
 
   // Reset do split atual
@@ -616,65 +832,211 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
                 </div>
               )}
 
-              {/* Tabela de Séries Minimalista */}
+              {/* Tabela de Séries */}
               <div className="flex flex-col gap-1.5">
-                <div className="grid grid-cols-12 text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-2">
-                  <span className="col-span-2">Série</span>
+                <div className="grid grid-cols-12 text-[9px] font-bold text-zinc-500 uppercase tracking-wider px-2 pb-1 border-b border-white/[0.04]">
+                  <span className="col-span-3">Série / Tipo</span>
                   <span className="col-span-3 text-center">Reps</span>
-                  <span className="col-span-5 text-center">Carga (kg)</span>
+                  <span className="col-span-4 text-center">Carga (kg)</span>
                   <span className="col-span-2 text-right">Feito</span>
                 </div>
 
-                {exercise.sets.map((set) => (
-                  <div
-                    key={set.setNumber}
-                    className={`grid grid-cols-12 items-center px-2 py-1 rounded-xl text-xs transition-all ${
-                      set.completed
-                        ? "bg-emerald-500/10 border border-emerald-500/25 text-emerald-200"
-                        : "bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300"
-                    }`}
-                  >
-                    <span className="col-span-2 font-mono font-bold text-[11px]">
-                      #{set.setNumber}
-                    </span>
-                    <span className="col-span-3 text-center font-mono font-medium text-[11px]">
-                      {set.reps}
-                    </span>
+                {exercise.sets.map((set) => {
+                  const setType = set.type || "normal";
+                  const meta = SET_TYPES_METADATA[setType] || SET_TYPES_METADATA.normal;
+                  const repsKey = `${exercise.id}_${set.setNumber}`;
+                  const weightKey = `${exercise.id}_${set.setNumber}`;
+                  const isEditingReps = editingRepsKey === repsKey;
+                  const isEditingWeight = editingWeightKey === weightKey;
 
-                    {/* Controle de Carga com Micro Botões +/- */}
-                    <div className="col-span-5 flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleAdjustWeight(exercise.id, set.setNumber, -2)}
-                        className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <Minus className="w-2 h-2" />
-                      </button>
-                      <span className="font-mono font-medium w-12 text-center text-white text-[11px]">
-                        {set.weightKg} kg
-                      </span>
-                      <button
-                        onClick={() => handleAdjustWeight(exercise.id, set.setNumber, 2)}
-                        className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <Plus className="w-2 h-2" />
-                      </button>
-                    </div>
+                  return (
+                    <div
+                      key={set.setNumber}
+                      className={`grid grid-cols-12 items-center px-2 py-1.5 rounded-xl text-xs gap-1 transition-all ${
+                        set.completed
+                          ? "bg-emerald-500/10 border border-emerald-500/25 text-emerald-200"
+                          : "bg-white/[0.02] hover:bg-white/[0.04] text-zinc-300"
+                      }`}
+                    >
+                      {/* Coluna 1: Tipo / Número da Série */}
+                      <div className="col-span-3 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic("selection");
+                            setSetTypeModalData({
+                              exerciseId: exercise.id,
+                              exerciseName: exercise.name,
+                              setNumber: set.setNumber,
+                              currentType: setType,
+                            });
+                          }}
+                          className={`px-1.5 py-0.5 rounded-md border text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all ${meta.badgeClass}`}
+                          title={`Tipo: ${meta.label}. Toque para alterar.`}
+                        >
+                          <span className="font-mono">#{set.setNumber}</span>
+                          <span className="text-[9px] uppercase px-1 rounded bg-black/25 font-black">
+                            {meta.shortLabel}
+                          </span>
+                        </button>
+                      </div>
 
-                    {/* Botão de Conclusão da Série */}
-                    <div className="col-span-2 flex justify-end">
-                      <button
-                        onClick={() => handleToggleSet(exercise.id, set.setNumber)}
-                        className="p-1 text-zinc-400 hover:text-white transition-all active:scale-90"
-                      >
-                        {set.completed ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      {/* Coluna 2: Repetições com Stepper e Edição Direta */}
+                      <div className="col-span-3 flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustReps(exercise.id, set.setNumber, -1)}
+                          className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all shrink-0"
+                          title="-1 rep"
+                        >
+                          <Minus className="w-2 h-2" />
+                        </button>
+
+                        {isEditingReps ? (
+                          <input
+                            type="text"
+                            autoFocus
+                            defaultValue={String(set.reps)}
+                            onBlur={(e) => {
+                              handleSetReps(exercise.id, set.setNumber, e.target.value.trim() || 10);
+                              setEditingRepsKey(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleSetReps(
+                                  exercise.id,
+                                  set.setNumber,
+                                  (e.target as HTMLInputElement).value.trim() || 10
+                                );
+                                setEditingRepsKey(null);
+                              }
+                            }}
+                            className="w-10 bg-zinc-950 border border-emerald-500 rounded px-1 py-0.5 text-center font-mono text-[11px] text-white focus:outline-none"
+                          />
                         ) : (
-                          <Circle className="w-4 h-4 text-zinc-600 hover:text-zinc-400" />
+                          <span
+                            onClick={() => setEditingRepsKey(repsKey)}
+                            className="font-mono font-medium text-center text-white text-[11px] cursor-pointer hover:underline hover:text-emerald-300 min-w-[24px]"
+                            title="Toque para digitar as repetições"
+                          >
+                            {set.reps}
+                          </span>
                         )}
-                      </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustReps(exercise.id, set.setNumber, 1)}
+                          className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all shrink-0"
+                          title="+1 rep"
+                        >
+                          <Plus className="w-2 h-2" />
+                        </button>
+                      </div>
+
+                      {/* Coluna 3: Carga (kg) com Stepper e Edição Direta */}
+                      <div className="col-span-4 flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustWeight(exercise.id, set.setNumber, -2)}
+                          className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all shrink-0"
+                          title="-2 kg"
+                        >
+                          <Minus className="w-2 h-2" />
+                        </button>
+
+                        {isEditingWeight ? (
+                          <input
+                            type="number"
+                            step="0.5"
+                            autoFocus
+                            defaultValue={set.weightKg}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value);
+                              handleSetWeight(exercise.id, set.setNumber, isNaN(val) ? 0 : val);
+                              setEditingWeightKey(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const val = parseFloat((e.target as HTMLInputElement).value);
+                                handleSetWeight(exercise.id, set.setNumber, isNaN(val) ? 0 : val);
+                                setEditingWeightKey(null);
+                              }
+                            }}
+                            className="w-12 bg-zinc-950 border border-emerald-500 rounded px-1 py-0.5 text-center font-mono text-[11px] text-white focus:outline-none"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => setEditingWeightKey(weightKey)}
+                            className="font-mono font-medium text-center text-white text-[11px] cursor-pointer hover:underline hover:text-emerald-300 min-w-[36px]"
+                            title="Toque para digitar a carga"
+                          >
+                            {set.weightKg} kg
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustWeight(exercise.id, set.setNumber, 2)}
+                          className="w-4 h-4 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white flex items-center justify-center active:scale-90 transition-all shrink-0"
+                          title="+2 kg"
+                        >
+                          <Plus className="w-2 h-2" />
+                        </button>
+                      </div>
+
+                      {/* Coluna 4: Feito + Remover Série */}
+                      <div className="col-span-2 flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSet(exercise.id, set.setNumber)}
+                          className="p-1 text-zinc-400 hover:text-white transition-all active:scale-90"
+                          title={set.completed ? "Desmarcar" : "Marcar como concluída"}
+                        >
+                          {set.completed ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-zinc-600 hover:text-zinc-400" />
+                          )}
+                        </button>
+
+                        {exercise.sets.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSet(exercise.id, set.setNumber)}
+                            className="p-1 text-zinc-600 hover:text-rose-400 transition-colors"
+                            title="Remover série"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+
+                {/* Ações Inferiores do Exercício: Adicionar Série e Guia */}
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleAddSet(exercise.id)}
+                    className="py-1 px-2.5 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 border border-white/[0.06] hover:border-emerald-500/30 text-[10px] font-bold text-zinc-400 hover:text-emerald-300 flex items-center gap-1.5 transition-all active:scale-95"
+                  >
+                    <Plus className="w-3 h-3 text-emerald-400" />
+                    <span>Adicionar Série</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setIsTypesGuideOpen(true);
+                    }}
+                    className="text-[10px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors px-1"
+                  >
+                    <HelpCircle className="w-3 h-3 text-zinc-500" />
+                    <span>Tipos de série</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -1002,6 +1364,205 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
           if (onOpenPlans) onOpenPlans();
         }}
       />
+
+      {/* Modal de Seleção do Tipo de Série */}
+      {setTypeModalData && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full sm:max-w-md bg-zinc-900 border border-white/10 rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-1.5">
+                  <span>Tipo da Série #{setTypeModalData.setNumber}</span>
+                </h3>
+                <p className="text-[10px] text-zinc-400 truncate max-w-[280px]">
+                  {setTypeModalData.exerciseName}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSetTypeModalData(null)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-[11px] text-zinc-400 my-2.5">
+              Escolha a técnica ou objetivo desta série:
+            </p>
+
+            <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 py-1">
+              {(
+                [
+                  "normal",
+                  "warmup",
+                  "feeder",
+                  "top",
+                  "backoff",
+                  "drop",
+                  "rest_pause",
+                  "failure",
+                ] as WorkoutSetType[]
+              ).map((typeKey) => {
+                const meta = SET_TYPES_METADATA[typeKey];
+                const isCurrent = setTypeModalData.currentType === typeKey;
+
+                return (
+                  <button
+                    key={typeKey}
+                    type="button"
+                    onClick={() => handleSelectSetType(typeKey)}
+                    className={`p-3 rounded-xl border text-left transition-all flex items-start justify-between gap-2.5 active:scale-[0.99] ${
+                      isCurrent
+                        ? "bg-emerald-950/30 border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
+                        : "bg-zinc-950 border-white/[0.06] hover:border-white/[0.15]"
+                    }`}
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${meta.badgeClass}`}
+                        >
+                          {meta.shortLabel} • {meta.label}
+                        </span>
+                        {isCurrent && (
+                          <span className="text-[10px] font-bold text-emerald-400">
+                            (Atual)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-snug">
+                        {meta.description}
+                      </p>
+                    </div>
+
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                        isCurrent
+                          ? "border-emerald-500 bg-emerald-500 text-zinc-950"
+                          : "border-white/20"
+                      }`}
+                    >
+                      {isCurrent && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-3 border-t border-white/[0.08] mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSetTypeModalData(null)}
+                className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-bold text-zinc-300 transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Guia Explicativo dos Tipos de Séries */}
+      {isTypesGuideOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full sm:max-w-lg bg-zinc-900 border border-white/10 rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl max-h-[85vh] flex flex-col text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Metodologia de Séries GymFlow</h3>
+                  <p className="text-[10px] text-zinc-400">Guia de técnicas para hipertrofia e força</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTypesGuideOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto pr-1 flex-1 py-3 space-y-2.5 text-xs">
+              <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border bg-amber-500/15 text-amber-400 border-amber-500/30 inline-block">
+                  W • Aquecimento (Warm-up)
+                </span>
+                <p className="text-zinc-300 text-[11px] leading-relaxed">
+                  1 a 2 séries com 40-50% da carga da série de trabalho. Prepara as articulações, aquece o músculo e ativa o sistema nervoso central sem gerar fadiga. Não conta para o volume hipertrófico total.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border bg-sky-500/15 text-sky-400 border-sky-500/30 inline-block">
+                  F • Preparatória (Feeder Set)
+                </span>
+                <p className="text-zinc-300 text-[11px] leading-relaxed">
+                  2 a 3 repetições com ~70-80% do peso da Top Set. Prepara a mente e a pegada para sentir a carga sem queimar energia e sem acumular ácido lático.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border bg-amber-500/25 text-amber-300 border-amber-400/40 inline-block">
+                  T • Top Set (Principal)
+                </span>
+                <p className="text-zinc-300 text-[11px] leading-relaxed">
+                  A série mais pesada do treino naquele exercício (geralmente entre 6 a 9 reps com alta intensidade e 1 rep na reserva). É o momento de aplicar sobrecarga progressiva e bater recordes de carga.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border bg-indigo-500/15 text-indigo-400 border-indigo-500/30 inline-block">
+                  B • Back-off Set
+                </span>
+                <p className="text-zinc-300 text-[11px] leading-relaxed">
+                  Reduz 10% a 20% do peso da Top Set e executa entre 10 a 12 repetições com cadência controlada. Garante volume limpo e estímulo mecânico com menos risco de lesão.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border bg-rose-500/20 text-rose-300 border-rose-500/35 inline-block">
+                  D • Drop Set
+                </span>
+                <p className="text-zinc-300 text-[11px] leading-relaxed">
+                  Execute até a falha muscular concêntrica. Sem descanso, reduza o peso em 20-30% imediatamente e continue até uma nova falha. Excelente como finalizador metabólico.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border bg-emerald-500/20 text-emerald-300 border-emerald-500/35 inline-block">
+                  R • Rest-Pause
+                </span>
+                <p className="text-zinc-300 text-[11px] leading-relaxed">
+                  Chegue à falha com carga moderada/alta, descanse apenas 10 a 15 segundos respirando fundo e faça mais 3 a 5 reps com a mesma carga. Máximo recrutamento de unidades motoras.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-white/[0.06] space-y-1">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border bg-red-500/25 text-red-300 border-red-500/40 inline-block">
+                  ⚡ • Até a Falha (AMRAP)
+                </span>
+                <p className="text-zinc-300 text-[11px] leading-relaxed">
+                  "As Many Reps As Possible". Realize o maior número de repetições completas possíveis com boa técnica até a falha mecânica momentânea (RPE 10 / RIR 0).
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-white/[0.08] mt-2">
+              <button
+                type="button"
+                onClick={() => setIsTypesGuideOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider active:scale-95 transition-all shadow-md shadow-emerald-500/20"
+              >
+                Entendi, voltar ao treino
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
