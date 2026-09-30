@@ -454,10 +454,10 @@ export function registerNewUser(data: {
     profileCompleted: isCompleted,
     termsAccepted: data.termsAccepted ?? true,
     termsAcceptedAt: data.termsAccepted ? new Date().toISOString() : undefined,
-    subscriptionStatus: data.role === "coach" ? "active" : "trial",
-    subscriptionPlan: data.role === "coach" ? "coach_unlimited" : "trial_7d",
-    planTier: "pro",
-    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    subscriptionStatus: data.role === "coach" ? "active" : "pending_choice",
+    subscriptionPlan: data.role === "coach" ? "coach_unlimited" : undefined,
+    planTier: data.role === "coach" ? undefined : undefined,
+    trialEndsAt: undefined,
   };
 
   if (typeof window !== "undefined") {
@@ -549,15 +549,14 @@ export function initAuthSession(): () => void {
       const resolvedSubscriptionStatus =
         cloudProfile?.subscriptionStatus ||
         (isSameUser ? currentLocal.subscriptionStatus : undefined) ||
-        (resolvedRole === "coach" ? "active" : "trial");
+        (resolvedRole === "coach" ? "active" : "pending_choice");
       const resolvedSubscriptionPlan =
         cloudProfile?.subscriptionPlan ||
         (isSameUser ? currentLocal.subscriptionPlan : undefined) ||
-        (resolvedRole === "coach" ? "coach_unlimited" : "trial_7d");
+        (resolvedRole === "coach" ? "coach_unlimited" : undefined);
       const resolvedTrialEndsAt =
         cloudProfile?.trialEndsAt ||
-        (isSameUser ? currentLocal.trialEndsAt : undefined) ||
-        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        (isSameUser ? currentLocal.trialEndsAt : undefined);
 
       const mergedUser: UserProfile = {
         id: user.id,
@@ -612,7 +611,10 @@ export function initAuthSession(): () => void {
         profileCompleted: resolvedProfileCompleted,
         subscriptionStatus: resolvedSubscriptionStatus,
         subscriptionPlan: resolvedSubscriptionPlan,
-        planTier: cloudProfile?.planTier || (isSameUser ? currentLocal.planTier : undefined) || "pro",
+        planTier:
+          cloudProfile?.planTier ||
+          (isSameUser ? currentLocal.planTier : undefined) ||
+          (resolvedSubscriptionStatus === "pending_choice" ? undefined : "pro"),
         trialEndsAt: resolvedTrialEndsAt,
         subscriptionEndsAt: cloudProfile?.subscriptionEndsAt || (isSameUser ? currentLocal.subscriptionEndsAt : undefined),
       };

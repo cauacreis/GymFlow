@@ -806,16 +806,27 @@ export function AccountCustomizationModal({
             ? "active"
             : user.subscriptionStatus === "active" && user.subscriptionPlan
             ? "active"
-            : "trial",
+            : user.subscriptionStatus === "trial" && user.trialEndsAt
+            ? "trial"
+            : "pending_choice",
         subscriptionPlan:
           role === "coach"
             ? "coach_unlimited"
-            : user.subscriptionPlan || "trial_7d",
+            : user.subscriptionStatus === "active" || user.subscriptionStatus === "trial"
+            ? user.subscriptionPlan
+            : undefined,
         trialEndsAt:
-          role === "student" && (!user.trialEndsAt || user.subscriptionStatus !== "active")
-            ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-            : user.trialEndsAt,
-        planTier: "pro",
+          role === "coach"
+            ? undefined
+            : user.subscriptionStatus === "trial"
+            ? user.trialEndsAt
+            : undefined,
+        planTier:
+          role === "coach"
+            ? undefined
+            : user.subscriptionStatus === "active" || user.subscriptionStatus === "trial"
+            ? user.planTier
+            : undefined,
       };
 
       // 1. Atualiza metadados no Supabase Auth
