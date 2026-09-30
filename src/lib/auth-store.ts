@@ -237,29 +237,32 @@ export function hasActiveAccess(user?: UserProfile): boolean {
   return false;
 }
 
-export function activateTrialForUser(days: number = 7): UserProfile {
-  const u = getCurrentUser();
+export function activateTrialForUser(days: number = 7, targetUser?: UserProfile): UserProfile {
+  const current = getCurrentUser();
+  const base = targetUser && targetUser.id && targetUser.id !== "user_me" ? { ...current, ...targetUser } : current;
   const trialEndDate = new Date();
   trialEndDate.setDate(trialEndDate.getDate() + days);
 
   const updated: UserProfile = {
-    ...u,
+    ...base,
     subscriptionStatus: "trial",
     subscriptionPlan: "trial_7d",
     planTier: "pro",
     trialEndsAt: trialEndDate.toISOString(),
   };
 
-  saveUserProfile(updated);
-  return updated;
+  const saved = saveUserProfile(updated);
+  return saved;
 }
 
 export function activatePaidPlanForUser(
   planId: string,
   isRecurring: boolean = false,
-  tier?: "basico" | "pro" | "vip"
+  tier?: "basico" | "pro" | "vip",
+  targetUser?: UserProfile
 ): UserProfile {
-  const u = getCurrentUser();
+  const current = getCurrentUser();
+  const base = targetUser && targetUser.id && targetUser.id !== "user_me" ? { ...current, ...targetUser } : current;
   const endDate = new Date();
   endDate.setMonth(endDate.getMonth() + 1);
 
@@ -268,15 +271,15 @@ export function activatePaidPlanForUser(
   else if (planId === "vip") determinedTier = "vip";
 
   const updated: UserProfile = {
-    ...u,
+    ...base,
     subscriptionStatus: "active",
     subscriptionPlan: isRecurring ? "monthly_recurring" : planId,
     planTier: determinedTier,
     subscriptionEndsAt: endDate.toISOString(),
   };
 
-  saveUserProfile(updated);
-  return updated;
+  const saved = saveUserProfile(updated);
+  return saved;
 }
 
 export function getCurrentUser(): UserProfile {
@@ -497,7 +500,9 @@ export function initAuthSession(): () => void {
       const currentLocal = getCurrentUser();
       const isSameUser =
         currentLocal.id === user.id ||
-        (currentLocal.email && user.email && currentLocal.email.toLowerCase() === user.email.toLowerCase());
+        (Boolean(currentLocal.email) && Boolean(user.email) && currentLocal.email.toLowerCase() === user.email.toLowerCase()) ||
+        currentLocal.id === "user_me" ||
+        !currentLocal.email;
 
       const cloudProfile = await fetchProfileFromSupabase(user.id);
       const meta = user.user_metadata || {};
@@ -546,17 +551,79 @@ export function initAuthSession(): () => void {
         (resolvedName && resolvedName !== "Usuário" && resolvedName !== "Aluno Convidado" && (resolvedRole === "coach" ? resolvedSpecialty : resolvedGoal))
       );
 
-      const resolvedSubscriptionStatus =
-        cloudProfile?.subscriptionStatus ||
-        (isSameUser ? currentLocal.subscriptionStatus : undefined) ||
-        (resolvedRole === "coach" ? "active" : "pending_choice");
-      const resolvedSubscriptionPlan =
-        cloudProfile?.subscriptionPlan ||
-        (isSameUser ? currentLocal.subscriptionPlan : undefined) ||
-        (resolvedRole === "coach" ? "coach_unlimited" : undefined);
-      const resolvedTrialEndsAt =
-        cloudProfile?.trialEndsAt ||
-        (isSameUser ? currentLocal.trialEndsAt : undefined);
+      // Resolução inteligente e resiliente de Assinatura & Período de Testes (Trial de 7 Dias)
+      const now = Date.now();
+
+      // Checa se local ou cloud possuem um Trial válido em andamento
+      const localHasActiveTrial =
+        currentLocal.subscriptionStatus === "trial" &&
+        Boolean(currentLocal.trialEndsAt) &&
+        new Date(currentLocal.trialEndsAt!).getTime() > now;
+
+      const cloudHasActiveTrial =
+        cloudProfile?.subscriptionStatus === "trial" &&
+        Boolean(cloudProfile?.trialEndsAt) &&
+        new Date(cloudProfile.trialEndsAt!).getTime() > now;
+
+      // Checa se local ou cloud possuem plano pago ativo
+      const localHasActivePaid =
+        currentLocal.subscriptionStatus === "active" &&
+        (!currentLocal.subscriptionEndsAt || new Date(currentLocal.subscriptionEndsAt).getTime() > now);
+
+      const cloudHasActivePaid =
+        cloudProfile?.subscriptionStatus === "active" &&
+        (!cloudProfile?.subscriptionEndsAt || new Date(cloudProfile.subscriptionEndsAt).getTime() > now);
+
+      let resolvedSubscriptionStatus: "trial" | "active" | "past_due" | "expired" | "pending_choice";
+      let resolvedSubscriptionPlan: string | undefined;
+      let resolvedTrialEndsAt: string | undefined;
+      let resolvedSubscriptionEndsAt: string | undefined;
+      let resolvedPlanTier: "basico" | "pro" | "vip" = "pro";
+
+      if (resolvedRole === "coach") {
+        resolvedSubscriptionStatus = "active";
+        resolvedSubscriptionPlan = "coach_unlimited";
+        resolvedPlanTier = "vip";
+      } else if (cloudHasActivePaid || (isSameUser && localHasActivePaid)) {
+        resolvedSubscriptionStatus = "active";
+        resolvedSubscriptionPlan =
+          cloudProfile?.subscriptionPlan ||
+          currentLocal.subscriptionPlan ||
+          "pro";
+        resolvedSubscriptionEndsAt =
+          cloudProfile?.subscriptionEndsAt ||
+          currentLocal.subscriptionEndsAt;
+        resolvedPlanTier =
+          cloudProfile?.planTier ||
+          currentLocal.planTier ||
+          "pro";
+      } else if (cloudHasActiveTrial || localHasActiveTrial) {
+        // Se qualquer uma das fontes tiver o trial de 7 dias ativo e não expirado, preserva o trial
+        resolvedSubscriptionStatus = "trial";
+        resolvedSubscriptionPlan = "trial_7d";
+        resolvedTrialEndsAt =
+          (cloudHasActiveTrial ? cloudProfile?.trialEndsAt : null) ||
+          currentLocal.trialEndsAt;
+        resolvedPlanTier = "pro";
+      } else if (cloudProfile?.subscriptionStatus && cloudProfile.subscriptionStatus !== "pending_choice") {
+        resolvedSubscriptionStatus = cloudProfile.subscriptionStatus;
+        resolvedSubscriptionPlan = cloudProfile.subscriptionPlan;
+        resolvedTrialEndsAt = cloudProfile.trialEndsAt;
+        resolvedSubscriptionEndsAt = cloudProfile.subscriptionEndsAt;
+        resolvedPlanTier = cloudProfile.planTier || "pro";
+      } else if (isSameUser && currentLocal.subscriptionStatus && currentLocal.subscriptionStatus !== "pending_choice") {
+        resolvedSubscriptionStatus = currentLocal.subscriptionStatus;
+        resolvedSubscriptionPlan = currentLocal.subscriptionPlan;
+        resolvedTrialEndsAt = currentLocal.trialEndsAt;
+        resolvedSubscriptionEndsAt = currentLocal.subscriptionEndsAt;
+        resolvedPlanTier = currentLocal.planTier || "pro";
+      } else {
+        resolvedSubscriptionStatus = "pending_choice";
+        resolvedSubscriptionPlan = undefined;
+        resolvedTrialEndsAt = undefined;
+        resolvedSubscriptionEndsAt = undefined;
+        resolvedPlanTier = "pro";
+      }
 
       const mergedUser: UserProfile = {
         id: user.id,
@@ -611,22 +678,24 @@ export function initAuthSession(): () => void {
         profileCompleted: resolvedProfileCompleted,
         subscriptionStatus: resolvedSubscriptionStatus,
         subscriptionPlan: resolvedSubscriptionPlan,
-        planTier:
-          cloudProfile?.planTier ||
-          (isSameUser ? currentLocal.planTier : undefined) ||
-          (resolvedSubscriptionStatus === "pending_choice" ? undefined : "pro"),
+        planTier: resolvedPlanTier,
         trialEndsAt: resolvedTrialEndsAt,
-        subscriptionEndsAt: cloudProfile?.subscriptionEndsAt || (isSameUser ? currentLocal.subscriptionEndsAt : undefined),
+        subscriptionEndsAt: resolvedSubscriptionEndsAt,
       };
 
       const saved = saveUserProfile(mergedUser);
+
+      // Se o trial estiver ativo mas ainda não estiver sincronizado na nuvem, persiste agora
+      if (resolvedSubscriptionStatus === "trial" && (!cloudProfile?.trialEndsAt || cloudProfile?.subscriptionStatus !== "trial")) {
+        saveProfileToSupabase(saved).catch(() => {});
+      }
 
       // 🛡️ Proteção Anti-Abuso Silenciosa: vincula o dispositivo à conta autenticada
       if (user.email && user.id) {
         registerDeviceAccount({
           email: user.email,
           userId: user.id,
-          trialUsed: false,
+          trialUsed: resolvedSubscriptionStatus === "trial" || Boolean(saved.trialEndsAt) || Boolean(cloudProfile?.trialEndsAt),
           plan: saved.subscriptionPlan || "trial_7d",
         }).catch(() => {});
       }

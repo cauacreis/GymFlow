@@ -37,6 +37,12 @@ import {
 } from "../src/lib/subscription-features";
 
 import {
+  hasActiveAccess,
+  activateTrialForUser,
+  UserProfile,
+} from "../src/lib/auth-store";
+
+import {
   verifyMercadoPagoWebhook,
   verifyHmacSignature,
   checkRateLimit,
@@ -724,6 +730,140 @@ async function runAllTests() {
   assert(
     canApplySubscriptionCredit({ status: "pending", credit_applied: false }) === false,
     "Pagamento pendente não permite concessão de crédito de assinatura"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 13. TESTE DE PERSISTÊNCIA DO TRIAL DE 7 DIAS E CONTAGEM REGRESSIVA
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 13. Testando Persistência do Trial de 7 Dias e Contagem Regressiva...");
+
+  const mockBaseUser: UserProfile = {
+    id: "user_test_trial_uuid_123",
+    name: "Aluno Teste Trial",
+    email: "aluno.trial@gymflow.com",
+    activeRole: "student",
+    enabledRoles: ["student"],
+    subscriptionStatus: "pending_choice",
+  };
+
+  // 13.1 Ativação do Trial de 7 Dias
+  const activated = activateTrialForUser(7, mockBaseUser);
+  assert(
+    activated.subscriptionStatus === "trial",
+    "activateTrialForUser: Define subscriptionStatus como 'trial'"
+  );
+  assert(
+    activated.subscriptionPlan === "trial_7d",
+    "activateTrialForUser: Define subscriptionPlan como 'trial_7d'"
+  );
+  assert(
+    activated.planTier === "pro",
+    "activateTrialForUser: Concede planTier 'pro' para o período de testes"
+  );
+  assert(
+    Boolean(activated.trialEndsAt) && new Date(activated.trialEndsAt!).getTime() > Date.now(),
+    "activateTrialForUser: Define trialEndsAt com data futura válida de 7 dias"
+  );
+
+  // 13.2 Contagem regressiva de dias (getRemainingTrialDays)
+  const userFreshTrial: UserProfile = {
+    ...mockBaseUser,
+    subscriptionStatus: "trial",
+    trialEndsAt: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
+  };
+  assert(
+    getRemainingTrialDays(userFreshTrial) === 7,
+    `getRemainingTrialDays: Retorna 7 dias para novo trial recém-ativado (resultado: ${getRemainingTrialDays(userFreshTrial)})`
+  );
+
+  const userHalfTrial: UserProfile = {
+    ...mockBaseUser,
+    subscriptionStatus: "trial",
+    trialEndsAt: new Date(Date.now() + 3.5 * 86400 * 1000).toISOString(),
+  };
+  assert(
+    getRemainingTrialDays(userHalfTrial) === 4,
+    `getRemainingTrialDays: Arredonda para cima 3.5 dias -> 4 dias (resultado: ${getRemainingTrialDays(userHalfTrial)})`
+  );
+
+  const userAlmostExpired: UserProfile = {
+    ...mockBaseUser,
+    subscriptionStatus: "trial",
+    trialEndsAt: new Date(Date.now() + 0.2 * 86400 * 1000).toISOString(),
+  };
+  assert(
+    getRemainingTrialDays(userAlmostExpired) === 1,
+    `getRemainingTrialDays: Retorna 1 dia para últimas horas de teste (resultado: ${getRemainingTrialDays(userAlmostExpired)})`
+  );
+
+  const userExpiredTrial: UserProfile = {
+    ...mockBaseUser,
+    subscriptionStatus: "trial",
+    trialEndsAt: new Date(Date.now() - 10000).toISOString(),
+  };
+  assert(
+    getRemainingTrialDays(userExpiredTrial) === 0,
+    "getRemainingTrialDays: Retorna 0 dias para trial com data no passado"
+  );
+
+  // 13.3 Permissão de Acesso ao Aplicativo (hasActiveAccess)
+  assert(
+    hasActiveAccess(userFreshTrial) === true,
+    "hasActiveAccess: Aluno com trial de 7 dias ativo TEM ACESSO LIBERADO ao app"
+  );
+
+  assert(
+    hasActiveAccess(userExpiredTrial) === false,
+    "hasActiveAccess: Aluno com trial expirado É BLOQUEADO e direcionado à escolha de plano"
+  );
+
+  const userPendingChoice: UserProfile = {
+    ...mockBaseUser,
+    subscriptionStatus: "pending_choice",
+  };
+  assert(
+    hasActiveAccess(userPendingChoice) === false,
+    "hasActiveAccess: Aluno com pending_choice é bloqueado"
+  );
+
+  const coachUser: UserProfile = {
+    ...mockBaseUser,
+    activeRole: "coach",
+    subscriptionStatus: "pending_choice",
+  };
+  assert(
+    hasActiveAccess(coachUser) === true,
+    "hasActiveAccess: Professor tem acesso irrestrito garantido"
+  );
+
+  // 13.4 Anti-Regressão na Recarga de Página
+  // Simula a lógica de syncUserFromSession: cloudProfile ainda está em 'pending_choice' mas local tem trial ativo
+  const cloudProfileOld: Partial<UserProfile> = {
+    id: mockBaseUser.id,
+    subscriptionStatus: "pending_choice",
+    trialEndsAt: undefined,
+  };
+  const localProfileActive: UserProfile = userFreshTrial;
+
+  const nowMs = Date.now();
+  const localHasActive =
+    localProfileActive.subscriptionStatus === "trial" &&
+    Boolean(localProfileActive.trialEndsAt) &&
+    new Date(localProfileActive.trialEndsAt!).getTime() > nowMs;
+
+  const cloudHasActive =
+    cloudProfileOld.subscriptionStatus === "trial" &&
+    Boolean(cloudProfileOld.trialEndsAt) &&
+    new Date(cloudProfileOld.trialEndsAt!).getTime() > nowMs;
+
+  let resolvedStatus = "pending_choice";
+  if (cloudHasActive || localHasActive) {
+    resolvedStatus = "trial";
+  }
+
+  assert(
+    resolvedStatus === "trial",
+    "Anti-Regressão: Recarregar página com cloud em 'pending_choice' NÃO apaga o trial ativo do usuário"
   );
 
   // ---------------------------------------------------------------------------

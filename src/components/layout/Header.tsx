@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Flame, Sparkles, User, GraduationCap, Dumbbell, Bell, ArrowRightLeft } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getRemainingTrialDays } from "@/lib/subscription-features";
 
 interface HeaderProps {
   streakDays?: number;
@@ -23,6 +24,7 @@ interface HeaderProps {
     avatarUrl?: string;
     planTier?: "basico" | "pro" | "vip";
     subscriptionStatus?: string;
+    trialEndsAt?: string;
   } | null;
 }
 
@@ -103,20 +105,36 @@ export function Header({
             </button>
           )}
 
-          {/* Indicador e Botão de Planos */}
-          <button
-            onClick={() => {
-              triggerHaptic("selection");
-              onOpenPlans();
-            }}
-            className="h-7 px-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
-            title="Ver Planos e Assinatura"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="uppercase text-[10px] tracking-wider hidden xs:inline">
-              {isCoach ? "Planos" : user?.subscriptionStatus === "trial" ? "Trial" : user?.planTier || "Pro"}
-            </span>
-          </button>
+          {/* Indicador e Botão de Planos com Contagem Regressiva do Trial */}
+          {!isCoach && user?.subscriptionStatus === "trial" ? (
+            <button
+              onClick={() => {
+                triggerHaptic("selection");
+                onOpenPlans();
+              }}
+              className="h-7 px-2.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 transition-all shadow-[0_0_12px_rgba(16,185,129,0.2)] active:scale-95"
+              title={`Período de Teste Ativo • ${getRemainingTrialDays(user as any)} dias restantes`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <span className="font-extrabold tracking-tight">
+                Teste Pro: <span className="text-emerald-400">{getRemainingTrialDays(user as any)}d</span>
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                triggerHaptic("selection");
+                onOpenPlans();
+              }}
+              className="h-7 px-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+              title="Ver Planos e Assinatura"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="uppercase text-[10px] tracking-wider hidden xs:inline">
+                {isCoach ? "Planos" : user?.planTier || "Pro"}
+              </span>
+            </button>
+          )}
 
           {/* Botão de Login / Cadastro para Visitantes */}
           {!user?.email && (

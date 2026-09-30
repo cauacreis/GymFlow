@@ -35,6 +35,8 @@ import {
   logoutUser,
   UserProfile,
 } from "@/lib/auth-store";
+import { saveProfileToSupabase } from "@/lib/supabase-service";
+import { getRemainingTrialDays } from "@/lib/subscription-features";
 import { maskEmail } from "@/lib/security";
 import {
   isTrialAvailableForDevice,
@@ -177,18 +179,36 @@ export function SubscriptionOnboardingModal({
   } | null>(null);
   const [copiedPix, setCopiedPix] = useState(false);
 
+  const userHasActiveTrial =
+    currentUser.subscriptionStatus === "trial" &&
+    Boolean(currentUser.trialEndsAt) &&
+    new Date(currentUser.trialEndsAt!).getTime() > Date.now();
+
+  const remainingDays = userHasActiveTrial ? getRemainingTrialDays(currentUser) : 0;
+
   useEffect(() => {
     if (isOpen) {
       const active = user || getCurrentUser();
       setCurrentUser(active);
-      isTrialAvailableForDevice().then((available) => {
-        setIsTrialAvailable(available);
-        if (available) {
-          setSelectedPlan("trial");
-        } else {
-          setSelectedPlan("pro");
-        }
-      });
+
+      const hasActive =
+        active.subscriptionStatus === "trial" &&
+        Boolean(active.trialEndsAt) &&
+        new Date(active.trialEndsAt!).getTime() > Date.now();
+
+      if (hasActive) {
+        setIsTrialAvailable(true);
+        setSelectedPlan("trial");
+      } else {
+        isTrialAvailableForDevice().then((available) => {
+          setIsTrialAvailable(available);
+          if (available) {
+            setSelectedPlan("trial");
+          } else {
+            setSelectedPlan("pro");
+          }
+        });
+      }
     }
   }, [isOpen, user]);
 
@@ -204,7 +224,7 @@ export function SubscriptionOnboardingModal({
         const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${u.id}`);
         const data = await res.json();
         if (data.success && data.status === "approved") {
-          activatePaidPlanForUser(selectedPlan, false, pixData.planTier);
+          activatePaidPlanForUser(selectedPlan, false, pixData.planTier, u);
           triggerHaptic("success");
           onSuccess();
         }
@@ -228,11 +248,13 @@ export function SubscriptionOnboardingModal({
     triggerHaptic("selection");
 
     try {
-      const allowed = await isTrialAvailableForDevice();
-      if (!allowed) {
-        throw new Error(
-          "Aviso: Este aparelho já utilizou o período de 7 dias grátis anteriormente. Por favor, selecione um plano para continuar."
-        );
+      if (!userHasActiveTrial) {
+        const allowed = await isTrialAvailableForDevice();
+        if (!allowed) {
+          throw new Error(
+            "Aviso: Este aparelho já utilizou o período de 7 dias grátis anteriormente. Por favor, selecione um plano para continuar."
+          );
+        }
       }
 
       // Tenta acionar o checkout de assinatura recorrente com free trial no Mercado Pago
@@ -262,7 +284,8 @@ export function SubscriptionOnboardingModal({
         const data = await res.json();
         if (data.initPoint && !data.isSimulated) {
           await markTrialAsUsedOnDevice();
-          activateTrialForUser(7);
+          const activated = activateTrialForUser(7, currentUser);
+          await saveProfileToSupabase(activated);
           window.location.href = data.initPoint;
           return;
         }
@@ -270,9 +293,11 @@ export function SubscriptionOnboardingModal({
         console.warn("Mercado Pago em modo direto local:", err);
       }
 
-      // Ativação direta local do trial de 7 dias
+      // Ativação direta local do trial de 7 dias com persistência garantida no Supabase
       await markTrialAsUsedOnDevice();
-      activateTrialForUser(7);
+      const activated = activateTrialForUser(7, currentUser);
+      await saveProfileToSupabase(activated);
+      setCurrentUser(activated);
       triggerHaptic("success");
       onSuccess();
     } catch (err: any) {
@@ -625,17 +650,22 @@ export function SubscriptionOnboardingModal({
                 {PLANS.map((plan) => {
                   const isSelected = selectedPlan === plan.id;
                   const isTrial = plan.id === "trial";
-                  const isTrialDisabled = isTrial && !isTrialAvailable;
+                  const isTrialDisabled = isTrial && !isTrialAvailable && !userHasActiveTrial;
 
                   // Se o usuário selecionou a aba PIX, 7 dias grátis fica visualmente desabilitado
-                  const isPixDisabled = isTrial && billingMethod === "pix";
+                  const isPixDisabled = isTrial && billingMethod === "pix" && !userHasActiveTrial;
 
                   let priceDisplay = "";
                   let periodDisplay = "";
 
                   if (isTrial) {
-                    priceDisplay = "R$ 0,00";
-                    periodDisplay = "hoje (7 dias grátis)";
+                    if (userHasActiveTrial) {
+                      priceDisplay = "R$ 0,00";
+                      periodDisplay = `${remainingDays}d restantes`;
+                    } else {
+                      priceDisplay = "R$ 0,00";
+                      periodDisplay = "hoje (7 dias grátis)";
+                    }
                   } else if (billingMethod === "recurring") {
                     priceDisplay = `R$ ${plan.recurringPrice.toFixed(2).replace(".", ",")}`;
                     periodDisplay = "/mês no cartão";
@@ -666,9 +696,15 @@ export function SubscriptionOnboardingModal({
                       <div>
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <span
-                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${plan.badgeColor}`}
+                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                              isTrial && userHasActiveTrial
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                : plan.badgeColor
+                            }`}
                           >
-                            {plan.badge}
+                            {isTrial && userHasActiveTrial
+                              ? `TESTE ATIVO (${remainingDays} ${remainingDays === 1 ? "DIA" : "DIAS"})`
+                              : plan.badge}
                           </span>
 
                           <div
@@ -693,7 +729,9 @@ export function SubscriptionOnboardingModal({
                         </div>
 
                         <p className="text-xs text-zinc-400 mt-1 leading-snug">
-                          {plan.tagline}
+                          {isTrial && userHasActiveTrial
+                            ? "Seu período de teste Pro está em andamento. Aproveite todos os recursos."
+                            : plan.tagline}
                         </p>
                       </div>
 
@@ -718,9 +756,18 @@ export function SubscriptionOnboardingModal({
                         ))}
                       </div>
 
+                      {isTrial && userHasActiveTrial && (
+                        <div className="mt-2 text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Período de teste ativo. Restam {remainingDays} {remainingDays === 1 ? "dia" : "dias"}.</span>
+                        </div>
+                      )}
+
                       {isTrialDisabled && (
                         <div className="mt-2 text-[10px] font-bold text-rose-400">
-                          Trial de 7 dias já foi utilizado neste aparelho.
+                          {currentUser.subscriptionStatus === "trial"
+                            ? "Seu período de 7 dias grátis terminou. Selecione um plano para continuar."
+                            : "Trial de 7 dias já foi utilizado neste aparelho."}
                         </div>
                       )}
 
@@ -803,12 +850,18 @@ export function SubscriptionOnboardingModal({
               <div className="pt-2">
                 {selectedPlan === "trial" ? (
                   <button
-                    onClick={handleStartFreeTrial}
-                    disabled={isLoading || !isTrialAvailable}
+                    onClick={userHasActiveTrial ? onSuccess : handleStartFreeTrial}
+                    disabled={isLoading || (!isTrialAvailable && !userHasActiveTrial)}
                     className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 active:scale-95 transition-all disabled:opacity-50"
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>{isLoading ? "Ativando acesso..." : "Começar 7 Dias Grátis Agora (R$ 0,00)"}</span>
+                    <span>
+                      {isLoading
+                        ? "Ativando acesso..."
+                        : userHasActiveTrial
+                        ? `Continuar no App (Teste Ativo • ${remainingDays}d restantes)`
+                        : "Começar 7 Dias Grátis Agora (R$ 0,00)"}
+                    </span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : billingMethod === "recurring" ? (

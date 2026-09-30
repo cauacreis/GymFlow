@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { activatePaidPlanForUser, getCurrentUser } from "@/lib/auth-store";
+import { getRemainingTrialDays } from "@/lib/subscription-features";
 
 export interface PlanOption {
   id: string;
@@ -298,6 +299,32 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-4">
           {checkoutStep === "plans" && (
             <>
+              {(() => {
+                const u = getCurrentUser();
+                const hasActiveTrial =
+                  u.subscriptionStatus === "trial" &&
+                  Boolean(u.trialEndsAt) &&
+                  new Date(u.trialEndsAt!).getTime() > Date.now();
+                const remaining = hasActiveTrial ? getRemainingTrialDays(u) : 0;
+                if (!hasActiveTrial) return null;
+                return (
+                  <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between gap-2 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        <strong>Período de Testes Ativo:</strong> Restam{" "}
+                        <span className="font-black text-emerald-400">
+                          {remaining} {remaining === 1 ? "dia" : "dias"}
+                        </span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 shrink-0">
+                      Pro Liberado
+                    </span>
+                  </div>
+                );
+              })()}
+
               <div className="flex flex-col gap-3">
                 {PLANS.map((plan) => {
                   const isSelected = plan.id === selectedPlanId;

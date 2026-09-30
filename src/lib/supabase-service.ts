@@ -426,12 +426,22 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
   if (!client) return false;
 
   try {
-    // Se for id sintético temporário (ex: user_12345), não força chave UUID se o usuário não logou via Supabase Auth
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
+    // Se for id sintético temporário (ex: user_12345), tenta recuperar o UUID da sessão ativa do Supabase Auth
+    let targetId = user.id;
+    let isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    if (!isUUID) {
+      try {
+        const { data: { session } } = await client.auth.getSession();
+        if (session?.user?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(session.user.id)) {
+          targetId = session.user.id;
+          isUUID = true;
+        }
+      } catch {}
+    }
     if (!isUUID) return false;
 
     const basePayload: any = {
-      id: user.id,
+      id: targetId,
       name: user.name,
       email: user.email,
       phone: user.phone || null,
@@ -487,12 +497,14 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
           console.warn("⚠️ [Supabase] Erro no fallback ao salvar perfil:", fallbackError.message);
           return false;
         }
+        invalidateSupabaseCache(`profile_${targetId}`);
         invalidateSupabaseCache(`profile_${user.id}`);
         return true;
       }
       console.warn("⚠️ [Supabase] Erro ao salvar perfil:", error.message);
       return false;
     }
+    invalidateSupabaseCache(`profile_${targetId}`);
     invalidateSupabaseCache(`profile_${user.id}`);
     return true;
   } catch (err) {

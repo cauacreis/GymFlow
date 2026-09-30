@@ -35,6 +35,7 @@ import {
   hasActiveAccess,
   activatePaidPlanForUser,
 } from "@/lib/auth-store";
+import { getRemainingTrialDays } from "@/lib/subscription-features";
 
 import {
   getStoredNotifications,
@@ -384,6 +385,37 @@ export default function GymFlowApp() {
               studentId={userProfile.id}
               onNavigateToAgenda={() => setCurrentTab("agenda")}
             />
+
+            {/* Banner Informativo de Período de Testes de 7 Dias */}
+            {userProfile.subscriptionStatus === "trial" && (
+              <div className="w-full p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-zinc-900/70 to-emerald-950/20 border border-emerald-500/25 flex items-center justify-between gap-3 shadow-lg animate-in fade-in duration-300">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-black text-white">Período de Testes Pro</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] border border-emerald-500/30">
+                        {getRemainingTrialDays(userProfile)} {getRemainingTrialDays(userProfile) === 1 ? "dia restante" : "dias restantes"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 truncate">
+                      Você está aproveitando o Plano Pro completo. Cancele ou assine quando quiser.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    triggerHaptic("selection");
+                    setIsPlansOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs shrink-0 transition-all active:scale-95 shadow-md shadow-emerald-500/20"
+                >
+                  Ver Planos
+                </button>
+              </div>
+            )}
 
             {/* ABA 1 DO ALUNO: MEU TREINO (ACADEMIA & CASA COM GIFS) */}
             {currentTab === "treino" && (
