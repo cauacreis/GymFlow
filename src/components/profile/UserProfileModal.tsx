@@ -455,7 +455,8 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
     });
 
     // Se possui perfil no marketplace, atualiza para refletir novo personal
-    updateCoachPublicProfile(updated.id || "coach_rodrigo", {
+    const targetCoachId = updated.id && updated.id !== "coach_rodrigo" ? updated.id : (profile.id && profile.id !== "coach_rodrigo" ? profile.id : "coach_me");
+    updateCoachPublicProfile(targetCoachId, {
       name: updated.name,
       cref: cleanCref,
       specialty: cleanSpecialty,
@@ -556,7 +557,8 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
 
     // Se for professor, atualiza os dados públicos no marketplace
     if (isCoach) {
-      updateCoachPublicProfile(profile.id || "coach_rodrigo", {
+      const targetCoachId = updated.id && updated.id !== "coach_rodrigo" ? updated.id : (profile.id && profile.id !== "coach_rodrigo" ? profile.id : "coach_me");
+      updateCoachPublicProfile(targetCoachId, {
         name,
         cref: cref.trim() || undefined,
         specialty,

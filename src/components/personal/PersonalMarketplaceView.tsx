@@ -60,6 +60,16 @@ interface PersonalMarketplaceViewProps {
   onOpenPlans?: () => void;
 }
 
+function decodeHtml(str?: string): string {
+  if (!str) return "";
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'");
+}
+
 export function PersonalMarketplaceView({
   studentId = "student_carlos",
   studentName = "Aluno",
@@ -183,13 +193,47 @@ export function PersonalMarketplaceView({
   };
 
   // Lista enriquecida com cálculo de distância ortodrômica (Haversine)
+  // E exclusão estrita do próprio usuário da listagem de contratação
   const enrichedCoaches = useMemo(() => {
     const userLat = currentUserProfile.latitude;
     const userLng = currentUserProfile.longitude;
     const hasUserCoords = isValidCoordinate(userLat, userLng);
     const userCity = (currentUserProfile.city || "").trim().toLowerCase();
 
-    return coaches.map((coach) => {
+    // 🛡️ NUNCA deixa a própria pessoa se ver como personal para contratação!
+    const availableCoaches = coaches.filter((coach) => {
+      // 1. Checagem por ID
+      if (currentUserProfile.id && coach.id === currentUserProfile.id) return false;
+      if (studentId && coach.id === studentId) return false;
+      if (coach.id === "coach_me" || coach.id === "user_me") return false;
+
+      // 2. Checagem por E-mail
+      if (
+        currentUserProfile.email &&
+        coach.email &&
+        currentUserProfile.email.trim().toLowerCase() === coach.email.trim().toLowerCase()
+      ) {
+        return false;
+      }
+
+      // 3. Checagem por Telefone (comparando apenas dígitos numéricos)
+      const userDigits = (currentUserProfile.phone || studentPhone || "").replace(/\D/g, "");
+      const coachDigits = (coach.phone || "").replace(/\D/g, "");
+      if (userDigits && coachDigits && userDigits.length >= 8 && userDigits === coachDigits) {
+        return false;
+      }
+
+      // 4. Checagem por Nome Completo do Usuário
+      const currentUserName = (currentUserProfile.name || studentName || "").trim().toLowerCase();
+      const coachName = (coach.name || "").trim().toLowerCase();
+      if (currentUserName && coachName && currentUserName === coachName) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return availableCoaches.map((coach) => {
       let calculatedDistanceKm: number | null = null;
       let proximityLabel = "";
       let isSameCity = false;
@@ -232,7 +276,7 @@ export function PersonalMarketplaceView({
         baseMonthlyPrice,
       };
     });
-  }, [coaches, currentUserProfile]);
+  }, [coaches, currentUserProfile, studentId, studentName, studentPhone]);
 
   // Filtros aplicados e ordenação por proximidade
   const filteredAndSortedCoaches = useMemo(() => {
@@ -331,6 +375,16 @@ export function PersonalMarketplaceView({
     maxDistanceRadiusKm,
     sortBy,
   ]);
+
+  // Garante que o treinador selecionado seja válido e nunca o próprio usuário
+  useEffect(() => {
+    if (filteredAndSortedCoaches.length > 0) {
+      const isSelectedAvailable = filteredAndSortedCoaches.some((c) => c.id === selectedCoachId);
+      if (!isSelectedAvailable) {
+        setSelectedCoachId(filteredAndSortedCoaches[0].id);
+      }
+    }
+  }, [filteredAndSortedCoaches, selectedCoachId]);
 
   const currentCoach =
     filteredAndSortedCoaches.find((c) => c.id === selectedCoachId) ||
@@ -994,7 +1048,7 @@ export function PersonalMarketplaceView({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 truncate">
-                          <h4 className="text-xs font-black text-white truncate">{coach.name}</h4>
+                          <h4 className="text-xs font-black text-white truncate">{decodeHtml(coach.name)}</h4>
                           {coach.cref && (
                             <span className="text-[9px] font-mono font-bold text-zinc-400 bg-white/[0.04] px-1 py-0.2 rounded border border-white/[0.06] hidden sm:inline">
                               {coach.cref}
@@ -1010,7 +1064,7 @@ export function PersonalMarketplaceView({
                       </div>
 
                       <span className="text-[10px] text-emerald-400 font-medium block truncate">
-                        {coach.specialty}
+                        {decodeHtml(coach.specialty)}
                       </span>
 
                       {/* Badges de Proximidade e Modalidade */}
@@ -1050,7 +1104,7 @@ export function PersonalMarketplaceView({
           <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
             <div>
               <span className="text-[10px] uppercase font-bold text-zinc-400">Agenda & Contratação</span>
-              <h3 className="text-xs font-black text-white">{currentCoach.name}</h3>
+              <h3 className="text-xs font-black text-white">{decodeHtml(currentCoach.name)}</h3>
               {currentCoach.location && (
                 <span className="text-[10px] text-zinc-400 block mt-0.5">
                   📍 {currentCoach.location}

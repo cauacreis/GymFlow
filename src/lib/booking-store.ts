@@ -25,6 +25,7 @@ export interface TrainerSlot {
 export interface CoachTrainer {
   id: string;
   name: string;
+  email?: string;
   cref?: string;
   avatarUrl: string;
   phone: string;
@@ -514,12 +515,24 @@ export function getStoredCoaches(): CoachTrainer[] {
     // Normalização defensiva: garante preços 35/45/55 e migra dados geográficos de INITIAL_COACHES
     const normalized = filteredList.map((c) => {
       const initial = INITIAL_COACHES.find((ic) => ic.id === c.id);
+      const isRodrigo = c.id === "coach_rodrigo";
+      const resolvedName = (isRodrigo && initial ? initial.name : c.name) || "Personal Trainer";
+      const resolvedCref = isRodrigo && initial ? initial.cref : c.cref;
+      const resolvedAvatar = (isRodrigo && initial ? initial.avatarUrl : (c.avatarUrl || initial?.avatarUrl)) || "";
+      const resolvedSpecialty = (isRodrigo && initial ? initial.specialty : (c.specialty || initial?.specialty)) || "Musculação & Hipertrofia";
+      const resolvedPhone = (isRodrigo && initial ? initial.phone : (c.phone || initial?.phone)) || "";
+
       const basic = c.pricing?.basicMonthly && c.pricing.basicMonthly <= 60 ? c.pricing.basicMonthly : 35;
       const pro = c.pricing?.proMonthly && c.pricing.proMonthly <= 75 ? c.pricing.proMonthly : 45;
       const vip = c.pricing?.vipMonthly && c.pricing.vipMonthly <= 90 ? c.pricing.vipMonthly : 55;
       return {
         ...initial,
         ...c,
+        name: resolvedName,
+        cref: resolvedCref,
+        avatarUrl: resolvedAvatar,
+        specialty: resolvedSpecialty,
+        phone: resolvedPhone,
         city: c.city || initial?.city,
         state: c.state || initial?.state,
         neighborhood: c.neighborhood || initial?.neighborhood,

@@ -1023,6 +1023,42 @@ async function runAllTests() {
     "Purga de Treinador Fake: Treinadores reais preservados intactos"
   );
 
+  // 14.5 Auto-Exclusão no Marketplace: Usuário NUNCA se vê na lista de personais para contratação
+  const userTheBope: Partial<UserProfile> = {
+    id: "user_the_bope_123",
+    name: "The Bope",
+    email: "thebope@gymflow.test",
+    phone: "(62) 99999-8888",
+  };
+
+  const coachesMarketplace = [
+    { id: "coach_rodrigo", name: "Prof. Rodrigo Silveira", email: "rodrigo@gymflow.com", phone: "11999990000" },
+    { id: "user_the_bope_123", name: "The Bope", email: "thebope@gymflow.test", phone: "62999998888" },
+    { id: "coach_felipe", name: "Felipe Mendes", email: "felipe@gymflow.com", phone: "11988881234" },
+  ];
+
+  const filterOutSelf = (list: typeof coachesMarketplace, user: typeof userTheBope) => {
+    return list.filter((coach) => {
+      if (user.id && coach.id === user.id) return false;
+      if (user.email && coach.email && user.email.toLowerCase() === coach.email.toLowerCase()) return false;
+      const userDigits = (user.phone || "").replace(/\D/g, "");
+      const coachDigits = (coach.phone || "").replace(/\D/g, "");
+      if (userDigits && coachDigits && userDigits === coachDigits) return false;
+      if (user.name && coach.name && user.name.toLowerCase() === coach.name.toLowerCase()) return false;
+      return true;
+    });
+  };
+
+  const availableForBope = filterOutSelf(coachesMarketplace, userTheBope);
+  assert(
+    !availableForBope.some((c) => c.name === "The Bope" || c.id === "user_the_bope_123"),
+    "Auto-Exclusão Marketplace: O usuário 'The Bope' NÃO se vê na lista de personais para contratação"
+  );
+  assert(
+    availableForBope.length === 2,
+    "Auto-Exclusão Marketplace: Demais personais permanecem disponíveis para contratação"
+  );
+
   // ---------------------------------------------------------------------------
   // RESULTADO FINAL
   // ---------------------------------------------------------------------------
