@@ -34,8 +34,11 @@ import {
   Clock,
   Calendar,
   MessageSquare,
+  CreditCard,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { SubscriptionFAQ } from "../subscription/SubscriptionFAQ";
+import { CancelSubscriptionModal } from "../subscription/CancelSubscriptionModal";
 import {
   getCurrentUser,
   saveUserProfile,
@@ -94,11 +97,20 @@ interface UserProfileModalProps {
   onClose: () => void;
   onOpenAuth?: () => void;
   onOpenCustomization?: () => void;
+  onOpenPlans?: () => void;
 }
 
-export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomization }: UserProfileModalProps) {
+export function UserProfileModal({
+  isOpen,
+  onClose,
+  onOpenAuth,
+  onOpenCustomization,
+  onOpenPlans,
+}: UserProfileModalProps) {
   const [profile, setProfile] = useState<UserProfile>(() => getCurrentUser());
   const [activeRole, setActiveRole] = useState<UserRole>(profile.activeRole);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+  const [showFAQ, setShowFAQ] = useState<boolean>(false);
 
   // Foto de Perfil
   const [avatarUrl, setAvatarUrl] = useState(
@@ -812,6 +824,130 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                 />
               </div>
             </div>
+          </div>
+
+          {/* SEÇÃO: PLANO & ASSINATURA */}
+          <div className="p-4 rounded-2xl bg-zinc-900/40 border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400" /> Sua Assinatura & Plano
+              </h4>
+              <span
+                className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                  isCoach
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                    : profile.subscriptionStatus === "canceled"
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                    : profile.subscriptionStatus === "trial"
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                    : profile.subscriptionStatus === "active"
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                    : "bg-zinc-800 text-zinc-400 border-white/10"
+                }`}
+              >
+                {isCoach
+                  ? "Professor"
+                  : profile.subscriptionStatus === "canceled"
+                  ? "Cancelada"
+                  : profile.subscriptionStatus === "trial"
+                  ? "Teste 7 Dias"
+                  : profile.subscriptionStatus === "active"
+                  ? "Ativa"
+                  : "Sem Plano"}
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-zinc-950/70 border border-white/[0.05] flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black text-white">
+                  {isCoach
+                    ? "Plano de Treinador (Acesso Profissional)"
+                    : profile.subscriptionStatus === "trial"
+                    ? "Plano Pro (Período de Testes de 7 Dias)"
+                    : profile.subscriptionPlan === "vip" || profile.planTier === "vip"
+                    ? "Plano VIP Black"
+                    : profile.subscriptionPlan === "basico" || profile.planTier === "basico"
+                    ? "Plano Básico"
+                    : "Plano Pro Mensal"}
+                </p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  {isCoach
+                    ? "Gestão ilimitada de alunos, prescrição de fichas e financeiro."
+                    : profile.subscriptionStatus === "canceled"
+                    ? `Acesso garantido até ${
+                        profile.subscriptionEndsAt || profile.trialEndsAt
+                          ? new Date(
+                              profile.subscriptionEndsAt || profile.trialEndsAt!
+                            ).toLocaleDateString("pt-BR")
+                          : "o fim do ciclo"
+                      }. Sem cobranças futuras.`
+                    : profile.subscriptionEndsAt || profile.trialEndsAt
+                    ? `Válido até ${new Date(
+                        profile.subscriptionEndsAt || profile.trialEndsAt!
+                      ).toLocaleDateString("pt-BR")}`
+                    : "Renovação mensal ativa via Mercado Pago."}
+                </p>
+              </div>
+
+              {!isCoach && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {profile.subscriptionStatus === "active" || profile.subscriptionStatus === "trial" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("warning");
+                        setIsCancelModalOpen(true);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-rose-500/15 text-zinc-300 hover:text-rose-300 font-bold text-xs border border-white/[0.08] hover:border-rose-500/30 transition-all active:scale-95"
+                    >
+                      Cancelar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        if (onOpenPlans) {
+                          onClose();
+                          onOpenPlans();
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs transition-all active:scale-95 shadow-md shadow-emerald-500/20"
+                    >
+                      {profile.subscriptionStatus === "canceled" ? "Reativar" : "Assinar"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Toggle para visualizar FAQ */}
+            {!isCoach && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic("selection");
+                    setShowFAQ((prev) => !prev);
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] text-[11px] font-semibold text-zinc-300 flex items-center justify-between transition-colors border border-white/[0.04]"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Dúvidas sobre cancelamento e cobrança (FAQ)</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-400 font-bold">
+                    {showFAQ ? "Recolher" : "Ver Dúvidas"}
+                  </span>
+                </button>
+
+                {showFAQ && (
+                  <div className="mt-2 pt-2 border-t border-white/[0.04] animate-in fade-in">
+                    <SubscriptionFAQ />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* SEÇÃO: BIOMETRIA & DADOS CORPORAIS (ALTURA, PESO, GORDURA E METAS) */}
@@ -2025,6 +2161,18 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
           </div>
         </div>
       )}
+
+      {/* Modal de Cancelamento de Assinatura */}
+      <CancelSubscriptionModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSuccess={() => {
+          const fresh = getCurrentUser();
+          setProfile(fresh);
+          setIsCancelModalOpen(false);
+        }}
+        user={profile}
+      />
     </div>
   );
 }

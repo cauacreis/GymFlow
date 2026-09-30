@@ -56,11 +56,15 @@ export interface UserProfile {
   pixName?: string;
   pixBank?: string;
   // Gestão de Assinatura & Acesso Paywall
-  subscriptionStatus?: "trial" | "active" | "past_due" | "expired" | "pending_choice";
+  subscriptionStatus?: "trial" | "active" | "past_due" | "expired" | "pending_choice" | "canceled";
   subscriptionPlan?: "trial_7d" | "monthly_recurring" | "monthly_pix" | "annual_pro" | "basico" | "pro" | "vip" | string;
   planTier?: "basico" | "pro" | "vip";
   trialEndsAt?: string; // Data ISO do fim dos 7 dias grátis
   subscriptionEndsAt?: string; // Data ISO do fim da assinatura paga
+  subscriptionCanceledAt?: string; // Data ISO do cancelamento da assinatura
+  cancelReason?: string;
+  cancelFeedback?: string;
+  mercadopagoSubscriptionId?: string;
   deviceFingerprint?: string;
   termsAccepted?: boolean;
   termsAcceptedAt?: string;
@@ -71,6 +75,7 @@ import type { CoachPlanOption } from "./workout-store";
 import { saveProfileToSupabase, fetchProfileFromSupabase } from "./supabase-service";
 import { getSupabase } from "./supabase";
 import { registerDeviceAccount } from "./device-lockout";
+import { addNotification } from "./booking-store";
 
 const STORAGE_KEY_AUTH = "gymflow_current_user_v4";
 const EVENT_AUTH_CHANGED = "gymflow:auth-changed";
@@ -236,6 +241,16 @@ export function hasActiveAccess(user?: UserProfile): boolean {
     return !isExpired;
   }
 
+  if (status === "canceled") {
+    if (u.subscriptionEndsAt) {
+      return new Date(u.subscriptionEndsAt).getTime() > now;
+    }
+    if (u.trialEndsAt) {
+      return new Date(u.trialEndsAt).getTime() > now;
+    }
+    return false;
+  }
+
   return false;
 }
 
@@ -282,6 +297,85 @@ export function activatePaidPlanForUser(
 
   const saved = saveUserProfile(updated);
   return saved;
+}
+
+export function cancelSubscriptionLocal(
+  reason?: string,
+  feedback?: string,
+  targetUser?: UserProfile
+): UserProfile {
+  const current = getCurrentUser();
+  const base = targetUser && targetUser.id && targetUser.id !== "user_me" ? { ...current, ...targetUser } : current;
+  const now = new Date().toISOString();
+
+  const updated: UserProfile = {
+    ...base,
+    subscriptionStatus: "canceled",
+    subscriptionCanceledAt: now,
+    cancelReason: reason || "Cancelado pelo usuário",
+    cancelFeedback: feedback || undefined,
+  };
+
+  const saved = saveUserProfile(updated);
+
+  // Notificação in-app confirmando cancelamento e término do período
+  try {
+    const endRaw = saved.subscriptionEndsAt || saved.trialEndsAt;
+    let formattedDate = "o término do ciclo atual";
+    if (endRaw) {
+      const d = new Date(endRaw);
+      formattedDate = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    }
+    addNotification({
+      title: "Assinatura cancelada",
+      message: `Sua assinatura foi cancelada. Seu acesso permanecerá liberado até ${formattedDate} sem nenhuma nova cobrança.`,
+      type: "subscription_canceled",
+      targetRole: "student",
+    });
+  } catch {}
+
+  return saved;
+}
+
+export async function cancelSubscriptionForUser(
+  reason?: string,
+  feedback?: string,
+  targetUser?: UserProfile
+): Promise<UserProfile> {
+  const saved = cancelSubscriptionLocal(reason, feedback, targetUser);
+
+  // Sincroniza em segundo plano com Supabase
+  try {
+    await saveProfileToSupabase(saved);
+  } catch {}
+
+  // Cancela a recorrência no backend (Mercado Pago e DB)
+  try {
+    if (typeof fetch !== "undefined") {
+      await fetch("/api/payment/mercadopago/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: saved.id,
+          reason,
+          feedback,
+          preapprovalId: saved.mercadopagoSubscriptionId,
+        }),
+      });
+    }
+  } catch (err) {
+    console.warn("⚠️ [AuthStore] Erro ao sincronizar cancelamento no gateway:", err);
+  }
+
+  return saved;
+}
+
+export function reactivateSubscriptionForUser(
+  planId: string = "pro",
+  tier?: "basico" | "pro" | "vip",
+  targetUser?: UserProfile
+): UserProfile {
+  return activatePaidPlanForUser(planId, true, tier, targetUser);
 }
 
 export function getCurrentUser(): UserProfile {
@@ -339,6 +433,7 @@ export function areProfilesEqual(a?: UserProfile | null, b?: UserProfile | null)
     a.longitude === b.longitude &&
     a.allowBookingMessages === b.allowBookingMessages &&
     a.termsAccepted === b.termsAccepted &&
+    a.subscriptionCanceledAt === b.subscriptionCanceledAt &&
     (a.enabledRoles?.join(",") === b.enabledRoles?.join(","))
   );
 }
@@ -616,16 +711,26 @@ export function initAuthSession(): () => void {
         cloudProfile?.subscriptionStatus === "active" &&
         (!cloudProfile?.subscriptionEndsAt || new Date(cloudProfile.subscriptionEndsAt).getTime() > now);
 
-      let resolvedSubscriptionStatus: "trial" | "active" | "past_due" | "expired" | "pending_choice";
+      let resolvedSubscriptionStatus: "trial" | "active" | "past_due" | "expired" | "pending_choice" | "canceled";
       let resolvedSubscriptionPlan: string | undefined;
       let resolvedTrialEndsAt: string | undefined;
       let resolvedSubscriptionEndsAt: string | undefined;
       let resolvedPlanTier: "basico" | "pro" | "vip" = "pro";
 
+      const isCanceled =
+        cloudProfile?.subscriptionStatus === "canceled" ||
+        (isSameUser && currentLocal.subscriptionStatus === "canceled");
+
       if (resolvedRole === "coach") {
         resolvedSubscriptionStatus = "active";
         resolvedSubscriptionPlan = "coach_unlimited";
         resolvedPlanTier = "vip";
+      } else if (isCanceled) {
+        resolvedSubscriptionStatus = "canceled";
+        resolvedSubscriptionPlan = cloudProfile?.subscriptionPlan || currentLocal.subscriptionPlan || "pro";
+        resolvedSubscriptionEndsAt = cloudProfile?.subscriptionEndsAt || currentLocal.subscriptionEndsAt;
+        resolvedTrialEndsAt = cloudProfile?.trialEndsAt || currentLocal.trialEndsAt;
+        resolvedPlanTier = cloudProfile?.planTier || currentLocal.planTier || "pro";
       } else if (cloudHasActivePaid || (isSameUser && localHasActivePaid)) {
         resolvedSubscriptionStatus = "active";
         resolvedSubscriptionPlan =
@@ -723,6 +828,10 @@ export function initAuthSession(): () => void {
         planTier: resolvedPlanTier,
         trialEndsAt: resolvedTrialEndsAt,
         subscriptionEndsAt: resolvedSubscriptionEndsAt,
+        subscriptionCanceledAt: cloudProfile?.subscriptionCanceledAt || (isSameUser ? currentLocal.subscriptionCanceledAt : undefined),
+        cancelReason: cloudProfile?.cancelReason || (isSameUser ? currentLocal.cancelReason : undefined),
+        cancelFeedback: cloudProfile?.cancelFeedback || (isSameUser ? currentLocal.cancelFeedback : undefined),
+        mercadopagoSubscriptionId: cloudProfile?.mercadopagoSubscriptionId || (isSameUser ? currentLocal.mercadopagoSubscriptionId : undefined),
       };
 
       if (areProfilesEqual(currentLocal, mergedUser)) {

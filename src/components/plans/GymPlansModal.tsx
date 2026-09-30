@@ -15,10 +15,13 @@ import {
   ChevronRight,
   Flame,
   X,
+  RotateCcw,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
-import { activatePaidPlanForUser, getCurrentUser } from "@/lib/auth-store";
+import { activatePaidPlanForUser, getCurrentUser, UserProfile } from "@/lib/auth-store";
 import { getRemainingTrialDays } from "@/lib/subscription-features";
+import { SubscriptionFAQ } from "../subscription/SubscriptionFAQ";
+import { CancelSubscriptionModal } from "../subscription/CancelSubscriptionModal";
 
 export interface PlanOption {
   id: string;
@@ -87,9 +90,12 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
   const [pixData, setPixData] = useState<{ id?: string; qrCode: string; qrCodeBase64?: string } | null>(null);
   const [pixStatusMessage, setPixStatusMessage] = useState<string | null>(null);
   const [isMpConfigured, setIsMpConfigured] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
+      setCurrentUser(getCurrentUser());
       fetch("/api/payment/status")
         .then((res) => res.json())
         .then((data) => {
@@ -299,28 +305,102 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-4">
           {checkoutStep === "plans" && (
             <>
+              {/* Status Atual da Assinatura / Trial / Cancelamento */}
               {(() => {
-                const u = getCurrentUser();
-                const hasActiveTrial =
-                  u.subscriptionStatus === "trial" &&
-                  Boolean(u.trialEndsAt) &&
-                  new Date(u.trialEndsAt!).getTime() > Date.now();
-                const remaining = hasActiveTrial ? getRemainingTrialDays(u) : 0;
-                if (!hasActiveTrial) return null;
+                const isTrial =
+                  currentUser.subscriptionStatus === "trial" &&
+                  Boolean(currentUser.trialEndsAt) &&
+                  new Date(currentUser.trialEndsAt!).getTime() > Date.now();
+                const isPaid =
+                  currentUser.subscriptionStatus === "active" &&
+                  (!currentUser.subscriptionEndsAt ||
+                    new Date(currentUser.subscriptionEndsAt).getTime() > Date.now());
+                const isCanceled = currentUser.subscriptionStatus === "canceled";
+
+                if (!isTrial && !isPaid && !isCanceled) return null;
+
+                const remaining = isTrial ? getRemainingTrialDays(currentUser) : 0;
+                const endRaw = currentUser.subscriptionEndsAt || currentUser.trialEndsAt;
+                let formattedDate = "o término do ciclo";
+                if (endRaw) {
+                  try {
+                    formattedDate = new Date(endRaw).toLocaleDateString("pt-BR");
+                  } catch {}
+                }
+
                 return (
-                  <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between gap-2 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>
-                        <strong>Período de Testes Ativo:</strong> Restam{" "}
-                        <span className="font-black text-emerald-400">
-                          {remaining} {remaining === 1 ? "dia" : "dias"}
-                        </span>
-                      </span>
+                  <div
+                    className={`p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-sm ${
+                      isCanceled
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                        : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
+                          isCanceled
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "bg-emerald-500/20 text-emerald-400"
+                        }`}
+                      >
+                        {isCanceled ? (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5" />
+                        )}
+                      </div>
+                      <div className="min-w-0 text-left">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-white">
+                            {isCanceled
+                              ? "Assinatura Cancelada"
+                              : isTrial
+                              ? "Período de Testes Pro"
+                              : "Assinatura Ativa"}
+                          </span>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md border ${
+                              isCanceled
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                            }`}
+                          >
+                            {isCanceled
+                              ? `Até ${formattedDate}`
+                              : isTrial
+                              ? `${remaining}d restantes`
+                              : "Renovação Ativa"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 truncate">
+                          {isCanceled
+                            ? "Acesso garantido até o encerramento sem novas cobranças."
+                            : "Cancele a qualquer momento sem taxas ou multas."}
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 shrink-0">
-                      Pro Liberado
-                    </span>
+
+                    {!isCanceled ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("warning");
+                          setIsCancelModalOpen(true);
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-rose-500/20 text-zinc-300 hover:text-rose-300 font-bold text-[10px] border border-white/[0.08] hover:border-rose-500/30 transition-colors shrink-0"
+                      >
+                        Cancelar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleProceedToPayment}
+                        className="px-2.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-[10px] transition-all active:scale-95 shadow-sm shrink-0"
+                      >
+                        Reativar
+                      </button>
+                    )}
                   </div>
                 );
               })()}
@@ -386,6 +466,9 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                 <span>Contratar {currentPlan.name} por R$ {currentPlan.price}</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
+
+              {/* Seção de Perguntas Frequentes (FAQ) */}
+              <SubscriptionFAQ className="mt-3 pt-3 border-t border-white/[0.08]" />
             </>
           )}
 
@@ -582,6 +665,18 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
           )}
         </div>
       </div>
+
+      {/* Modal de Cancelamento de Assinatura */}
+      <CancelSubscriptionModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSuccess={() => {
+          const fresh = getCurrentUser();
+          setCurrentUser(fresh);
+          setIsCancelModalOpen(false);
+        }}
+        user={currentUser}
+      />
     </div>
   );
 }

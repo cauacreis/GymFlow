@@ -107,7 +107,8 @@ export interface AppNotification {
     | "rescheduled"
     | "delay_warning"
     | "workout_updated"
-    | "booking_message";
+    | "booking_message"
+    | "subscription_canceled";
   title: string;
   message: string;
   timestamp: string;

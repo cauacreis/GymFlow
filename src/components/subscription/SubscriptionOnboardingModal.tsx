@@ -24,8 +24,8 @@ import {
   Activity,
   ChevronDown,
   ChevronUp,
-  X,
   Users,
+  RotateCcw,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -42,6 +42,8 @@ import {
   isTrialAvailableForDevice,
   markTrialAsUsedOnDevice,
 } from "@/lib/device-lockout";
+import { SubscriptionFAQ } from "./SubscriptionFAQ";
+import { CancelSubscriptionModal } from "./CancelSubscriptionModal";
 
 interface SubscriptionOnboardingModalProps {
   isOpen: boolean;
@@ -167,6 +169,7 @@ export function SubscriptionOnboardingModal({
   const [showComparison, setShowComparison] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
 
   // PIX direto gerado pelo Mercado Pago
   const [pixData, setPixData] = useState<{
@@ -898,6 +901,91 @@ export function SubscriptionOnboardingModal({
                   </button>
                 )}
               </div>
+
+              {/* Barra de Gestão & Cancelamento de Inscrição */}
+              {(currentUser.subscriptionStatus === "active" ||
+                currentUser.subscriptionStatus === "trial" ||
+                currentUser.subscriptionStatus === "canceled") && (
+                <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.08] flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                        currentUser.subscriptionStatus === "canceled"
+                          ? "bg-amber-500/15 border border-amber-500/30 text-amber-400"
+                          : "bg-emerald-500/15 border border-emerald-500/30 text-emerald-400"
+                      }`}
+                    >
+                      {currentUser.subscriptionStatus === "canceled" ? (
+                        <RotateCcw className="w-4 h-4" />
+                      ) : (
+                        <ShieldCheck className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black text-white">
+                          {currentUser.subscriptionStatus === "canceled"
+                            ? "Assinatura Cancelada"
+                            : currentUser.subscriptionStatus === "trial"
+                            ? "Período de Testes Pro Ativo"
+                            : `Assinatura Ativa (${currentPlanConfig.name})`}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            currentUser.subscriptionStatus === "canceled"
+                              ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                              : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                          }`}
+                        >
+                          {currentUser.subscriptionStatus === "canceled"
+                            ? "Não renovará"
+                            : "Ativa"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 truncate">
+                        {currentUser.subscriptionStatus === "canceled"
+                          ? `Acesso liberado até ${
+                              currentUser.subscriptionEndsAt || currentUser.trialEndsAt
+                                ? new Date(
+                                    currentUser.subscriptionEndsAt || currentUser.trialEndsAt!
+                                  ).toLocaleDateString("pt-BR")
+                                : "o fim do período"
+                            }. Zero cobranças futuras.`
+                          : "Você pode cancelar a qualquer momento sem taxas ou fidelidade."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {currentUser.subscriptionStatus !== "canceled" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("warning");
+                        setIsCancelModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-rose-500/15 text-zinc-400 hover:text-rose-300 font-bold text-xs border border-white/[0.08] hover:border-rose-500/30 transition-all active:scale-95"
+                    >
+                      Cancelar Inscrição
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        handleStartRecurringSubscription(currentPlanConfig);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs transition-all active:scale-95 shadow-md shadow-emerald-500/20"
+                    >
+                      Reativar Assinatura
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Seção Completa de Perguntas Frequentes (FAQ) */}
+              <div className="pt-4 border-t border-white/[0.08]">
+                <SubscriptionFAQ />
+              </div>
             </div>
           )}
         </div>
@@ -934,6 +1022,18 @@ export function SubscriptionOnboardingModal({
           )}
         </div>
       </div>
+
+      {/* Modal de Confirmação de Cancelamento */}
+      <CancelSubscriptionModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSuccess={() => {
+          const fresh = getCurrentUser();
+          setCurrentUser(fresh);
+          setIsCancelModalOpen(false);
+        }}
+        user={currentUser}
+      />
     </div>
   );
 }

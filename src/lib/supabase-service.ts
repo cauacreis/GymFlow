@@ -488,6 +488,10 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
       terms_accepted: user.termsAccepted ?? false,
       terms_accepted_at: user.termsAcceptedAt || null,
       allow_booking_messages: user.allowBookingMessages !== undefined ? user.allowBookingMessages : true,
+      subscription_canceled_at: user.subscriptionCanceledAt || null,
+      cancel_reason: user.cancelReason || null,
+      cancel_feedback: user.cancelFeedback || null,
+      mercadopago_subscription_id: user.mercadopagoSubscriptionId || null,
     };
 
     const { error } = await client.from("profiles").upsert(extendedPayload, { onConflict: "id" });
@@ -572,6 +576,10 @@ export async function fetchProfileFromSupabase(userId: string): Promise<UserProf
         planTier: data.plan_tier || undefined,
         trialEndsAt: data.trial_ends_at || undefined,
         subscriptionEndsAt: data.subscription_ends_at || undefined,
+        subscriptionCanceledAt: data.subscription_canceled_at || undefined,
+        cancelReason: data.cancel_reason || undefined,
+        cancelFeedback: data.cancel_feedback || undefined,
+        mercadopagoSubscriptionId: data.mercadopago_subscription_id || undefined,
         deviceFingerprint: data.device_fingerprint || undefined,
         allowBookingMessages: data.allow_booking_messages !== undefined ? Boolean(data.allow_booking_messages) : true,
       };

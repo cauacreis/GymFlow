@@ -567,3 +567,48 @@ export async function fetchPreapprovalDetails(preapprovalId: string) {
     return null;
   }
 }
+
+/**
+ * 6. Cancela uma Assinatura Recorrente no Mercado Pago (/preapproval/{id})
+ * Permite ao usuário cancelar futuras cobranças a qualquer momento.
+ */
+export async function cancelRecurringSubscription(preapprovalId: string) {
+  const token = getMercadoPagoAccessToken();
+
+  if (!isMercadoPagoConfigured() || preapprovalId.startsWith("sub_sim_")) {
+    return {
+      id: preapprovalId,
+      status: "cancelled",
+      isSimulated: true,
+      message: "Assinatura cancelada com sucesso (modo simulação/homologação).",
+    };
+  }
+
+  if (!token) {
+    throw new Error("Token de acesso do Mercado Pago não configurado.");
+  }
+
+  const res = await fetch(`${MP_API_BASE}/preapproval/${preapprovalId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      status: "cancelled",
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Erro ao cancelar assinatura no Mercado Pago:", errText);
+    throw new Error(`Falha ao cancelar assinatura no Mercado Pago: ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  return {
+    ...data,
+    isSimulated: false,
+  };
+}
+

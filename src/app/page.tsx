@@ -530,7 +530,10 @@ export default function GymFlowApp() {
       {/* MODAL DE PERFIL & CONFIGURAÇÕES DA CONTA (TREINAR & SER TREINADO) */}
       <UserProfileModal
         isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
+        onClose={() => {
+          setIsProfileOpen(false);
+          setUserProfile(getCurrentUser());
+        }}
         onOpenAuth={() => {
           setIsProfileOpen(false);
           setAuthInitialMode("login");
@@ -539,6 +542,10 @@ export default function GymFlowApp() {
         onOpenCustomization={() => {
           setIsProfileOpen(false);
           setIsCustomizationOpen(true);
+        }}
+        onOpenPlans={() => {
+          setIsProfileOpen(false);
+          setIsPlansOpen(true);
         }}
       />
 

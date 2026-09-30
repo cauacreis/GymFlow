@@ -12,7 +12,8 @@ export type SubscriptionStatus =
   | "active"
   | "past_due"
   | "expired"
-  | "pending_choice";
+  | "pending_choice"
+  | "canceled";
 
 export type FeatureKey =
   | "basic_workout"
@@ -145,6 +146,16 @@ export function isSubscriptionExpired(user?: UserProfile): boolean {
   if (status === "active") {
     if (!u.subscriptionEndsAt) return false;
     return new Date(u.subscriptionEndsAt).getTime() <= now;
+  }
+
+  if (status === "canceled") {
+    if (u.subscriptionEndsAt) {
+      return new Date(u.subscriptionEndsAt).getTime() <= now;
+    }
+    if (u.trialEndsAt) {
+      return new Date(u.trialEndsAt).getTime() <= now;
+    }
+    return true;
   }
 
   return false;

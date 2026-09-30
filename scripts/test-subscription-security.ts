@@ -26,6 +26,7 @@ import {
   createDirectPixPayment,
   createCheckoutPreference,
   createRecurringSubscription,
+  cancelRecurringSubscription,
 } from "../src/lib/mercadopago";
 
 import {
@@ -39,10 +40,14 @@ import {
 import {
   hasActiveAccess,
   activateTrialForUser,
+  activatePaidPlanForUser,
+  cancelSubscriptionLocal,
+  reactivateSubscriptionForUser,
   areProfilesEqual,
   UserProfile,
 } from "../src/lib/auth-store";
-import type { CoachTrainer } from "../src/lib/booking-store";
+import { CoachTrainer, getStoredNotifications } from "../src/lib/booking-store";
+import { FAQ_ITEMS } from "../src/components/subscription/SubscriptionFAQ";
 
 import {
   verifyMercadoPagoWebhook,
@@ -1113,6 +1118,168 @@ async function runAllTests() {
       { ...profileOriginal, allowBookingMessages: false }
     ) === false,
     "areProfilesEqual: Detecta alteração na preferência allowBookingMessages do personal"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 15. TESTE DE CANCELAMENTO FUNCIONAL, RETENÇÃO DE PERÍODO & FAQ
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 15. Testando Cancelamento Funcional, Retenção do Período e FAQ de Assinaturas...");
+
+  const baseSubscribedUser: UserProfile = {
+    id: "user_canceltester_999",
+    name: "Aluno Assinante Teste",
+    email: "aluno.canceltester@gymflow.com",
+    activeRole: "student",
+    enabledRoles: ["student"],
+    subscriptionStatus: "active",
+    subscriptionPlan: "monthly_recurring",
+    planTier: "pro",
+    subscriptionEndsAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(), // 20 dias restantes
+  };
+
+  // Teste 15.1: Cancelamento local de assinatura
+  const canceledProfile = cancelSubscriptionLocal(
+    "Achei o valor mensal elevado",
+    "Estou sem tempo para treinar este mês",
+    baseSubscribedUser
+  );
+
+  assert(
+    canceledProfile.subscriptionStatus === "canceled",
+    "cancelSubscriptionLocal: Define subscriptionStatus como 'canceled'"
+  );
+  assert(
+    Boolean(canceledProfile.subscriptionCanceledAt),
+    "cancelSubscriptionLocal: Registra subscriptionCanceledAt com timestamp ISO válido"
+  );
+  assert(
+    canceledProfile.cancelReason === "Achei o valor mensal elevado",
+    "cancelSubscriptionLocal: Armazena o motivo de cancelamento informado pelo usuário"
+  );
+  assert(
+    canceledProfile.subscriptionEndsAt === baseSubscribedUser.subscriptionEndsAt,
+    "cancelSubscriptionLocal: PRESERVA data de término original (subscriptionEndsAt)"
+  );
+
+  // Teste 15.2: Retenção de Acesso durante o período já pago (Grace Period)
+  assert(
+    hasActiveAccess(canceledProfile) === true,
+    "hasActiveAccess: Aluno que cancelou CONTINUA com acesso ativo até a data final do ciclo já pago"
+  );
+  assert(
+    isSubscriptionExpired(canceledProfile) === false,
+    "isSubscriptionExpired: Retorna false para assinatura cancelada dentro do período de carência"
+  );
+  assert(
+    canAccessFeature("advanced_workout", canceledProfile).allowed === true,
+    "canAccessFeature: Permite acesso a recursos pagos Pro durante a vigência do ciclo cancelado"
+  );
+  assert(
+    canAccessFeature("turnstile_checkin", canceledProfile).allowed === true,
+    "canAccessFeature: Catraca digital liberada normalmente durante o ciclo cancelado"
+  );
+
+  // Teste 15.3: Bloqueio de Acesso APÓS o término do ciclo cancelado
+  const expiredCanceledUser: UserProfile = {
+    ...canceledProfile,
+    subscriptionEndsAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // Expirou há 2 dias
+  };
+
+  assert(
+    hasActiveAccess(expiredCanceledUser) === false,
+    "hasActiveAccess: Aluno cancelado cuja data expirou É BLOQUEADO e direcionado à renovação"
+  );
+  assert(
+    isSubscriptionExpired(expiredCanceledUser) === true,
+    "isSubscriptionExpired: Retorna true para assinatura cancelada após o vencimento"
+  );
+  assert(
+    canAccessFeature("advanced_workout", expiredCanceledUser).allowed === false,
+    "canAccessFeature: Bloqueia acesso a recursos Pro após encerramento do ciclo"
+  );
+
+  // Teste 15.4: Cancelamento durante Período de Testes (Trial de 7 Dias)
+  const activeTrialUser: UserProfile = {
+    id: "user_trial_canceltester",
+    name: "Aluno em Trial",
+    email: "trial.canceltester@gymflow.com",
+    activeRole: "student",
+    enabledRoles: ["student"],
+    subscriptionStatus: "trial",
+    subscriptionPlan: "trial_7d",
+    planTier: "pro",
+    trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 dias restantes
+  };
+
+  const canceledTrialProfile = cancelSubscriptionLocal(
+    "Dificuldades no aplicativo",
+    undefined,
+    activeTrialUser
+  );
+
+  assert(
+    canceledTrialProfile.subscriptionStatus === "canceled",
+    "cancelSubscriptionLocal: Converte trial para 'canceled' sem cobrança"
+  );
+  assert(
+    hasActiveAccess(canceledTrialProfile) === true,
+    "hasActiveAccess: Aluno que cancelou trial mantém acesso restante dos 7 dias experimentais"
+  );
+
+  const expiredTrialCanceledUser: UserProfile = {
+    ...canceledTrialProfile,
+    trialEndsAt: new Date(Date.now() - 1000).toISOString(),
+  };
+
+  assert(
+    hasActiveAccess(expiredTrialCanceledUser) === false,
+    "hasActiveAccess: Bloqueia acesso após o término do trial cancelado"
+  );
+
+  // Teste 15.5: Cancelamento de Assinatura Recorrente no Mercado Pago
+  const mpCancelResult = await cancelRecurringSubscription("sub_sim_test_123");
+  assert(
+    mpCancelResult.status === "cancelled" && mpCancelResult.isSimulated === true,
+    "cancelRecurringSubscription: Cancela recorrência com sucesso no gateway (modo simulação/homologação)"
+  );
+
+  // Teste 15.6: Reativação de Assinatura
+  const reactivatedProfile = reactivateSubscriptionForUser("pro", "pro", canceledProfile);
+  assert(
+    reactivatedProfile.subscriptionStatus === "active",
+    "reactivateSubscriptionForUser: Altera status de volta para 'active'"
+  );
+  assert(
+    Boolean(reactivatedProfile.subscriptionEndsAt),
+    "reactivateSubscriptionForUser: Gera nova data de vencimento (1 mês adicional)"
+  );
+  assert(
+    hasActiveAccess(reactivatedProfile) === true,
+    "hasActiveAccess: Aluno reativado volta a ter acesso completo imediato"
+  );
+
+  // Teste 15.7: Sanidade da Base de Perguntas Frequentes (FAQ)
+  assert(
+    Array.isArray(FAQ_ITEMS) && FAQ_ITEMS.length >= 6,
+    `FAQ_ITEMS: Contém base completa de perguntas frequentes (${FAQ_ITEMS.length} itens disponíveis)`
+  );
+
+  const cancelFaq = FAQ_ITEMS.find((f) => f.id === "cancelamento");
+  assert(
+    Boolean(cancelFaq && cancelFaq.answer.includes("sem multas") && cancelFaq.answer.includes("acesso")),
+    "FAQ: Contém pergunta explicativa detalhada sobre cancelamento e período pago"
+  );
+
+  const trialFaq = FAQ_ITEMS.find((f) => f.id === "trial");
+  assert(
+    Boolean(trialFaq && trialFaq.answer.includes("7 dias") && trialFaq.answer.includes("Pro")),
+    "FAQ: Contém pergunta sobre os 7 dias grátis e funcionamento sem cobrança imediata"
+  );
+
+  const paymentsFaq = FAQ_ITEMS.find((f) => f.id === "pagamentos");
+  assert(
+    Boolean(paymentsFaq && paymentsFaq.answer.includes("Cartão de Crédito") && paymentsFaq.answer.includes("PIX")),
+    "FAQ: Contém explicação transparente das formas de pagamento (Cartão Recorrente e PIX)"
   );
 
   // ---------------------------------------------------------------------------
