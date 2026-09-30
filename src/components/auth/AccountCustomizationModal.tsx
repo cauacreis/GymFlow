@@ -37,6 +37,7 @@ import {
   Heart,
   Tag,
   SlidersHorizontal,
+  MessageSquare,
 } from "lucide-react";
 import { TermsOfServiceModal } from "./TermsOfServiceModal";
 import {
@@ -291,6 +292,11 @@ export function AccountCustomizationModal({
   const [pixName, setPixName] = useState<string>(user.pixName || "");
   const [pixBank, setPixBank] = useState<string>(user.pixBank || "");
 
+  // Receber mensagens e dúvidas prévias de alunos no agendamento
+  const [allowBookingMessages, setAllowBookingMessages] = useState<boolean>(
+    user.allowBookingMessages !== undefined ? user.allowBookingMessages : true
+  );
+
   // Termos & LGPD (Passo 5)
   const [termsAccepted, setTermsAccepted] = useState(Boolean(user.termsAccepted));
   const [hasReadTermsToBottom, setHasReadTermsToBottom] = useState(Boolean(user.termsAccepted));
@@ -369,6 +375,9 @@ export function AccountCustomizationModal({
     if (user.termsAccepted) {
       setTermsAccepted(true);
       setHasReadTermsToBottom(true);
+    }
+    if (user.allowBookingMessages !== undefined) {
+      setAllowBookingMessages(user.allowBookingMessages);
     }
   }, [user]);
 
@@ -798,6 +807,7 @@ export function AccountCustomizationModal({
         pixKeyType: role === "coach" ? pixKeyType : user.pixKeyType,
         pixName: role === "coach" ? sanitizeInput(pixName.trim()) || undefined : user.pixName,
         pixBank: role === "coach" ? sanitizeInput(pixBank.trim()) || undefined : user.pixBank,
+        allowBookingMessages: role === "coach" ? allowBookingMessages : user.allowBookingMessages,
         profileCompleted: true,
         termsAccepted: true,
         termsAcceptedAt: user.termsAcceptedAt || new Date().toISOString(),
@@ -895,6 +905,7 @@ export function AccountCustomizationModal({
           pixKeyType: updatedUserPayload.pixKeyType,
           pixName: updatedUserPayload.pixName,
           pixBank: updatedUserPayload.pixBank,
+          allowBookingMessages: allowBookingMessages,
         });
       } else {
         // Se for aluno, cadastra na lista local de alunos vinculando o ID real
@@ -2087,6 +2098,51 @@ export function AccountCustomizationModal({
                     </div>
                   </div>
                 </div>
+
+                {/* --------------------------------------------------------- */}
+                {/* 9. MENSAGENS E DÚVIDAS PRÉVIAS DE ALUNOS NO AGENDAMENTO */}
+                {/* --------------------------------------------------------- */}
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-amber-500/30 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Receber mensagens de alunos no agendamento?</h4>
+                        <p className="text-[10px] text-zinc-400">
+                          Permitir que novos alunos tirem dúvidas e enviem mensagens antes de escolher um plano
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={allowBookingMessages}
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        setAllowBookingMessages((prev) => !prev);
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        allowBookingMessages ? "bg-amber-500" : "bg-zinc-800"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-zinc-950 shadow ring-0 transition duration-200 ease-in-out ${
+                          allowBookingMessages ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 bg-black/20 p-2.5 rounded-xl border border-white/[0.04] flex items-center gap-2">
+                    <span className="text-amber-400 font-bold shrink-0">Status:</span>
+                    <span>
+                      {allowBookingMessages
+                        ? "Ativado: O aluno poderá tirar dúvidas diretamente com você via WhatsApp ou pelo GymFlow antes de escolher um plano."
+                        : "Desativado: O aluno deverá escolher um plano diretamente para solicitar agendamento."}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -2159,6 +2215,12 @@ export function AccountCustomizationModal({
                         <span className="text-[10px] text-zinc-500 block">Chave PIX:</span>
                         <span className="font-mono text-amber-300 font-semibold truncate block">
                           {pixKey ? `${pixKey} (${pixKeyType.toUpperCase()})` : "Não configurada"}
+                        </span>
+                      </div>
+                      <div className="col-span-2 pt-1 border-t border-zinc-800/60 flex items-center justify-between text-xs">
+                        <span className="text-[10px] text-zinc-400">Dúvidas prévias no agendamento:</span>
+                        <span className={`text-[11px] font-bold ${allowBookingMessages ? "text-amber-400" : "text-zinc-500"}`}>
+                          {allowBookingMessages ? "💬 Permitido (Alunos podem mandar mensagem)" : "🚫 Desativado (Apenas direto no plano)"}
                         </span>
                       </div>
 

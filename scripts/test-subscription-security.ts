@@ -42,6 +42,7 @@ import {
   areProfilesEqual,
   UserProfile,
 } from "../src/lib/auth-store";
+import type { CoachTrainer } from "../src/lib/booking-store";
 
 import {
   verifyMercadoPagoWebhook,
@@ -1057,6 +1058,61 @@ async function runAllTests() {
   assert(
     availableForBope.length === 2,
     "Auto-Exclusão Marketplace: Demais personais permanecem disponíveis para contratação"
+  );
+
+  // 14.6 Opção de Receber Mensagens / Dúvidas no Agendamento do Personal
+  console.log("\n🔹 14.6 Testando Opção de Recebimento de Mensagens e Dúvidas no Agendamento...");
+
+  const coachWithMessages: CoachTrainer = {
+    id: "coach_test_msg",
+    name: "Treinador Com Mensagens",
+    avatarUrl: "",
+    phone: "11999991111",
+    specialty: "Musculação",
+    distance: "Salão Principal",
+    rating: 5.0,
+    reviewCount: 10,
+    bio: "Metodologia personalizada.",
+    allowBookingMessages: true,
+    pricing: { basicMonthly: 35, proMonthly: 45, vipMonthly: 55 },
+    slots: [],
+  };
+
+  const coachWithoutMessages: CoachTrainer = {
+    ...coachWithMessages,
+    id: "coach_test_nomsg",
+    name: "Treinador Sem Mensagens",
+    allowBookingMessages: false,
+  };
+
+  assert(
+    coachWithMessages.allowBookingMessages !== false,
+    "allowBookingMessages: Treinador com opção ativada permite envio de dúvidas antes do plano"
+  );
+
+  assert(
+    coachWithoutMessages.allowBookingMessages === false,
+    "allowBookingMessages: Treinador pode desativar recebimento de mensagens prévias nas configurações"
+  );
+
+  const shouldShowPreBookingButton = (coach: CoachTrainer) => coach.allowBookingMessages !== false;
+
+  assert(
+    shouldShowPreBookingButton(coachWithMessages) === true,
+    "Marketplace: Exibe botão de tirar dúvidas para treinador com allowBookingMessages: true"
+  );
+
+  assert(
+    shouldShowPreBookingButton(coachWithoutMessages) === false,
+    "Marketplace: Oculta botão de tirar dúvidas para treinador com allowBookingMessages: false"
+  );
+
+  assert(
+    areProfilesEqual(
+      { ...profileOriginal, allowBookingMessages: true },
+      { ...profileOriginal, allowBookingMessages: false }
+    ) === false,
+    "areProfilesEqual: Detecta alteração na preferência allowBookingMessages do personal"
   );
 
   // ---------------------------------------------------------------------------

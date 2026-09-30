@@ -57,6 +57,7 @@ export interface CoachTrainer {
   pixKeyType?: "cpf" | "cnpj" | "email" | "phone" | "random";
   pixName?: string;
   pixBank?: string;
+  allowBookingMessages?: boolean; // Receber mensagens e dúvidas de alunos antes da contratação
   slots: TrainerSlot[];
 }
 
@@ -105,7 +106,8 @@ export interface AppNotification {
     | "booking_accepted"
     | "rescheduled"
     | "delay_warning"
-    | "workout_updated";
+    | "workout_updated"
+    | "booking_message";
   title: string;
   message: string;
   timestamp: string;
@@ -545,6 +547,7 @@ export function getStoredCoaches(): CoachTrainer[] {
         pixKeyType: c.pixKeyType || initial?.pixKeyType,
         pixName: c.pixName || initial?.pixName,
         pixBank: c.pixBank || initial?.pixBank,
+        allowBookingMessages: c.allowBookingMessages !== undefined ? c.allowBookingMessages : (initial?.allowBookingMessages ?? true),
         pricing: {
           basicMonthly: basic,
           proMonthly: pro,
@@ -1248,6 +1251,7 @@ export function updateCoachPublicProfile(coachId: string, profile: Partial<Coach
       pixKeyType: profile.pixKeyType,
       pixName: profile.pixName,
       pixBank: profile.pixBank,
+      allowBookingMessages: profile.allowBookingMessages !== undefined ? profile.allowBookingMessages : true,
       pricing: profile.pricing || {
         basicMonthly: 35,
         proMonthly: 45,

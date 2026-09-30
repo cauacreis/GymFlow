@@ -64,6 +64,7 @@ export interface UserProfile {
   deviceFingerprint?: string;
   termsAccepted?: boolean;
   termsAcceptedAt?: string;
+  allowBookingMessages?: boolean; // Receber mensagens e dúvidas de alunos antes da contratação
 }
 
 import type { CoachPlanOption } from "./workout-store";
@@ -114,6 +115,7 @@ const DEFAULT_USER: UserProfile = {
     monthlyPlan: 55,
   },
   defaultPaymentDueDay: 10,
+  allowBookingMessages: true,
   termsAccepted: true,
   termsAcceptedAt: new Date().toISOString(),
 };
@@ -335,6 +337,7 @@ export function areProfilesEqual(a?: UserProfile | null, b?: UserProfile | null)
     a.neighborhood === b.neighborhood &&
     a.latitude === b.latitude &&
     a.longitude === b.longitude &&
+    a.allowBookingMessages === b.allowBookingMessages &&
     a.termsAccepted === b.termsAccepted &&
     (a.enabledRoles?.join(",") === b.enabledRoles?.join(","))
   );
@@ -412,6 +415,7 @@ export function enableCoachRole(data: {
     proMonthly: number;
     vipMonthly: number;
   };
+  allowBookingMessages?: boolean;
 }): UserProfile {
   const current = getCurrentUser();
   const enabledRoles: UserRole[] = Array.from(
@@ -427,6 +431,7 @@ export function enableCoachRole(data: {
     bio: data.bio?.trim() || undefined,
     location: data.location?.trim() || current.location || "Salão Principal",
     instagram: data.instagram?.trim() || current.instagram,
+    allowBookingMessages: data.allowBookingMessages !== undefined ? data.allowBookingMessages : (current.allowBookingMessages ?? true),
     pricing: data.pricing || current.pricing || {
       basicMonthly: 35,
       proMonthly: 45,

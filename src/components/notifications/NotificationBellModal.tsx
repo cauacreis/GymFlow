@@ -11,6 +11,7 @@ import {
   XCircle,
   RotateCcw,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -66,6 +67,8 @@ export function NotificationBellModal({
         return <Sparkles className="w-4 h-4 text-emerald-400" />;
       case "rescheduled":
         return <RotateCcw className="w-4 h-4 text-blue-400" />;
+      case "booking_message":
+        return <MessageSquare className="w-4 h-4 text-emerald-400" />;
       default:
         return <Bell className="w-4 h-4 text-zinc-400" />;
     }

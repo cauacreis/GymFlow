@@ -33,6 +33,7 @@ import {
   Trash2,
   Clock,
   Calendar,
+  MessageSquare,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -175,6 +176,9 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
   const [pixName, setPixName] = useState(profile.pixName || "");
   const [pixBank, setPixBank] = useState(profile.pixBank || "");
 
+  // Preferência de Recebimento de Mensagens / Dúvidas no Agendamento
+  const [allowBookingMessages, setAllowBookingMessages] = useState<boolean>(profile.allowBookingMessages ?? true);
+
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Estado para ativação de Modo Professor a partir de conta de Aluno
@@ -188,6 +192,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
   const [upgradeBasicPrice, setUpgradeBasicPrice] = useState(profile.pricing?.basicMonthly || 35);
   const [upgradeProPrice, setUpgradeProPrice] = useState(profile.pricing?.proMonthly || 45);
   const [upgradeVipPrice, setUpgradeVipPrice] = useState(profile.pricing?.vipMonthly || 55);
+  const [upgradeAllowBookingMessages, setUpgradeAllowBookingMessages] = useState<boolean>(true);
   const [upgradeError, setUpgradeError] = useState("");
   const [isUpgrading, setIsUpgrading] = useState(false);
 
@@ -259,6 +264,8 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       setUpgradeBasicPrice(current.pricing?.basicMonthly || current.pricing?.dailySession || 35);
       setUpgradeProPrice(current.pricing?.proMonthly || current.pricing?.weeklyPlan || 45);
       setUpgradeVipPrice(current.pricing?.vipMonthly || current.pricing?.monthlyPlan || 55);
+      setUpgradeAllowBookingMessages(current.allowBookingMessages !== undefined ? current.allowBookingMessages : true);
+      setAllowBookingMessages(current.allowBookingMessages !== undefined ? current.allowBookingMessages : true);
       setUpgradeError("");
       setIsCoachUpgradeOpen(false);
       setIsUpgrading(false);
@@ -452,6 +459,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       location: cleanLocation,
       instagram: cleanInstagram,
       pricing: pricingObj,
+      allowBookingMessages: upgradeAllowBookingMessages,
     });
 
     // Se possui perfil no marketplace, atualiza para refletir novo personal
@@ -466,10 +474,12 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       instagram: cleanInstagram || "",
       location: cleanLocation,
       pricing: pricingObj,
+      allowBookingMessages: upgradeAllowBookingMessages,
     });
 
     setProfile(updated);
     setActiveRole("coach");
+    setAllowBookingMessages(upgradeAllowBookingMessages);
     setSpecialty(cleanSpecialty);
     if (cleanCref) setCref(cleanCref);
     if (cleanBio) setBio(cleanBio);
@@ -550,6 +560,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
       pixKeyType: isCoach ? pixKeyType : profile.pixKeyType,
       pixName: isCoach ? sanitizeInput(pixName.trim()) || undefined : profile.pixName,
       pixBank: isCoach ? sanitizeInput(pixBank.trim()) || undefined : profile.pixBank,
+      allowBookingMessages: isCoach ? allowBookingMessages : profile.allowBookingMessages,
     });
 
     // Salva de forma assíncrona no Supabase
@@ -580,6 +591,7 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
         pixKeyType: updated.pixKeyType,
         pixName: updated.pixName,
         pixBank: updated.pixBank,
+        allowBookingMessages: allowBookingMessages,
       });
     }
 
@@ -1485,6 +1497,49 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                     className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                   />
                 </div>
+
+                {/* Preferência de Recebimento de Mensagens Pré-Agendamento */}
+                <div className="sm:col-span-2 p-3.5 rounded-2xl bg-zinc-950 border border-amber-500/30 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h5 className="text-xs font-bold text-white truncate">Receber mensagens de alunos no agendamento?</h5>
+                        <p className="text-[10px] text-zinc-400">
+                          Permitir que novos alunos enviem dúvidas e combinem detalhes antes de escolher um plano
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={allowBookingMessages}
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        setAllowBookingMessages((prev) => !prev);
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        allowBookingMessages ? "bg-amber-500" : "bg-zinc-800"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-zinc-950 shadow ring-0 transition duration-200 ease-in-out ${
+                          allowBookingMessages ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 bg-white/[0.02] p-2 rounded-xl border border-white/[0.04] flex items-center gap-2">
+                    <span className="text-amber-400 font-bold shrink-0">Status:</span>
+                    <span>
+                      {allowBookingMessages
+                        ? "Ativado: Alunos poderão enviar mensagens prévias e tirar dúvidas diretamente com você via WhatsApp ou GymFlow antes de contratar."
+                        : "Desativado: O agendamento é restrito à contratação direta dos planos configurados."}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1911,6 +1966,41 @@ export function UserProfileModal({ isOpen, onClose, onOpenAuth, onOpenCustomizat
                   placeholder="Apresente sua metodologia, experiência com alunos e diferenciais de treino..."
                   className="w-full mt-1 p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
                 />
+              </div>
+
+              {/* Preferência de Mensagens no Agendamento */}
+              <div className="p-3.5 rounded-2xl bg-zinc-950 border border-amber-500/30 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h5 className="text-xs font-bold text-white truncate">Receber mensagens de alunos no agendamento?</h5>
+                      <p className="text-[10px] text-zinc-400">
+                        Permitir que novos alunos enviem dúvidas antes de escolher um plano
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={upgradeAllowBookingMessages}
+                    onClick={() => {
+                      triggerHaptic("selection");
+                      setUpgradeAllowBookingMessages((prev) => !prev);
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      upgradeAllowBookingMessages ? "bg-amber-500" : "bg-zinc-800"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-zinc-950 shadow ring-0 transition duration-200 ease-in-out ${
+                        upgradeAllowBookingMessages ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {/* Botões do Rodapé do Painel */}

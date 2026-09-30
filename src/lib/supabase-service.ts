@@ -487,6 +487,7 @@ export async function saveProfileToSupabase(user: UserProfile): Promise<boolean>
       pix_bank: user.pixBank || null,
       terms_accepted: user.termsAccepted ?? false,
       terms_accepted_at: user.termsAcceptedAt || null,
+      allow_booking_messages: user.allowBookingMessages !== undefined ? user.allowBookingMessages : true,
     };
 
     const { error } = await client.from("profiles").upsert(extendedPayload, { onConflict: "id" });
@@ -572,6 +573,7 @@ export async function fetchProfileFromSupabase(userId: string): Promise<UserProf
         trialEndsAt: data.trial_ends_at || undefined,
         subscriptionEndsAt: data.subscription_ends_at || undefined,
         deviceFingerprint: data.device_fingerprint || undefined,
+        allowBookingMessages: data.allow_booking_messages !== undefined ? Boolean(data.allow_booking_messages) : true,
       };
     } catch {
       return null;

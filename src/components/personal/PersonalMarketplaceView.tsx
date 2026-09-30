@@ -29,6 +29,9 @@ import {
   ChevronDown,
   RotateCcw,
   Check,
+  MessageSquare,
+  Send,
+  X,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser, saveUserProfile, UserProfile } from "@/lib/auth-store";
@@ -41,6 +44,7 @@ import {
   CoachTrainer,
   BookingRequest,
   getCoachSlotsForDate,
+  addNotification,
 } from "@/lib/booking-store";
 import {
   calculateDistanceKm,
@@ -90,6 +94,11 @@ export function PersonalMarketplaceView({
   const [bookingErrorMessage, setBookingErrorMessage] = useState<string | null>(null);
   const [isLeaveCoachModalOpen, setIsLeaveCoachModalOpen] = useState(false);
   const [selectedBookingToLeave, setSelectedBookingToLeave] = useState<BookingRequest | null>(null);
+
+  // Estados de Dúvidas / Mensagem prévia para o Personal
+  const [showPreBookingModal, setShowPreBookingModal] = useState(false);
+  const [preBookingMessage, setPreBookingMessage] = useState("");
+  const [preBookingSent, setPreBookingSent] = useState(false);
 
   // Perfil do usuário e geolocalização do aluno
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile>(() => getCurrentUser());
@@ -561,6 +570,52 @@ export function PersonalMarketplaceView({
       `Olá, ${booking.coachName}! Aqui é o ${booking.studentName}. Meu agendamento de treino presencial para ${booking.slotDay} às ${booking.slotTime} (Plano ${booking.planType.toUpperCase()}) foi confirmado pelo GymFlow. Como combinamos o encontro no salão?`
     );
     return `https://wa.me/${booking.coachPhone}?text=${msg}`;
+  };
+
+  // Handler para envio de dúvidas prévias via WhatsApp
+  const handleSendPreBookingViaWhatsApp = () => {
+    if (!currentCoach) return;
+    const cleanCoachPhone = (currentCoach.phone || "").replace(/\D/g, "");
+    const studentDisplay = studentName || currentUserProfile.name || "Aluno";
+    const userDoubt = preBookingMessage.trim() || "Gostaria de saber mais sobre seu acompanhamento e metodologia de treino antes de escolher um plano.";
+    const text = `Olá, ${decodeHtml(currentCoach.name)}! Sou o ${studentDisplay} no GymFlow. Tenho uma dúvida antes de contratar seu plano: "${userDoubt}". Como podemos conversar?`;
+
+    if (cleanCoachPhone) {
+      window.open(`https://wa.me/${cleanCoachPhone}?text=${encodeURIComponent(text)}`, "_blank");
+    }
+
+    addNotification({
+      targetRole: "coach",
+      coachId: currentCoach.id,
+      studentId: studentId || currentUserProfile.id,
+      type: "booking_message",
+      title: `💬 Dúvida de ${studentDisplay}`,
+      message: userDoubt,
+      actionUrl: "/coach/agenda",
+    });
+
+    setPreBookingSent(true);
+    triggerHaptic("success");
+  };
+
+  // Handler para envio de dúvidas prévias diretamente pelo GymFlow
+  const handleSendPreBookingViaGymFlow = () => {
+    if (!currentCoach) return;
+    const studentDisplay = studentName || currentUserProfile.name || "Aluno";
+    const userDoubt = preBookingMessage.trim() || "Gostaria de tirar algumas dúvidas sobre seus horários e metodologia antes de escolher o plano.";
+
+    addNotification({
+      targetRole: "coach",
+      coachId: currentCoach.id,
+      studentId: studentId || currentUserProfile.id,
+      type: "booking_message",
+      title: `💬 Mensagem prévia de ${studentDisplay}`,
+      message: userDoubt,
+      actionUrl: "/coach/agenda",
+    });
+
+    setPreBookingSent(true);
+    triggerHaptic("success");
   };
 
   const hasUserGps = isValidCoordinate(currentUserProfile.latitude, currentUserProfile.longitude);
@@ -1084,6 +1139,13 @@ export function PersonalMarketplaceView({
                           </span>
                         )}
 
+                        {coach.allowBookingMessages !== false && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                            <MessageSquare className="w-2.5 h-2.5 text-blue-400" />
+                            <span>Tira dúvidas</span>
+                          </span>
+                        )}
+
                         <span className="text-[10px] font-mono text-zinc-300 ml-auto">
                           A partir de R$ {coach.pricing.basicMonthly ?? coach.pricing.dailySession ?? 35}/mês
                         </span>
@@ -1117,6 +1179,37 @@ export function PersonalMarketplaceView({
               </span>
             )}
           </div>
+
+          {/* BANNER / BOTÃO: TIRAR DÚVIDAS ANTES DE ESCOLHER O PLANO */}
+          {currentCoach.allowBookingMessages !== false && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-zinc-950 to-zinc-900 border border-emerald-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-white block truncate">
+                    Dúvidas antes de escolher o plano?
+                  </span>
+                  <span className="text-[10px] text-zinc-400 block truncate">
+                    Mande uma mensagem para {decodeHtml(currentCoach.name)} e combine horários ou tire dúvidas.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setShowPreBookingModal(true);
+                  setPreBookingSent(false);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shrink-0 active:scale-95 shadow-sm"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Mandar Mensagem</span>
+              </button>
+            </div>
+          )}
 
           {/* 1. SELEÇÃO DA MODALIDADE DO PLANO */}
           <div className="flex flex-col gap-1.5">
@@ -1403,6 +1496,144 @@ export function PersonalMarketplaceView({
             setMyBookings(getStoredBookings());
           }}
         />
+      )}
+
+      {/* Modal de Envio de Dúvidas / Mensagem Prévia para o Personal */}
+      {showPreBookingModal && currentCoach && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md bg-zinc-900 border border-emerald-500/30 rounded-3xl p-5 shadow-2xl space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-zinc-950 border border-white/[0.1] overflow-hidden flex items-center justify-center shrink-0">
+                  {currentCoach.avatarUrl ? (
+                    <img src={currentCoach.avatarUrl} alt={currentCoach.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <MessageSquare className="w-5 h-5 text-emerald-400" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white">{decodeHtml(currentCoach.name)}</h3>
+                  <span className="text-[10px] text-emerald-400 font-medium block">
+                    {decodeHtml(currentCoach.specialty)}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPreBookingModal(false);
+                  setPreBookingSent(false);
+                }}
+                className="p-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {preBookingSent ? (
+              <div className="text-center py-6 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-7 h-7 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-white">Mensagem Enviada!</h4>
+                  <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">
+                    {decodeHtml(currentCoach.name)} recebeu sua dúvida e entrará em contato em breve para você fechar seu treino.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPreBookingModal(false);
+                    setPreBookingSent(false);
+                    setPreBookingMessage("");
+                  }}
+                  className="mt-2 px-6 py-2.5 rounded-xl bg-emerald-500 text-zinc-950 font-bold text-xs shadow-lg active:scale-95 transition-all"
+                >
+                  Concluir
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                <div>
+                  <span className="text-xs font-bold text-white block">
+                    Tire suas dúvidas antes de escolher o plano
+                  </span>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    Combine dias, pergunte sobre a metodologia ou fale sobre seus objetivos e restrições.
+                  </p>
+                </div>
+
+                {/* Sugestões Rápidas de Mensagem */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase">Sugestões rápidas:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "Quero conhecer sua metodologia de treino",
+                      "Tenho horários flexíveis, podemos alinhar?",
+                      "Tenho restrição física/lesão, o treino é adaptado?",
+                      "Gostaria de uma aula experimental de adaptação",
+                    ].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("selection");
+                          setPreBookingMessage(sug);
+                        }}
+                        className="text-[10px] text-left px-2.5 py-1 rounded-xl bg-white/[0.03] hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/[0.06] hover:border-emerald-500/30 text-zinc-300 transition-all active:scale-95"
+                      >
+                        {sug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Textarea */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-zinc-400 flex items-center justify-between">
+                    <span>Sua Mensagem:</span>
+                    <span className="text-[9px] text-zinc-500 font-mono">
+                      {preBookingMessage.length}/300
+                    </span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    maxLength={300}
+                    value={preBookingMessage}
+                    onChange={(e) => setPreBookingMessage(e.target.value)}
+                    placeholder="Escreva sua dúvida ou o que gostaria de combinar antes de escolher o plano..."
+                    className="w-full p-2.5 rounded-xl bg-zinc-950 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 resize-none"
+                  />
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {currentCoach.phone && (
+                    <button
+                      type="button"
+                      onClick={handleSendPreBookingViaWhatsApp}
+                      className="py-2.5 px-3 rounded-xl bg-[#25D366]/20 hover:bg-[#25D366]/30 border border-[#25D366]/40 text-[#25D366] font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Conversar no WhatsApp</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleSendPreBookingViaGymFlow}
+                    className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 sm:col-span-1"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Enviar pelo GymFlow</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
