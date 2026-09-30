@@ -51,11 +51,12 @@ interface SubscriptionOnboardingModalProps {
   user?: UserProfile;
 }
 
-type PlanKey = "trial" | "basico" | "pro" | "vip";
+type RoleType = "student" | "coach";
 type BillingType = "recurring" | "pix";
 
-interface PlanConfig {
-  id: PlanKey;
+export interface PlanConfig {
+  id: string;
+  role: RoleType;
   tier: "basico" | "pro" | "vip";
   badge: string;
   badgeColor: string;
@@ -68,18 +69,19 @@ interface PlanConfig {
   lockedUsability?: string[];
 }
 
-const PLANS: PlanConfig[] = [
+export const STUDENT_PLANS: PlanConfig[] = [
   {
     id: "trial",
+    role: "student",
     tier: "pro",
     badge: "EXPERIMENTE GRÁTIS",
     badgeColor: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    name: "7 Dias Grátis",
-    tagline: "Desbloqueia todos os recursos do Plano Pro sem pagar nada hoje.",
+    name: "7 Dias Grátis Aluno Pro",
+    tagline: "Desbloqueia Biomecânica 3D, GymBot IA e aulas coletivas sem pagar nada hoje.",
     recurringPrice: 0,
     pixPrice: 0,
     includedUsability: [
-      "Acesso completo ao Plano Pro por 7 dias",
+      "Acesso completo ao Plano Pro de Aluno por 7 dias",
       "Biomecânica 3D & GIFs de 233+ exercícios",
       "GymBot IA 24/7 (Substituições & Dieta)",
       "Reserva de vagas em Aulas Coletivas",
@@ -88,10 +90,11 @@ const PLANS: PlanConfig[] = [
   },
   {
     id: "basico",
+    role: "student",
     tier: "basico",
     badge: "ESSENCIAL",
     badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-    name: "Plano Básico",
+    name: "Aluno Básico",
     tagline: "A base sólida para registrar treinos e acessar a academia.",
     recurringPrice: 29.9,
     pixPrice: 35.0,
@@ -109,10 +112,11 @@ const PLANS: PlanConfig[] = [
   },
   {
     id: "pro",
+    role: "student",
     tier: "pro",
     badge: "MAIS ESCOLHIDO 🔥",
     badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-    name: "Plano Pro",
+    name: "Aluno Pro",
     tagline: "A experiência completa de treino inteligente e alta performance.",
     recurringPrice: 39.9,
     pixPrice: 45.0,
@@ -127,10 +131,11 @@ const PLANS: PlanConfig[] = [
   },
   {
     id: "vip",
+    role: "student",
     tier: "vip",
     badge: "MÁXIMA PERFORMANCE 👑",
     badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-    name: "Plano VIP Black",
+    name: "Aluno VIP Black",
     tagline: "Acompanhamento de elite, bioimpedância e exclusividade total.",
     recurringPrice: 49.9,
     pixPrice: 55.0,
@@ -144,7 +149,90 @@ const PLANS: PlanConfig[] = [
   },
 ];
 
-const COMPARISON_ROWS = [
+export const COACH_PLANS: PlanConfig[] = [
+  {
+    id: "trial",
+    role: "coach",
+    tier: "pro",
+    badge: "EXPERIMENTE GRÁTIS 🚀",
+    badgeColor: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    name: "7 Dias Grátis Personal Pro",
+    tagline: "Atenda até 35 alunos, monte treinos 3D e teste sem nenhum custo hoje.",
+    recurringPrice: 0,
+    pixPrice: 0,
+    includedUsability: [
+      "Até 35 alunos ativos simultâneos durante 7 dias",
+      "Prescrição completa com Biomecânica 3D para alunos",
+      "Envio de fichas digitais direto no app dos alunos",
+      "Agenda de atendimentos e perfil no marketplace",
+      "GymBot IA Copilot para montagem rápida de treinos",
+    ],
+  },
+  {
+    id: "coach_starter",
+    role: "coach",
+    tier: "basico",
+    badge: "START NA CARREIRA",
+    badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+    name: "Personal Starter",
+    tagline: "Ideal para começar a gerenciar seus primeiros alunos com profissionalismo.",
+    recurringPrice: 39.9,
+    pixPrice: 49.0,
+    includedUsability: [
+      "Gestão de até 10 alunos ativos simultâneos",
+      "Prescrição de fichas de treino digitais completas",
+      "Agenda de aulas e agendamentos com alunos",
+      "Perfil ativo no Marketplace GymFlow da região",
+      "Envio de treinos direto no celular do aluno",
+    ],
+    lockedUsability: [
+      "Limite de 10 alunos (upgrade para expandir)",
+      "Sem animações 3D interativas nos treinos dos alunos",
+      "Sem GymBot IA Copilot de montagem de fichas",
+    ],
+  },
+  {
+    id: "coach_pro",
+    role: "coach",
+    tier: "pro",
+    badge: "MAIS ESCOLHIDO 🔥",
+    badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    name: "Personal Pro",
+    tagline: "A ferramenta definitiva para o Personal Trainer moderno de alta renda.",
+    recurringPrice: 69.9,
+    pixPrice: 79.0,
+    featured: true,
+    includedUsability: [
+      "Gestão de até 35 alunos ativos simultâneos",
+      "Prescrição completa com Biomecânica 3D postural para alunos",
+      "Selo Verificado e destaque nas buscas do Marketplace",
+      "Controle financeiro de mensalidades e recebimento PIX",
+      "GymBot IA Copilot para montagem ágil de periodização",
+      "Gráficos comparativos de evolução de força de cada aluno",
+    ],
+  },
+  {
+    id: "coach_vip",
+    role: "coach",
+    tier: "vip",
+    badge: "ESCALA TOTAL 👑",
+    badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    name: "Personal Elite VIP",
+    tagline: "Consultoria sem limites com máximo destaque regional e suporte VIP.",
+    recurringPrice: 99.9,
+    pixPrice: 119.0,
+    includedUsability: [
+      "Alunos ilimitados (escala total da sua consultoria)",
+      "Destaque no topo do ranking do Marketplace na sua região",
+      "Módulo de Avaliação Física & Bioimpedância para alunos",
+      "Link exclusivo de contratação de consultorias",
+      "Lembretes e cobrança automática de alunos via WhatsApp",
+      "Suporte individual prioritário via WhatsApp",
+    ],
+  },
+];
+
+const STUDENT_COMPARISON_ROWS = [
   { feature: "Musculação, Séries e Cargas", basico: true, pro: true, vip: true },
   { feature: "Catraca Digital QR Code", basico: true, pro: true, vip: true },
   { feature: "Agenda de Presenças e Histórico", basico: true, pro: true, vip: true },
@@ -157,19 +245,50 @@ const COMPARISON_ROWS = [
   { feature: "Convite Cortesia para Amigo", basico: false, pro: false, vip: true },
 ];
 
+const COACH_COMPARISON_ROWS = [
+  { feature: "Capacidade de Alunos Ativos", starter: "10 alunos", pro: "35 alunos", vip: "Ilimitados" },
+  { feature: "Prescrição de Fichas Digitais", starter: true, pro: true, vip: true },
+  { feature: "Agenda & Agendamentos", starter: true, pro: true, vip: true },
+  { feature: "Marketplace da Cidade", starter: "Básico", pro: "Selo Verificado", vip: "Topo do Ranking" },
+  { feature: "Biomecânica 3D para Alunos", starter: false, pro: true, vip: true },
+  { feature: "Gestão Financeira & PIX", starter: false, pro: true, vip: true },
+  { feature: "GymBot IA Copilot de Fichas", starter: false, pro: true, vip: true },
+  { feature: "Módulo Avaliação & InBody", starter: false, pro: false, vip: true },
+  { feature: "Link Direto de Contratação", starter: false, pro: false, vip: true },
+  { feature: "WhatsApp Automático para Alunos", starter: false, pro: false, vip: true },
+  { feature: "Suporte Prioritário Individual", starter: false, pro: false, vip: true },
+];
+
 export function SubscriptionOnboardingModal({
   isOpen,
   onSuccess,
   user,
 }: SubscriptionOnboardingModalProps) {
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => user || getCurrentUser());
+  const initialRole: RoleType = (user?.activeRole || currentUser?.activeRole) === "coach" ? "coach" : "student";
+  const [selectedRole, setSelectedRole] = useState<RoleType>(initialRole);
   const [isTrialAvailable, setIsTrialAvailable] = useState<boolean>(true);
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<string>(() =>
+    initialRole === "coach" ? "coach_pro" : "pro"
+  );
   const [billingMethod, setBillingMethod] = useState<BillingType>("recurring");
   const [showComparison, setShowComparison] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+
+  const activePlans = selectedRole === "coach" ? COACH_PLANS : STUDENT_PLANS;
+  const currentPlanConfig = activePlans.find((p) => p.id === selectedPlan) || activePlans[1] || activePlans[0];
+
+  const handleSwitchRole = (role: RoleType) => {
+    triggerHaptic("selection");
+    setSelectedRole(role);
+    if (role === "coach") {
+      setSelectedPlan("coach_pro");
+    } else {
+      setSelectedPlan("pro");
+    }
+  };
 
   // PIX direto gerado pelo Mercado Pago
   const [pixData, setPixData] = useState<{
@@ -239,8 +358,6 @@ export function SubscriptionOnboardingModal({
 
   if (!isOpen) return null;
 
-  const currentPlanConfig = PLANS.find((p) => p.id === selectedPlan) || PLANS[2];
-
   // --------------------------------------------------------------------------
   // 1. ATIVAR TESTE DE 7 DIAS GRÁTIS
   // --------------------------------------------------------------------------
@@ -260,6 +377,13 @@ export function SubscriptionOnboardingModal({
         }
       }
 
+      const trialPlanId = selectedRole === "coach" ? "trial_coach_7d" : "trial_7d";
+      const trialReason =
+        selectedRole === "coach"
+          ? "GymFlow Personal Pro — 7 Dias Grátis com Cobrança Posterior"
+          : "GymFlow Aluno Pro — 7 Dias Grátis com Cobrança Posterior";
+      const trialPrice = selectedRole === "coach" ? 69.9 : 39.9;
+
       // Tenta acionar o checkout de assinatura recorrente com free trial no Mercado Pago
       try {
         const idempotencyKey =
@@ -274,12 +398,12 @@ export function SubscriptionOnboardingModal({
             "X-Idempotency-Key": idempotencyKey,
           },
           body: JSON.stringify({
-            reason: "GymFlow Pro — 7 Dias Grátis com Cobrança Posterior",
-            price: 39.9,
-            payerEmail: currentUser.email || "aluno@gymflow.com",
+            reason: trialReason,
+            price: trialPrice,
+            payerEmail: currentUser.email || "usuario@gymflow.com",
             freeTrialDays: 7,
             userId: currentUser.id,
-            planId: "trial_7d",
+            planId: trialPlanId,
             idempotencyKey,
           }),
         });
@@ -287,7 +411,7 @@ export function SubscriptionOnboardingModal({
         const data = await res.json();
         if (data.initPoint && !data.isSimulated) {
           await markTrialAsUsedOnDevice();
-          const activated = activateTrialForUser(7, currentUser);
+          const activated = activateTrialForUser(7, currentUser, trialPlanId);
           await saveProfileToSupabase(activated);
           window.location.href = data.initPoint;
           return;
@@ -298,7 +422,7 @@ export function SubscriptionOnboardingModal({
 
       // Ativação direta local do trial de 7 dias com persistência garantida no Supabase
       await markTrialAsUsedOnDevice();
-      const activated = activateTrialForUser(7, currentUser);
+      const activated = activateTrialForUser(7, currentUser, trialPlanId);
       await saveProfileToSupabase(activated);
       setCurrentUser(activated);
       triggerHaptic("success");
@@ -326,6 +450,15 @@ export function SubscriptionOnboardingModal({
           ? crypto.randomUUID()
           : `sub_${plan.id}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
+      const targetPlanId =
+        plan.id === "trial"
+          ? selectedRole === "coach"
+            ? "trial_coach_7d"
+            : "trial_7d"
+          : selectedRole === "coach" && !plan.id.endsWith("_rec")
+          ? `${plan.id}_rec`
+          : plan.id;
+
       const res = await fetch("/api/payment/mercadopago/subscription", {
         method: "POST",
         headers: {
@@ -335,10 +468,10 @@ export function SubscriptionOnboardingModal({
         body: JSON.stringify({
           reason: `GymFlow ${plan.name} — Assinatura Recorrente`,
           price: plan.recurringPrice,
-          payerEmail: currentUser.email || "aluno@gymflow.com",
+          payerEmail: currentUser.email || "usuario@gymflow.com",
           freeTrialDays: 0,
           userId: currentUser.id,
-          planId: plan.id,
+          planId: targetPlanId,
           idempotencyKey,
         }),
       });
@@ -352,7 +485,7 @@ export function SubscriptionOnboardingModal({
         window.location.href = data.initPoint;
       } else {
         // Homologação / Simulado
-        activatePaidPlanForUser(plan.id, true, plan.tier);
+        activatePaidPlanForUser(targetPlanId, true, plan.tier);
         triggerHaptic("success");
         onSuccess();
       }
@@ -388,8 +521,8 @@ export function SubscriptionOnboardingModal({
         body: JSON.stringify({
           amount: plan.pixPrice,
           description: `GymFlow ${plan.name} (30 Dias de Acesso)`,
-          payerEmail: currentUser.email || "aluno@gymflow.com",
-          payerName: currentUser.name || "Aluno GymFlow",
+          payerEmail: currentUser.email || "usuario@gymflow.com",
+          payerName: currentUser.name || (selectedRole === "coach" ? "Personal GymFlow" : "Aluno GymFlow"),
           userId: currentUser.id,
           planId: plan.id,
           idempotencyKey,
@@ -597,6 +730,42 @@ export function SubscriptionOnboardingModal({
             /* SELETOR DE MÉTODO DE PAGAMENTO & LISTA DE PLANOS */
             /* ============================================================= */
             <div className="space-y-4">
+              {/* Seletor de Perfil: Aluno vs Professor */}
+              <div className="space-y-1.5">
+                <div className="flex items-center p-1 rounded-2xl bg-zinc-950 border border-white/[0.08] shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchRole("student")}
+                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      selectedRole === "student"
+                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <Dumbbell className="w-3.5 h-3.5" />
+                    <span>Planos para Alunos</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchRole("coach")}
+                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      selectedRole === "coach"
+                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Planos para Professores & Personais</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-400 px-1 text-center">
+                  {selectedRole === "student"
+                    ? "Treinos inteligentes, Biomecânica 3D, catraca digital, aulas coletivas e GymBot IA."
+                    : "Gestão completa de alunos, prescrição digital com 3D, marketplace regional e controle de mensalidades."}
+                </p>
+              </div>
+
               {/* Seletor de Tipo de Pagamento: Cartão Recorrente vs PIX */}
               <div className="flex items-center p-1 rounded-2xl bg-zinc-900 border border-white/[0.06]">
                 <button
@@ -621,7 +790,7 @@ export function SubscriptionOnboardingModal({
                     triggerHaptic("selection");
                     setBillingMethod("pix");
                     if (selectedPlan === "trial") {
-                      setSelectedPlan("pro");
+                      setSelectedPlan(selectedRole === "coach" ? "coach_pro" : "pro");
                     }
                   }}
                   className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
@@ -650,7 +819,7 @@ export function SubscriptionOnboardingModal({
 
               {/* Grid de Cards dos Planos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {PLANS.map((plan) => {
+                {activePlans.map((plan) => {
                   const isSelected = selectedPlan === plan.id;
                   const isTrial = plan.id === "trial";
                   const isTrialDisabled = isTrial && !isTrialAvailable && !userHasActiveTrial;
@@ -810,39 +979,44 @@ export function SubscriptionOnboardingModal({
                     <table className="w-full text-[11px] text-left">
                       <thead>
                         <tr className="border-b border-white/[0.08] text-zinc-400">
-                          <th className="py-2 pr-2 font-bold">Recurso no GymFlow</th>
-                          <th className="py-2 px-2 text-center font-bold">Básico</th>
+                          <th className="py-2 pr-2 font-bold">
+                            {selectedRole === "coach" ? "Recurso de Consultoria & Gestão" : "Recurso no GymFlow"}
+                          </th>
+                          <th className="py-2 px-2 text-center font-bold">
+                            {selectedRole === "coach" ? "Starter" : "Básico"}
+                          </th>
                           <th className="py-2 px-2 text-center font-bold text-emerald-400">Pro</th>
-                          <th className="py-2 pl-2 text-center font-bold text-amber-400">VIP</th>
+                          <th className="py-2 pl-2 text-center font-bold text-amber-400">
+                            {selectedRole === "coach" ? "Elite VIP" : "VIP"}
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.04]">
-                        {COMPARISON_ROWS.map((row, idx) => (
-                          <tr key={idx} className="hover:bg-white/[0.02]">
-                            <td className="py-2 pr-2 text-zinc-300 font-medium">{row.feature}</td>
-                            <td className="py-2 px-2 text-center">
-                              {row.basico ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-400 mx-auto stroke-[3]" />
+                        {(selectedRole === "coach" ? COACH_COMPARISON_ROWS : STUDENT_COMPARISON_ROWS).map((row: any, idx: number) => {
+                          const valBasico = selectedRole === "coach" ? row.starter : row.basico;
+                          const valPro = row.pro;
+                          const valVip = row.vip;
+
+                          const renderCell = (val: any, isVip = false) => {
+                            if (typeof val === "boolean") {
+                              return val ? (
+                                <Check className={`w-3.5 h-3.5 mx-auto stroke-[3] ${isVip ? "text-amber-400" : "text-emerald-400"}`} />
                               ) : (
                                 <span className="text-zinc-600">—</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {row.pro ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-400 mx-auto stroke-[3]" />
-                              ) : (
-                                <span className="text-zinc-600">—</span>
-                              )}
-                            </td>
-                            <td className="py-2 pl-2 text-center">
-                              {row.vip ? (
-                                <Check className="w-3.5 h-3.5 text-amber-400 mx-auto stroke-[3]" />
-                              ) : (
-                                <span className="text-zinc-600">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                              );
+                            }
+                            return <span className={`text-[10px] font-bold ${isVip ? "text-amber-300" : "text-zinc-300"}`}>{val}</span>;
+                          };
+
+                          return (
+                            <tr key={idx} className="hover:bg-white/[0.02]">
+                              <td className="py-2 pr-2 text-zinc-300 font-medium">{row.feature}</td>
+                              <td className="py-2 px-2 text-center">{renderCell(valBasico)}</td>
+                              <td className="py-2 px-2 text-center">{renderCell(valPro)}</td>
+                              <td className="py-2 pl-2 text-center">{renderCell(valVip, true)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

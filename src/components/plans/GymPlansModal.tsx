@@ -33,48 +33,99 @@ export interface PlanOption {
   features: string[];
 }
 
-const PLANS: PlanOption[] = [
+export const STUDENT_PLANS: PlanOption[] = [
   {
-    id: "basico",
-    name: "Plano Básico",
+    id: "student_basico",
+    name: "Aluno Básico",
     price: "35,00",
     billingPeriod: "/mês",
     features: [
-      "Acesso à área de musculação e aeróbico",
+      "Acesso à musculação e aeróbico",
       "Fichas de treino essenciais",
-      "Acesso à catraca via QR Code digital",
-      "Horários livres em sua unidade base",
+      "Catraca digital via QR Code dinâmico",
+      "Histórico de presenças e frequência",
+      "Marketplace para contratar Personal",
     ],
   },
   {
-    id: "pro",
-    name: "Plano Pro",
+    id: "student_pro",
+    name: "Aluno Pro",
     tag: "MAIS ESCOLHIDO",
     popular: true,
     price: "45,00",
     billingPeriod: "/mês",
     features: [
-      "Acesso completo a todas as áreas GymFlow",
-      "Fichas completas com animações dinâmicas e guia de execução",
-      "Todas as aulas coletivas (Spinning, Funcional, Alongamento)",
-      "GymBot IA ilimitado para dúvidas de treino e dieta",
+      "Tudo do Plano Básico incluso",
+      "Biomecânica 3D postural & GIFs de 233+ exercícios",
+      "Todas as aulas coletivas (Spinning, Muay Thai, Funcional)",
+      "GymBot IA 24/7 para dúvidas de treino e dieta",
+      "Gráficos de evolução de força e PRs",
     ],
   },
   {
-    id: "vip",
-    name: "Plano VIP",
+    id: "student_vip",
+    name: "Aluno VIP Black",
     tag: "COMPLETO",
     price: "55,00",
     billingPeriod: "/mês",
     features: [
-      "Acesso VIP a todas as unidades GymFlow",
-      "Acompanhamento presencial com Personal Trainer",
-      "Remanejamento flexível de horários prioritário",
+      "Tudo do Plano Pro incluso",
+      "Bioimpedância InBody mensal inclusa",
+      "1 Consultoria/treino presencial com Personal parceiro",
       "Leve 1 amigo para treinar 4x ao mês",
-      "Bioimpedância InBody gratuita todo mês",
+      "Reserva prioritária em aulas concorridas",
     ],
   },
 ];
+
+export const COACH_PLANS: PlanOption[] = [
+  {
+    id: "coach_starter",
+    name: "Personal Starter",
+    price: "49,00",
+    billingPeriod: "/mês",
+    features: [
+      "Gestão de até 10 alunos ativos simultâneos",
+      "Prescrição de fichas digitais de musculação",
+      "Agenda de aulas e agendamentos de sessões",
+      "Perfil ativo no Marketplace GymFlow da região",
+      "Envio de treinos direto no app do aluno",
+    ],
+  },
+  {
+    id: "coach_pro",
+    name: "Personal Pro",
+    tag: "MAIS ESCOLHIDO",
+    popular: true,
+    price: "79,00",
+    billingPeriod: "/mês",
+    features: [
+      "Gestão de até 35 alunos ativos simultâneos",
+      "Prescrição completa com Biomecânica 3D para alunos",
+      "Perfil com Selo Verificado e destaque nas buscas",
+      "Controle financeiro de mensalidades e recebimento via PIX",
+      "GymBot IA Copilot (Periodização e fichas ágeis)",
+      "Gráficos de evolução de força de cada aluno",
+    ],
+  },
+  {
+    id: "coach_vip",
+    name: "Personal Elite VIP",
+    tag: "ESCALA TOTAL",
+    price: "119,00",
+    billingPeriod: "/mês",
+    features: [
+      "Alunos ilimitados (escala total da consultoria)",
+      "Máximo destaque no topo do Marketplace regional",
+      "Módulo de Avaliação Física & Bioimpedância para alunos",
+      "Link exclusivo de contratação de consultorias",
+      "Lembretes e cobrança automática no WhatsApp",
+      "Suporte prioritário individual no WhatsApp",
+    ],
+  },
+];
+
+export const PLANS = STUDENT_PLANS;
 
 interface GymPlansModalProps {
   isOpen: boolean;
@@ -82,7 +133,12 @@ interface GymPlansModalProps {
 }
 
 export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("pro");
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
+  const initialRole = currentUser.activeRole === "coach" ? "coach" : "student";
+  const [selectedRole, setSelectedRole] = useState<"student" | "coach">(initialRole);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(
+    initialRole === "coach" ? "coach_pro" : "student_pro"
+  );
   const [checkoutStep, setCheckoutStep] = useState<"plans" | "payment" | "success">("plans");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [copiedPix, setCopiedPix] = useState(false);
@@ -90,12 +146,28 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
   const [pixData, setPixData] = useState<{ id?: string; qrCode: string; qrCodeBase64?: string } | null>(null);
   const [pixStatusMessage, setPixStatusMessage] = useState<string | null>(null);
   const [isMpConfigured, setIsMpConfigured] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
   const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+
+  const currentPlans = selectedRole === "coach" ? COACH_PLANS : STUDENT_PLANS;
+  const currentPlan =
+    currentPlans.find((p) => p.id === selectedPlanId) ||
+    currentPlans[1] ||
+    currentPlans[0];
+
+  const handleSwitchRole = (role: "student" | "coach") => {
+    triggerHaptic("selection");
+    setSelectedRole(role);
+    setSelectedPlanId(role === "coach" ? "coach_pro" : "student_pro");
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setCurrentUser(getCurrentUser());
+      const freshUser = getCurrentUser();
+      setCurrentUser(freshUser);
+      const role = freshUser.activeRole === "coach" ? "coach" : "student";
+      setSelectedRole(role);
+      setSelectedPlanId(role === "coach" ? "coach_pro" : "student_pro");
+      setCheckoutStep("plans");
       fetch("/api/payment/status")
         .then((res) => res.json())
         .then((data) => {
@@ -119,7 +191,12 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${user.id}`);
         const data = await res.json();
         if (data.success && data.status === "approved") {
-          activatePaidPlanForUser(selectedPlanId, false, selectedPlanId as any);
+          const determinedTier = currentPlan.id.includes("vip")
+            ? "vip"
+            : currentPlan.id.includes("basico") || currentPlan.id.includes("starter")
+            ? "basico"
+            : "pro";
+          activatePaidPlanForUser(selectedPlanId, false, determinedTier);
           setCheckoutStep("success");
           triggerHaptic("success");
         }
@@ -127,11 +204,9 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [isOpen, checkoutStep, paymentMethod, pixData?.id, selectedPlanId]);
+  }, [isOpen, checkoutStep, paymentMethod, pixData?.id, selectedPlanId, currentPlan.id]);
 
   if (!isOpen) return null;
-
-  const currentPlan = PLANS.find((p) => p.id === selectedPlanId) || PLANS[1];
 
   const handleSelectPlan = (planId: string) => {
     triggerHaptic("selection");
@@ -161,8 +236,8 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         body: JSON.stringify({
           planId: currentPlan.id,
           description: `GymFlow — ${currentPlan.name}`,
-          payerEmail: user.email || "aluno@gymflow.com",
-          payerName: user.name || "Aluno GymFlow",
+          payerEmail: user.email || "usuario@gymflow.com",
+          payerName: user.name || (selectedRole === "coach" ? "Personal GymFlow" : "Aluno GymFlow"),
           userId: user.id,
           idempotencyKey,
         }),
@@ -200,6 +275,12 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
     setIsProcessing(true);
     setPixStatusMessage(null);
 
+    const determinedTier = currentPlan.id.includes("vip")
+      ? "vip"
+      : currentPlan.id.includes("basico") || currentPlan.id.includes("starter")
+      ? "basico"
+      : "pro";
+
     try {
       const user = getCurrentUser();
 
@@ -219,8 +300,8 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
           body: JSON.stringify({
             planId: currentPlan.id,
             title: `GymFlow — ${currentPlan.name}`,
-            payerEmail: user.email || "aluno@gymflow.com",
-            payerName: user.name || "Aluno GymFlow",
+            payerEmail: user.email || "usuario@gymflow.com",
+            payerName: user.name || (selectedRole === "coach" ? "Personal GymFlow" : "Aluno GymFlow"),
             userId: user.id,
             idempotencyKey: cardIdempotencyKey,
           }),
@@ -233,7 +314,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         }
 
         // Em modo simulado (sem credenciais), ativa diretamente
-        activatePaidPlanForUser(currentPlan.id, true, currentPlan.id as any);
+        activatePaidPlanForUser(currentPlan.id, true, determinedTier);
         setCheckoutStep("success");
         triggerHaptic("success");
         return;
@@ -245,7 +326,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         const data = await res.json();
 
         if (data.success && data.status === "approved") {
-          activatePaidPlanForUser(currentPlan.id, false, currentPlan.id as any);
+          activatePaidPlanForUser(currentPlan.id, false, determinedTier);
           setCheckoutStep("success");
           triggerHaptic("success");
           return;
@@ -262,7 +343,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
 
       // Fallback para modo simulação quando não há credenciais no .env
       if (!isMpConfigured) {
-        activatePaidPlanForUser(currentPlan.id, false, currentPlan.id as any);
+        activatePaidPlanForUser(currentPlan.id, false, determinedTier);
         setCheckoutStep("success");
         triggerHaptic("success");
         return;
@@ -405,8 +486,42 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                 );
               })()}
 
+              {/* Seletor de Perfil: Planos para Alunos vs Treinadores */}
+              <div className="space-y-1.5">
+                <div className="flex items-center p-1 rounded-2xl bg-zinc-950 border border-white/[0.08] shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchRole("student")}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      selectedRole === "student"
+                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <span>🏋️‍♂️ Planos para Alunos</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchRole("coach")}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      selectedRole === "coach"
+                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
+                        : "text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    <span>👨‍🏫 Planos para Treinadores</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-400 px-1 text-center">
+                  {selectedRole === "student"
+                    ? "Planos para treinar, ver fichas 3D, catraca, aulas coletivas e GymBot IA."
+                    : "Planos profissionais para prescrever treinos 3D, gerenciar alunos e captar clientes."}
+                </p>
+              </div>
+
               <div className="flex flex-col gap-3">
-                {PLANS.map((plan) => {
+                {currentPlans.map((plan) => {
                   const isSelected = plan.id === selectedPlanId;
                   return (
                     <div

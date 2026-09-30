@@ -13,22 +13,37 @@ const MP_API_BASE = "https://api.mercadopago.com";
 export interface OfficialPlan {
   id: string;
   name: string;
+  role?: "student" | "coach";
   tier: "basico" | "pro" | "vip";
   price: number;
   billingPeriod: string;
   isRecurring: boolean;
   freeTrialDays?: number;
   description: string;
+  maxStudents?: number;
 }
 
 /**
  * Tabela Oficial de Preços do Servidor (Fonte Única da Verdade)
  * Impede que usuários maliciosos manipulem os valores no payload das requisições.
+ * Suporta separação completa de planos para Alunos e Professores (Personais).
  */
 export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
+  // --- PLANOS DE ALUNOS ---
   basico: {
     id: "basico",
-    name: "Plano Básico",
+    name: "Plano Aluno Básico",
+    role: "student",
+    tier: "basico",
+    price: 35.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    description: "Musculação, aeróbico, catraca digital e fichas essenciais",
+  },
+  student_basico: {
+    id: "student_basico",
+    name: "Plano Aluno Básico",
+    role: "student",
     tier: "basico",
     price: 35.0,
     billingPeriod: "/mês",
@@ -37,7 +52,18 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
   },
   pro: {
     id: "pro",
-    name: "Plano Pro",
+    name: "Plano Aluno Pro",
+    role: "student",
+    tier: "pro",
+    price: 45.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    description: "Fichas completas com animações, todas as aulas coletivas e GymBot IA",
+  },
+  student_pro: {
+    id: "student_pro",
+    name: "Plano Aluno Pro",
+    role: "student",
     tier: "pro",
     price: 45.0,
     billingPeriod: "/mês",
@@ -46,7 +72,18 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
   },
   vip: {
     id: "vip",
-    name: "Plano VIP",
+    name: "Plano Aluno VIP Black",
+    role: "student",
+    tier: "vip",
+    price: 55.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    description: "Acesso VIP total, acompanhamento com Personal Trainer e Bioimpedância InBody",
+  },
+  student_vip: {
+    id: "student_vip",
+    name: "Plano Aluno VIP Black",
+    role: "student",
     tier: "vip",
     price: 55.0,
     billingPeriod: "/mês",
@@ -55,7 +92,8 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
   },
   monthly_recurring: {
     id: "monthly_recurring",
-    name: "GymFlow Pro Recorrente",
+    name: "GymFlow Aluno Pro Recorrente",
+    role: "student",
     tier: "pro",
     price: 39.9,
     billingPeriod: "/mês",
@@ -64,7 +102,8 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
   },
   monthly_pix: {
     id: "monthly_pix",
-    name: "GymFlow Mensal Sem Recorrência (PIX)",
+    name: "GymFlow Aluno Mensal Sem Recorrência (PIX)",
+    role: "student",
     tier: "pro",
     price: 45.0,
     billingPeriod: "avulso",
@@ -73,7 +112,8 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
   },
   trial_7d: {
     id: "trial_7d",
-    name: "GymFlow Pro 7 Dias Grátis",
+    name: "GymFlow Aluno Pro 7 Dias Grátis",
+    role: "student",
     tier: "pro",
     price: 39.9,
     billingPeriod: "/mês",
@@ -81,13 +121,98 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
     freeTrialDays: 7,
     description: "7 dias gratuitos com cobrança automática recorrente a partir do 8º dia",
   },
+
+  // --- PLANOS DE PROFESSORES (PERSONAL TRAINERS) ---
+  coach_starter: {
+    id: "coach_starter",
+    name: "Plano Personal Starter (PIX Avulso)",
+    role: "coach",
+    tier: "basico",
+    price: 49.0,
+    billingPeriod: "avulso",
+    isRecurring: false,
+    maxStudents: 10,
+    description: "Gestão profissional de até 10 alunos, fichas digitais, agenda e perfil no marketplace",
+  },
+  coach_starter_rec: {
+    id: "coach_starter_rec",
+    name: "Plano Personal Starter Recorrente",
+    role: "coach",
+    tier: "basico",
+    price: 39.9,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    maxStudents: 10,
+    description: "Gestão de até 10 alunos com desconto recorrente no cartão via Mercado Pago",
+  },
+  coach_pro: {
+    id: "coach_pro",
+    name: "Plano Personal Pro (PIX Avulso)",
+    role: "coach",
+    tier: "pro",
+    price: 79.0,
+    billingPeriod: "avulso",
+    isRecurring: false,
+    maxStudents: 35,
+    description: "Gestão de até 35 alunos, Biomecânica 3D postural, Selo Verificado e GymBot IA Copilot",
+  },
+  coach_pro_rec: {
+    id: "coach_pro_rec",
+    name: "Plano Personal Pro Recorrente",
+    role: "coach",
+    tier: "pro",
+    price: 69.9,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    maxStudents: 35,
+    description: "Gestão de até 35 alunos com desconto recorrente no cartão via Mercado Pago",
+  },
+  coach_vip: {
+    id: "coach_vip",
+    name: "Plano Personal Elite VIP (PIX Avulso)",
+    role: "coach",
+    tier: "vip",
+    price: 119.0,
+    billingPeriod: "avulso",
+    isRecurring: false,
+    description: "Alunos ilimitados, Topo no marketplace, Avaliação física & bioimpedância e suporte VIP WhatsApp",
+  },
+  coach_vip_rec: {
+    id: "coach_vip_rec",
+    name: "Plano Personal Elite VIP Recorrente",
+    role: "coach",
+    tier: "vip",
+    price: 99.9,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    description: "Alunos ilimitados com desconto recorrente no cartão via Mercado Pago",
+  },
+  trial_coach_7d: {
+    id: "trial_coach_7d",
+    name: "GymFlow Personal Pro 7 Dias Grátis",
+    role: "coach",
+    tier: "pro",
+    price: 69.9,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    freeTrialDays: 7,
+    maxStudents: 35,
+    description: "7 dias grátis de Personal Pro com todas as ferramentas profissionais liberadas",
+  },
 };
 
 export function getOfficialPlan(planId?: string): OfficialPlan {
   if (planId && OFFICIAL_PLANS[planId]) {
     return OFFICIAL_PLANS[planId];
   }
+  if (planId?.startsWith("coach_")) {
+    return OFFICIAL_PLANS.coach_pro;
+  }
   return OFFICIAL_PLANS.pro;
+}
+
+export function getOfficialPlansByRole(role: "student" | "coach"): OfficialPlan[] {
+  return Object.values(OFFICIAL_PLANS).filter((p) => p.role === role);
 }
 
 /**

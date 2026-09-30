@@ -11,6 +11,8 @@ import {
   Calendar,
   Layers,
   CheckCircle2,
+  Users,
+  Dumbbell,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 
@@ -25,6 +27,15 @@ export interface FAQItem {
 
 export const FAQ_ITEMS: FAQItem[] = [
   {
+    id: "diferenca_papeis",
+    category: "planos",
+    question: "Qual é a diferença entre os planos de Aluno e de Professor / Personal?",
+    answer:
+      "Os planos de Aluno são desenhados para a evolução do seu treino individual: liberam fichas, animações de biomecânica 3D, catraca digital na portaria, aulas coletivas e GymBot IA. Já os planos de Professor são ferramentas profissionais completas: liberam limites ampliados de alunos simultâneos (10, 35 ou ilimitados), prescrição de fichas digitais com 3D para seus clientes, destaque no Marketplace da cidade para atrair novos alunos e gestão financeira de mensalidades.",
+    highlight: "Planos específicos para quem treina ou para quem atende e prescreve treinos",
+    icon: Users,
+  },
+  {
     id: "cancelamento",
     category: "cancelamento",
     question: "Como funciona o cancelamento da assinatura?",
@@ -38,9 +49,18 @@ export const FAQ_ITEMS: FAQItem[] = [
     category: "planos",
     question: "Como funciona o período de teste grátis de 7 dias?",
     answer:
-      "Você experimenta todos os recursos do Plano Pro por 7 dias corridos sem pagar nada hoje. É a chance perfeita para testar as animações e biomecânica 3D de treinos, o GymBot IA e todas as aulas coletivas. Caso decida cancelar dentro dos 7 dias, nenhum valor será cobrado no seu cartão.",
+      "Tanto para Alunos quanto para Professores, você experimenta todos os recursos do Plano Pro por 7 dias corridos sem pagar nada hoje. Alunos podem testar biomecânica 3D, aulas e GymBot IA; professores podem cadastrar alunos, prescrever treinos e testar as ferramentas profissionais. Se cancelar durante os 7 dias, nenhum valor será cobrado.",
     highlight: "7 dias com acesso Pro completo • R$ 0,00 cobrado hoje",
     icon: Sparkles,
+  },
+  {
+    id: "duplo_perfil",
+    category: "geral",
+    question: "Posso ser Aluno e também Personal Trainer no GymFlow?",
+    answer:
+      "Sim! O GymFlow possui suporte nativo a duplo papel. Você pode alternar entre a visão de Aluno (para registrar seus próprios treinos) e a de Professor (para atender seus alunos) diretamente pelo topo da tela.",
+    highlight: "Alterne livremente entre treinar e prescrever fichas",
+    icon: Dumbbell,
   },
   {
     id: "pagamentos",
@@ -56,7 +76,7 @@ export const FAQ_ITEMS: FAQItem[] = [
     category: "cancelamento",
     question: "Se eu cancelar ou meu plano expirar, perco minhas fichas e treinos?",
     answer:
-      "Não! Todos os seus dados de treinos, séries, cargas máximas, histórico de presenças e avaliações físicas continuam salvos com segurança na sua conta. Sua conta apenas entra em pausa. Quando você decidir retornar, tudo estará exatamente de onde parou.",
+      "Não! Todos os seus dados de treinos, séries, cargas máximas, alunos cadastrados e fichas continuam salvos com segurança na sua conta. Quando você decidir retornar, tudo estará exatamente de onde você parou.",
     highlight: "Histórico e fichas 100% preservados para quando você voltar",
     icon: Calendar,
   },
@@ -65,7 +85,7 @@ export const FAQ_ITEMS: FAQItem[] = [
     category: "planos",
     question: "Posso mudar de plano (upgrade ou downgrade) a qualquer momento?",
     answer:
-      "Sim! Você pode trocar entre os planos Básico, Pro ou VIP quando desejar. Ao fazer upgrade, os recursos adicionais são liberados no mesmo instante na sua conta para você aproveitar os novos benefícios.",
+      "Sim! Você pode trocar de plano quando desejar. Ao fazer upgrade, os recursos adicionais são liberados no mesmo instante na sua conta para você aproveitar os novos benefícios.",
     highlight: "Flexibilidade total para ajustar seu plano ao seu momento de treino",
     icon: Layers,
   },

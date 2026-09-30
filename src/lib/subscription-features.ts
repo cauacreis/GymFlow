@@ -114,10 +114,10 @@ export function getUserPlanTier(user?: UserProfile): PlanTier {
   if (u.planTier && ["basico", "pro", "vip"].includes(u.planTier)) {
     return u.planTier;
   }
-  if (u.subscriptionPlan?.includes("vip") || u.subscriptionPlan?.includes("annual")) {
+  if (u.subscriptionPlan?.includes("vip") || u.subscriptionPlan?.includes("annual") || u.subscriptionPlan?.includes("elite")) {
     return "vip";
   }
-  if (u.subscriptionPlan?.includes("basico")) {
+  if (u.subscriptionPlan?.includes("basico") || u.subscriptionPlan?.includes("starter")) {
     return "basico";
   }
   // Durante o Trial ou planos Pro padrão, concede tier 'pro'

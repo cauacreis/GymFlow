@@ -254,16 +254,22 @@ export function hasActiveAccess(user?: UserProfile): boolean {
   return false;
 }
 
-export function activateTrialForUser(days: number = 7, targetUser?: UserProfile): UserProfile {
+export function activateTrialForUser(
+  days: number = 7,
+  targetUser?: UserProfile,
+  planId?: string
+): UserProfile {
   const current = getCurrentUser();
   const base = targetUser && targetUser.id && targetUser.id !== "user_me" ? { ...current, ...targetUser } : current;
   const trialEndDate = new Date();
   trialEndDate.setDate(trialEndDate.getDate() + days);
 
+  const determinedPlan = planId || (base.activeRole === "coach" ? "trial_coach_7d" : "trial_7d");
+
   const updated: UserProfile = {
     ...base,
     subscriptionStatus: "trial",
-    subscriptionPlan: "trial_7d",
+    subscriptionPlan: determinedPlan,
     planTier: "pro",
     trialEndsAt: trialEndDate.toISOString(),
   };
@@ -284,13 +290,22 @@ export function activatePaidPlanForUser(
   endDate.setMonth(endDate.getMonth() + 1);
 
   let determinedTier: "basico" | "pro" | "vip" = tier || "pro";
-  if (planId === "basico") determinedTier = "basico";
-  else if (planId === "vip") determinedTier = "vip";
+  if (planId.includes("basico") || planId.includes("starter")) determinedTier = "basico";
+  else if (planId.includes("vip") || planId.includes("elite")) determinedTier = "vip";
+
+  let savedPlanId = planId;
+  if (isRecurring) {
+    if (planId.startsWith("coach_")) {
+      savedPlanId = planId.endsWith("_rec") ? planId : `${planId}_rec`;
+    } else {
+      savedPlanId = "monthly_recurring";
+    }
+  }
 
   const updated: UserProfile = {
     ...base,
     subscriptionStatus: "active",
-    subscriptionPlan: isRecurring ? "monthly_recurring" : planId,
+    subscriptionPlan: savedPlanId,
     planTier: determinedTier,
     subscriptionEndsAt: endDate.toISOString(),
   };

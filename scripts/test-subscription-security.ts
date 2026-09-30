@@ -20,6 +20,7 @@ import crypto from "crypto";
 import {
   OFFICIAL_PLANS,
   getOfficialPlan,
+  getOfficialPlansByRole,
   buildExternalReference,
   parseExternalReference,
   getMercadoPagoStatus,
@@ -1280,6 +1281,113 @@ async function runAllTests() {
   assert(
     Boolean(paymentsFaq && paymentsFaq.answer.includes("Cartão de Crédito") && paymentsFaq.answer.includes("PIX")),
     "FAQ: Contém explicação transparente das formas de pagamento (Cartão Recorrente e PIX)"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 16. TESTE DE DIFERENCIAÇÃO DE PLANOS POR PAPEL (ALUNO VS PROFESSOR/PERSONAL)
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 16. Testando Diferenciação de Planos por Papel (Aluno vs Professor/Personal)...");
+
+  // Teste 16.1: Separação de planos no catálogo oficial
+  const studentPlans = getOfficialPlansByRole("student");
+  const coachPlans = getOfficialPlansByRole("coach");
+
+  assert(
+    studentPlans.length >= 3,
+    `Catálogo de Alunos: Contém planos dedicados (${studentPlans.length} planos encontrados)`
+  );
+  assert(
+    coachPlans.length >= 3,
+    `Catálogo de Professores: Contém planos dedicados (${coachPlans.length} planos encontrados)`
+  );
+
+  // Teste 16.2: Validação de preços e propriedades de planos de personal
+  assert(
+    OFFICIAL_PLANS.coach_starter.role === "coach" &&
+    OFFICIAL_PLANS.coach_starter.maxStudents === 10 &&
+    OFFICIAL_PLANS.coach_starter.price === 49.0,
+    "Personal Starter: Configurado com limite de 10 alunos e valor tabelado em R$ 49,00"
+  );
+  assert(
+    OFFICIAL_PLANS.coach_pro.role === "coach" &&
+    OFFICIAL_PLANS.coach_pro.maxStudents === 35 &&
+    OFFICIAL_PLANS.coach_pro.price === 79.0,
+    "Personal Pro: Configurado com limite de 35 alunos e valor tabelado em R$ 79,00"
+  );
+  assert(
+    OFFICIAL_PLANS.coach_vip.role === "coach" &&
+    OFFICIAL_PLANS.coach_vip.price === 119.0,
+    "Personal VIP: Configurado para escala de alunos ilimitada e valor tabelado em R$ 119,00"
+  );
+
+  // Teste 16.3: Ativação de plano pago para Personal Trainer
+  const coachBaseUser: UserProfile = {
+    id: "coach_plan_tester",
+    name: "Prof. Personal Teste",
+    email: "personal.tester@gymflow.com",
+    activeRole: "coach",
+    enabledRoles: ["coach"],
+    subscriptionStatus: "pending_choice",
+  };
+
+  const activatedCoachPro = activatePaidPlanForUser("coach_pro", true, "pro", coachBaseUser);
+  assert(
+    activatedCoachPro.subscriptionStatus === "active",
+    "activatePaidPlanForUser: Ativa plano do professor como 'active'"
+  );
+  assert(
+    activatedCoachPro.subscriptionPlan === "coach_pro_rec",
+    "activatePaidPlanForUser: Converte plano recorrente do professor com sufixo _rec"
+  );
+  assert(
+    activatedCoachPro.planTier === "pro",
+    "activatePaidPlanForUser: Atribui tier 'pro' para o Personal Pro"
+  );
+
+  const activatedCoachStarter = activatePaidPlanForUser("coach_starter", false, "basico", coachBaseUser);
+  assert(
+    activatedCoachStarter.planTier === "basico",
+    "activatePaidPlanForUser: Mapeia Personal Starter para o tier 'basico'"
+  );
+
+  const activatedCoachVip = activatePaidPlanForUser("coach_vip", false, "vip", coachBaseUser);
+  assert(
+    activatedCoachVip.planTier === "vip",
+    "activatePaidPlanForUser: Mapeia Personal Elite VIP para o tier 'vip'"
+  );
+
+  // Teste 16.4: Ativação de Período de Testes (Trial de 7 Dias) para Professor
+  const coachTrial = activateTrialForUser(7, coachBaseUser);
+  assert(
+    coachTrial.subscriptionStatus === "trial",
+    "activateTrialForUser: Ativa status 'trial' para o professor"
+  );
+  assert(
+    coachTrial.subscriptionPlan === "trial_coach_7d",
+    "activateTrialForUser: Atribui plano 'trial_coach_7d' automaticamente para conta de professor"
+  );
+
+  // Teste 16.5: Resolução de Plano Canônico por ID
+  assert(
+    getOfficialPlan("coach_pro").id === "coach_pro",
+    "getOfficialPlan: Resolve plano oficial coach_pro diretamente"
+  );
+  assert(
+    getOfficialPlan("coach_unknown_test").id === "coach_pro",
+    "getOfficialPlan: Fallback inteligente de planos de coach desconhecidos para coach_pro"
+  );
+
+  // Teste 16.6: Perguntas do FAQ específicas de Aluno vs Professor
+  const rolesFaq = FAQ_ITEMS.find((f) => f.id === "diferenca_papeis");
+  assert(
+    Boolean(rolesFaq && rolesFaq.answer.includes("Aluno") && rolesFaq.answer.includes("Professor")),
+    "FAQ: Contém pergunta e resposta detalhada explicando a diferença entre planos de Aluno e de Professor"
+  );
+
+  const dualProfileFaq = FAQ_ITEMS.find((f) => f.id === "duplo_perfil");
+  assert(
+    Boolean(dualProfileFaq && dualProfileFaq.answer.includes("duplo papel")),
+    "FAQ: Contém pergunta e resposta esclarecendo o suporte nativo a duplo papel (Aluno e Personal)"
   );
 
   // ---------------------------------------------------------------------------

@@ -845,14 +845,14 @@ export function UserProfileModal({
                     : "bg-zinc-800 text-zinc-400 border-white/10"
                 }`}
               >
-                {isCoach
-                  ? "Professor"
-                  : profile.subscriptionStatus === "canceled"
+                {profile.subscriptionStatus === "canceled"
                   ? "Cancelada"
                   : profile.subscriptionStatus === "trial"
                   ? "Teste 7 Dias"
                   : profile.subscriptionStatus === "active"
                   ? "Ativa"
+                  : isCoach
+                  ? "Professor Pro"
                   : "Sem Plano"}
               </span>
             </div>
@@ -861,19 +861,23 @@ export function UserProfileModal({
               <div>
                 <p className="text-xs font-black text-white">
                   {isCoach
-                    ? "Plano de Treinador (Acesso Profissional)"
+                    ? profile.subscriptionPlan === "coach_vip" || profile.subscriptionPlan === "coach_vip_rec" || profile.planTier === "vip"
+                      ? "Plano Personal Elite VIP"
+                      : profile.subscriptionPlan === "coach_starter" || profile.subscriptionPlan === "coach_starter_rec"
+                      ? "Plano Personal Starter"
+                      : profile.subscriptionStatus === "trial"
+                      ? "Plano Personal Pro (Teste 7 Dias)"
+                      : "Plano Personal Pro"
                     : profile.subscriptionStatus === "trial"
-                    ? "Plano Pro (Período de Testes de 7 Dias)"
-                    : profile.subscriptionPlan === "vip" || profile.planTier === "vip"
-                    ? "Plano VIP Black"
-                    : profile.subscriptionPlan === "basico" || profile.planTier === "basico"
-                    ? "Plano Básico"
-                    : "Plano Pro Mensal"}
+                    ? "Plano Aluno Pro (Teste 7 Dias)"
+                    : profile.subscriptionPlan === "vip" || profile.subscriptionPlan === "student_vip" || profile.planTier === "vip"
+                    ? "Plano Aluno VIP Black"
+                    : profile.subscriptionPlan === "basico" || profile.subscriptionPlan === "student_basico" || profile.planTier === "basico"
+                    ? "Plano Aluno Básico"
+                    : "Plano Aluno Pro"}
                 </p>
                 <p className="text-[11px] text-zinc-400 mt-0.5">
-                  {isCoach
-                    ? "Gestão ilimitada de alunos, prescrição de fichas e financeiro."
-                    : profile.subscriptionStatus === "canceled"
+                  {profile.subscriptionStatus === "canceled"
                     ? `Acesso garantido até ${
                         profile.subscriptionEndsAt || profile.trialEndsAt
                           ? new Date(
@@ -881,6 +885,12 @@ export function UserProfileModal({
                             ).toLocaleDateString("pt-BR")
                           : "o fim do ciclo"
                       }. Sem cobranças futuras.`
+                    : isCoach
+                    ? profile.subscriptionPlan?.includes("vip")
+                      ? "Alunos ilimitados, topo do marketplace, avaliação física e suporte VIP."
+                      : profile.subscriptionPlan?.includes("starter")
+                      ? "Gestão de até 10 alunos, fichas digitais e agenda de atendimentos."
+                      : "Gestão de até 35 alunos, fichas 3D, selo verificado e GymBot IA."
                     : profile.subscriptionEndsAt || profile.trialEndsAt
                     ? `Válido até ${new Date(
                         profile.subscriptionEndsAt || profile.trialEndsAt!
@@ -889,9 +899,22 @@ export function UserProfileModal({
                 </p>
               </div>
 
-              {!isCoach && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {profile.subscriptionStatus === "active" || profile.subscriptionStatus === "trial" ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {profile.subscriptionStatus === "active" || profile.subscriptionStatus === "trial" ? (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("selection");
+                        if (onOpenPlans) {
+                          onClose();
+                          onOpenPlans();
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 font-bold text-xs border border-white/[0.08] transition-all active:scale-95"
+                    >
+                      Planos
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -902,52 +925,50 @@ export function UserProfileModal({
                     >
                       Cancelar
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic("selection");
-                        if (onOpenPlans) {
-                          onClose();
-                          onOpenPlans();
-                        }
-                      }}
-                      className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs transition-all active:scale-95 shadow-md shadow-emerald-500/20"
-                    >
-                      {profile.subscriptionStatus === "canceled" ? "Reativar" : "Assinar"}
-                    </button>
-                  )}
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("selection");
+                      if (onOpenPlans) {
+                        onClose();
+                        onOpenPlans();
+                      }
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs transition-all active:scale-95 shadow-md shadow-emerald-500/20"
+                  >
+                    {profile.subscriptionStatus === "canceled" ? "Reativar" : "Ver Planos"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Toggle para visualizar FAQ */}
-            {!isCoach && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("selection");
-                    setShowFAQ((prev) => !prev);
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] text-[11px] font-semibold text-zinc-300 flex items-center justify-between transition-colors border border-white/[0.04]"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Dúvidas sobre cancelamento e cobrança (FAQ)</span>
-                  </span>
-                  <span className="text-[10px] text-emerald-400 font-bold">
-                    {showFAQ ? "Recolher" : "Ver Dúvidas"}
-                  </span>
-                </button>
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  setShowFAQ((prev) => !prev);
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] text-[11px] font-semibold text-zinc-300 flex items-center justify-between transition-colors border border-white/[0.04]"
+              >
+                <span className="flex items-center gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Dúvidas sobre cancelamento e cobrança (FAQ)</span>
+                </span>
+                <span className="text-[10px] text-emerald-400 font-bold">
+                  {showFAQ ? "Recolher" : "Ver Dúvidas"}
+                </span>
+              </button>
 
-                {showFAQ && (
-                  <div className="mt-2 pt-2 border-t border-white/[0.04] animate-in fade-in">
-                    <SubscriptionFAQ />
-                  </div>
-                )}
-              </div>
-            )}
+              {showFAQ && (
+                <div className="mt-2 pt-2 border-t border-white/[0.04] animate-in fade-in">
+                  <SubscriptionFAQ />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* SEÇÃO: BIOMETRIA & DADOS CORPORAIS (ALTURA, PESO, GORDURA E METAS) */}
