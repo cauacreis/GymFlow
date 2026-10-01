@@ -70,7 +70,21 @@ import {
   checkAndUpdatePaymentCycles,
   updateStudentPaymentStatus,
   getStudentWorkout,
+  getStudentCoachInfo,
+  assignWorkoutToStudent,
+  addSplitToStudentWorkout,
+  removeSplitFromStudentWorkout,
+  updateSplitInStudentWorkout,
+  addCardioToStudentSplit,
+  removeCardioFromStudentSplit,
+  updateCardioInStudentSplit,
+  toggleCardioCompleted,
 } from "../src/lib/workout-store";
+import {
+  CARDIO_TYPES_METADATA,
+  CardioItem,
+  WorkoutSplitTemplate,
+} from "../src/lib/exercisedb";
 import {
   getBodyMetricsStorageKey,
   getStoredBodyMetrics,
@@ -1440,6 +1454,8 @@ async function runAllTests() {
     setItem: (key: string, val: string) => { storageMock[key] = String(val); },
     removeItem: (key: string) => { delete storageMock[key]; },
     clear: () => { Object.keys(storageMock).forEach((k) => delete storageMock[k]); },
+    key: (index: number) => Object.keys(storageMock)[index] ?? null,
+    get length() { return Object.keys(storageMock).length; },
   };
 
   // Teste 17.1: Particionamento Criptográfico de Chaves de Armazenamento
@@ -1888,6 +1904,252 @@ async function runAllTests() {
   assert(
     renanCheck?.isWorkoutLocked === true && julianaCheck?.isWorkoutLocked === false,
     "Isolamento Multi-Tenant: Bloqueio do aluno de Coach 1 não afeta aluno de Coach 2"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 19. GESTÃO DE CÁRDIO, SPLITS CUSTOMIZÁVEIS E ESTADO ZERADO COM PERSONAL
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 19. Testando Gestão de Cárdio, Splits Customizáveis e Estado Zerado com Personal...");
+
+  // Teste 19.1: Catálogo de Tipos e Metadados de Cárdio
+  assert(
+    Boolean(CARDIO_TYPES_METADATA.esteira_corrida && CARDIO_TYPES_METADATA.bicicleta && CARDIO_TYPES_METADATA.escada && CARDIO_TYPES_METADATA.hiit),
+    "Metadados de Cárdio: Catálogo contém modalidades essenciais (esteira corrida, bicicleta, escada, HIIT, etc.)"
+  );
+  assert(
+    CARDIO_TYPES_METADATA.hiit.defaultKcalPerMinute >= 12,
+    "Metadados de Cárdio: Taxa metabólica do HIIT configurada com gasto calórico elevado (>= 12 kcal/min)"
+  );
+
+  // Teste 19.2: Aluno sem personal trainer - Detecção e Ficha Inicial Editável
+  const studentFreeId = "student_free_no_coach_99";
+  const coachInfoFree = getStudentCoachInfo(studentFreeId);
+  assert(
+    coachInfoFree.hasCoach === false,
+    "getStudentCoachInfo: Aluno sem treinador detectado corretamente como hasCoach: false"
+  );
+
+  const freeStudentWorkout = getStudentWorkout(studentFreeId);
+  assert(
+    freeStudentWorkout.hasPersonalTrainer === false && freeStudentWorkout.isAwaitingCoachPrescription === false,
+    "Ficha sem Personal: Inicia liberada para customização pelo próprio aluno (hasPersonalTrainer: false)"
+  );
+  assert(
+    freeStudentWorkout.splits.length > 0,
+    "Ficha sem Personal: Carrega splits padrão editáveis para o aluno organizar sua rotina"
+  );
+
+  // Teste 19.3: Aluno sem personal - Adicionar, Renomear e Remover Splits
+  const initialSplitsCount = freeStudentWorkout.splits.length;
+  const customSplit: WorkoutSplitTemplate = {
+    id: "split_custom_sabado",
+    title: "Treino E - Sábado",
+    muscles: "Braços e Abdômen",
+    estimatedMinutes: 50,
+    exercises: [],
+    cardio: [],
+  };
+
+  const afterAddSplit = addSplitToStudentWorkout(studentFreeId, customSplit);
+  assert(
+    afterAddSplit.splits.length === initialSplitsCount + 1 &&
+      afterAddSplit.splits.some((s) => s.id === "split_custom_sabado"),
+    "addSplitToStudentWorkout: Aluno adiciona novo split livremente ao seu cronograma semanal"
+  );
+
+  const afterUpdateSplit = updateSplitInStudentWorkout(studentFreeId, "split_custom_sabado", {
+    title: "Treino E - Especial",
+    muscles: "Bíceps, Tríceps e Core",
+  });
+  const updatedSplitObj = afterUpdateSplit.splits.find((s) => s.id === "split_custom_sabado");
+  assert(
+    updatedSplitObj?.title === "Treino E - Especial" && updatedSplitObj?.muscles === "Bíceps, Tríceps e Core",
+    "updateSplitInStudentWorkout: Aluno renomeia título e músculos do split conforme sua preferência"
+  );
+
+  const afterRemoveSplit = removeSplitFromStudentWorkout(studentFreeId, "split_custom_sabado");
+  assert(
+    afterRemoveSplit.splits.length === initialSplitsCount &&
+      !afterRemoveSplit.splits.some((s) => s.id === "split_custom_sabado"),
+    "removeSplitFromStudentWorkout: Aluno remove divisões de treino com sucesso"
+  );
+
+  // Teste 19.4: Aluno sem personal - Gestão de Cárdio no Split
+  const targetSplitId = afterRemoveSplit.splits[0].id;
+  const newCardioItem: CardioItem = {
+    id: "cardio_aluno_1",
+    type: "esteira_inclinada",
+    title: "Caminhada Inclinada Queima de Gordura",
+    durationMinutes: 25,
+    targetCalories: 220,
+    intensity: "moderada",
+    speedKmh: 5.5,
+    inclinePercent: 8,
+    notes: "Manter ritmo constante sem segurar no corrimão",
+    completed: false,
+  };
+
+  const afterAddCardio = addCardioToStudentSplit(studentFreeId, targetSplitId, newCardioItem);
+  const targetSplitWithCardio = afterAddCardio.splits.find((s) => s.id === targetSplitId);
+  assert(
+    Boolean(targetSplitWithCardio?.cardio?.some((c) => c.id === "cardio_aluno_1")),
+    "addCardioToStudentSplit: Aluno adiciona cárdio com tempo, calorias, velocidade e inclinação"
+  );
+
+  const afterUpdateCardio = updateCardioInStudentSplit(studentFreeId, targetSplitId, "cardio_aluno_1", {
+    durationMinutes: 30,
+    targetCalories: 270,
+  });
+  const updatedCardio = afterUpdateCardio.splits
+    .find((s) => s.id === targetSplitId)
+    ?.cardio?.find((c) => c.id === "cardio_aluno_1");
+  assert(
+    updatedCardio?.durationMinutes === 30 && updatedCardio?.targetCalories === 270,
+    "updateCardioInStudentSplit: Aluno ajusta duração e meta calórica do cárdio"
+  );
+
+  // Teste 19.5: Interação com Timer de Cárdio e Conclusão de Treino
+  const afterToggleCompleted = toggleCardioCompleted(studentFreeId, targetSplitId, "cardio_aluno_1", 1800, 275);
+  const completedCardio = afterToggleCompleted.splits
+    .find((s) => s.id === targetSplitId)
+    ?.cardio?.find((c) => c.id === "cardio_aluno_1");
+  assert(
+    completedCardio?.completed === true &&
+      completedCardio?.actualSeconds === 1800 &&
+      completedCardio?.actualCalories === 275 &&
+      Boolean(completedCardio?.completedAt),
+    "toggleCardioCompleted: Timer de cárdio salva conclusão, segundos reais (1800s) e calorias reais (275 kcal)"
+  );
+
+  // Remoção do cárdio
+  const afterRemoveCardio = removeCardioFromStudentSplit(studentFreeId, targetSplitId, "cardio_aluno_1");
+  const checkRemoved = afterRemoveCardio.splits
+    .find((s) => s.id === targetSplitId)
+    ?.cardio?.find((c) => c.id === "cardio_aluno_1");
+  assert(!checkRemoved, "removeCardioFromStudentSplit: Aluno remove atividade de cárdio do split");
+
+  // Teste 19.6: Aluno COM Personal Trainer - Ficha rigorosamente ZERADA inicial
+  const coachViniciusId = "coach_vinicius_personal";
+  const studentWithCoachId = "student_with_personal_77";
+
+  // Cadastra aluno na base de alunos do personal Vinicius
+  saveNewStudent(
+    {
+      id: studentWithCoachId,
+      name: "Guilherme Santos",
+      email: "guilherme@gmail.com",
+      goal: "Hipertrofia",
+      plan: "Acompanhamento Personal VIP",
+    },
+    coachViniciusId
+  );
+
+  const coachInfoAssigned = getStudentCoachInfo(studentWithCoachId);
+  assert(
+    coachInfoAssigned.hasCoach === true && coachInfoAssigned.coachId === coachViniciusId,
+    "getStudentCoachInfo: Aluno vinculado a personal trainer detectado como hasCoach: true"
+  );
+
+  const initialCoachWorkout = getStudentWorkout(studentWithCoachId);
+  assert(
+    initialCoachWorkout.splits.length === 0,
+    "REGRA DE NEGÓCIO: Ficha de aluno com Personal Trainer inicia rigorosamente ZERADA (splits: [])"
+  );
+  assert(
+    initialCoachWorkout.isAwaitingCoachPrescription === true,
+    "REGRA DE NEGÓCIO: Aluno com personal exibe isAwaitingCoachPrescription: true"
+  );
+  assert(
+    initialCoachWorkout.hasPersonalTrainer === true,
+    "REGRA DE NEGÓCIO: hasPersonalTrainer: true marcado na ficha do aluno com coach"
+  );
+  assert(
+    initialCoachWorkout.routineTitle === "Aguardando Prescrição do Personal",
+    "REGRA DE NEGÓCIO: Título da rotina reflete espera da prescrição técnica pelo treinador"
+  );
+
+  // Teste 19.7: Professor prescreve a ficha com musculação e cárdio
+  const coachPrescribedSplits: WorkoutSplitTemplate[] = [
+    {
+      id: "split_coach_a",
+      title: "Treino A - Peitoral e Deltoides",
+      muscles: "Peitoral e Deltoides",
+      estimatedMinutes: 60,
+      exercises: [
+        {
+          id: "supino_reto_prescrito",
+          exerciseId: "ex_supino_reto",
+          name: "Supino Reto com Barra",
+          muscle: "Peito",
+          target: "Peitoral Maior",
+          equipment: "Barra e Banco",
+          restSeconds: 90,
+          sets: [
+            { setNumber: 1, reps: "8-10", weightKg: 70 },
+            { setNumber: 2, reps: "8-10", weightKg: 70 },
+            { setNumber: 3, reps: "8-10", weightKg: 70 },
+            { setNumber: 4, reps: "8-10", weightKg: 70 },
+          ],
+        },
+      ],
+      cardio: [
+        {
+          id: "cardio_coach_pos_treino",
+          type: "escada",
+          title: "Escada Metabólica Pós-Treino",
+          durationMinutes: 15,
+          targetCalories: 180,
+          intensity: "alta",
+          speedKmh: 7,
+          notes: "Nível 7 ou 8 constante. Não segurar nas alças de suporte.",
+          completed: false,
+        },
+      ],
+    },
+  ];
+
+  assignWorkoutToStudent(
+    studentWithCoachId,
+    {
+      routineTitle: "Periodização de Hipertrofia & Densidade",
+      prescribedBy: "Prof. Vinícius Personal",
+      coachNotes: "Hidratação de no mínimo 3L/dia e descanso de 90s entre séries pesadas.",
+      splits: coachPrescribedSplits,
+    },
+    coachViniciusId
+  );
+
+  const prescribedWorkout = getStudentWorkout(studentWithCoachId);
+  assert(
+    prescribedWorkout.splits.length === 1 && prescribedWorkout.isAwaitingCoachPrescription === false,
+    "Prescrição do Coach: Ficha desbloqueada com sucesso (isAwaitingCoachPrescription: false) contendo os splits prescritos"
+  );
+  assert(
+    prescribedWorkout.splits[0].exercises.length === 1 &&
+      prescribedWorkout.splits[0].exercises[0].name === "Supino Reto com Barra",
+    "Prescrição do Coach: Exercício técnico de musculação presente na ficha do aluno"
+  );
+  assert(
+    prescribedWorkout.splits[0].cardio?.length === 1 &&
+      prescribedWorkout.splits[0].cardio[0].type === "escada" &&
+      prescribedWorkout.splits[0].cardio[0].durationMinutes === 15,
+    "Prescrição do Coach: Cárdio prescrito pelo professor (escada, 15 min, 180 kcal) integrado na ficha do aluno"
+  );
+
+  // Teste 19.8: Aluno com personal executa o cárdio com o timer do app
+  const afterCoachCardioDone = toggleCardioCompleted(
+    studentWithCoachId,
+    "split_coach_a",
+    "cardio_coach_pos_treino",
+    900,
+    192
+  );
+  const coachCardioFinished = afterCoachCardioDone.splits[0].cardio?.[0];
+  assert(
+    coachCardioFinished?.completed === true &&
+      coachCardioFinished?.actualSeconds === 900 &&
+      coachCardioFinished?.actualCalories === 192,
+    "Timer no Aluno: Aluno com personal conclui o cárdio prescrito pelo professor registrando 900s e 192 kcal"
   );
 
   // ---------------------------------------------------------------------------

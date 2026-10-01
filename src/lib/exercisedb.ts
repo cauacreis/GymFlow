@@ -129,12 +129,122 @@ export interface ExerciseInWorkout {
   isCustom?: boolean;
 }
 
+export type CardioType =
+  | "esteira_corrida"
+  | "esteira_inclinada"
+  | "bicicleta"
+  | "eliptico"
+  | "escada"
+  | "corda"
+  | "hiit"
+  | "remo"
+  | "caminhada"
+  | "outro";
+
+export interface CardioTypeMetadata {
+  type: CardioType;
+  label: string;
+  defaultKcalPerMinute: number;
+  badgeClass: string;
+  description: string;
+}
+
+export const CARDIO_TYPES_METADATA: Record<CardioType, CardioTypeMetadata> = {
+  esteira_corrida: {
+    type: "esteira_corrida",
+    label: "Esteira (Corrida)",
+    defaultKcalPerMinute: 11.5,
+    badgeClass: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    description: "Corrida com ritmo moderado ou intenso na esteira.",
+  },
+  esteira_inclinada: {
+    type: "esteira_inclinada",
+    label: "Esteira Inclinada (Caminhada)",
+    defaultKcalPerMinute: 9.0,
+    badgeClass: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+    description: "Caminhada em ritmo firme com inclinação (8% a 15%) de baixo impacto articular.",
+  },
+  bicicleta: {
+    type: "bicicleta",
+    label: "Bicicleta Ergométrica",
+    defaultKcalPerMinute: 8.5,
+    badgeClass: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    description: "Ciclismo indoor estacionário com ajuste de carga e cadência constante.",
+  },
+  eliptico: {
+    type: "eliptico",
+    label: "Elíptico / Transport",
+    defaultKcalPerMinute: 8.0,
+    badgeClass: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+    description: "Movimento sincronizado de braços e pernas de baixo impacto nos joelhos.",
+  },
+  escada: {
+    type: "escada",
+    label: "Simulador de Escada (Stairmaster)",
+    defaultKcalPerMinute: 12.0,
+    badgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/35",
+    description: "Subida contínua de degraus para queima calórica máxima e ativação de glúteos.",
+  },
+  corda: {
+    type: "corda",
+    label: "Pular Corda",
+    defaultKcalPerMinute: 13.0,
+    badgeClass: "bg-red-500/20 text-red-300 border-red-500/35",
+    description: "Excelente coordenação motora, resistência cardiovascular e agilidade.",
+  },
+  hiit: {
+    type: "hiit",
+    label: "HIIT Aeróbico",
+    defaultKcalPerMinute: 14.0,
+    badgeClass: "bg-red-500/25 text-red-300 border-red-500/40 font-black",
+    description: "Tiros curtos em esforço máximo alternados com descanso ativo.",
+  },
+  remo: {
+    type: "remo",
+    label: "Remo Seco (Rowing)",
+    defaultKcalPerMinute: 10.5,
+    badgeClass: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+    description: "Trabalho cardiovascular completo integrando pernas, costas e core.",
+  },
+  caminhada: {
+    type: "caminhada",
+    label: "Caminhada Rápida",
+    defaultKcalPerMinute: 5.5,
+    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/35",
+    description: "Ritmo constante e regenerativo, ideal para aquecimento ou recuperação ativa.",
+  },
+  outro: {
+    type: "outro",
+    label: "Outro Cárdio",
+    defaultKcalPerMinute: 8.0,
+    badgeClass: "bg-zinc-500/20 text-zinc-300 border-zinc-500/35",
+    description: "Atividade aeróbica personalizada.",
+  },
+};
+
+export interface CardioItem {
+  id: string;
+  type: CardioType;
+  title: string;
+  durationMinutes: number;
+  targetCalories?: number;
+  intensity?: "leve" | "moderada" | "alta" | "hiit";
+  speedKmh?: number;
+  inclinePercent?: number;
+  notes?: string;
+  completed?: boolean;
+  completedAt?: string;
+  actualSeconds?: number;
+  actualCalories?: number;
+}
+
 export interface WorkoutSplitTemplate {
   id: string; // "A", "B", "C", "D", "E", "F" ou qualquer identificador de dia
   title: string;
   muscles: string;
   estimatedMinutes: number;
   exercises: ExerciseInWorkout[];
+  cardio?: CardioItem[];
 }
 
 export interface PreFormedWorkoutRoutine {

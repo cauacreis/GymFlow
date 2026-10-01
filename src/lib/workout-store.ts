@@ -3,7 +3,7 @@
  * Permite que o professor cadastre alunos, prescreva fichas e reflita em tempo real no app do aluno
  */
 
-import { WorkoutSplitTemplate, PREFORMED_ROUTINES } from "./exercisedb";
+import { WorkoutSplitTemplate, CardioItem, PREFORMED_ROUTINES } from "./exercisedb";
 import {
   fetchStudentsFromSupabase,
   upsertStudentToSupabase,
@@ -13,7 +13,7 @@ import {
   fetchCoachPlansFromSupabase,
   saveCoachPlanToSupabase,
 } from "./supabase-service";
-import { isSlotToday } from "./booking-store";
+import { isSlotToday, getStoredCoaches } from "./booking-store";
 import { getCurrentUser, saveUserProfile } from "./auth-store";
 
 export interface StudentProfile {
@@ -76,6 +76,19 @@ export interface StudentWorkoutPackage {
   isLocked?: boolean;
   lockedReason?: "overdue_payment" | "manual_coach_block" | string;
   lockedAt?: string;
+  isAwaitingCoachPrescription?: boolean;
+  hasPersonalTrainer?: boolean;
+  coachName?: string;
+  coachPhone?: string;
+}
+
+export interface StudentCoachInfo {
+  hasCoach: boolean;
+  coachId?: string;
+  coachName?: string;
+  coachPhone?: string;
+  coachAvatar?: string;
+  planName?: string;
 }
 
 export const STORAGE_KEY_STUDENTS = "gymflow_students_v3";
@@ -1044,6 +1057,86 @@ export function recordStudentAttendance(
   }
 }
 
+export function getStudentCoachInfo(studentId: string): StudentCoachInfo {
+  if (typeof window === "undefined") return { hasCoach: false };
+
+  try {
+    const currentUser = getCurrentUser();
+
+    // 1. Verifica reservas no booking-store
+    const rawBookings = localStorage.getItem("gymflow_bookings_v3");
+    if (rawBookings) {
+      const bookings: any[] = JSON.parse(rawBookings);
+      if (Array.isArray(bookings)) {
+        const activeBooking = bookings.find(
+          (b) =>
+            (b.studentId === studentId ||
+              (currentUser?.id === studentId && currentUser?.name && b.studentName?.trim().toLowerCase() === currentUser.name.trim().toLowerCase())) &&
+            b.status !== "rejected" &&
+            b.status !== "canceled"
+        );
+        if (activeBooking && activeBooking.coachName && !activeBooking.coachName.toLowerCase().includes("livre")) {
+          return {
+            hasCoach: true,
+            coachId: activeBooking.coachId,
+            coachName: activeBooking.coachName,
+            coachPhone: activeBooking.coachPhone,
+            planName: activeBooking.planType,
+          };
+        }
+      }
+    }
+
+    // 2. Verifica em todos os armazenamentos de alunos cadastrados por professores
+    const allKeys: string[] = [];
+    try {
+      if (typeof localStorage.length === "number") {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k) allKeys.push(k);
+        }
+      }
+    } catch {}
+
+    if (allKeys.length === 0) {
+      try {
+        allKeys.push(...Object.keys(localStorage));
+      } catch {}
+    }
+
+    for (const key of allKeys) {
+      if (key && (key === STORAGE_KEY_STUDENTS || key.startsWith("gymflow_students_"))) {
+        const val = localStorage.getItem(key);
+        if (val) {
+          const list: StudentProfile[] = JSON.parse(val);
+          if (Array.isArray(list)) {
+            const found = list.find(
+              (s) =>
+                (s.id === studentId || (currentUser?.id === studentId && currentUser?.email && s.email === currentUser.email)) &&
+                s.status === "ativo" &&
+                s.plan !== "Treino Livre (Sem Personal)"
+            );
+            if (found && found.coachId && found.coachId !== "user_me") {
+              const coaches = getStoredCoaches();
+              const coachMatch = coaches.find((c) => c.id === found.coachId);
+              return {
+                hasCoach: true,
+                coachId: found.coachId,
+                coachName: coachMatch?.name || found.prescribedBy || "Personal Trainer",
+                coachPhone: coachMatch?.phone,
+                coachAvatar: coachMatch?.avatarUrl,
+                planName: found.plan,
+              };
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+
+  return { hasCoach: false };
+}
+
 export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
   const defaultRoutine = PREFORMED_ROUTINES[0];
   const currentUser = getCurrentUser();
@@ -1089,6 +1182,8 @@ export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
       }
     }
 
+    const coachInfo = getStudentCoachInfo(studentId);
+
     if (workoutsMap[studentId]) {
       const pkg = workoutsMap[studentId];
       if (matchedStudent?.isWorkoutLocked !== undefined) {
@@ -1096,10 +1191,56 @@ export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
         pkg.lockedReason = matchedStudent.workoutLockedReason;
         pkg.lockedAt = matchedStudent.workoutLockedAt;
       }
+
+      if (coachInfo.hasCoach) {
+        pkg.hasPersonalTrainer = true;
+        pkg.coachName = coachInfo.coachName;
+        pkg.coachPhone = coachInfo.coachPhone;
+
+        // Se a ficha ainda não foi formalmente prescrita pelo treinador, mantém zerada
+        const isPrescribedByCoach =
+          pkg.prescribedBy &&
+          pkg.prescribedBy.trim().length > 0 &&
+          pkg.prescribedAt !== "Ficha Inicial" &&
+          pkg.prescribedAt !== "Pendente de Prescrição";
+
+        if (!isPrescribedByCoach || pkg.isAwaitingCoachPrescription) {
+          pkg.splits = [];
+          pkg.isAwaitingCoachPrescription = true;
+          pkg.routineTitle = "Aguardando Prescrição do Personal";
+          pkg.prescribedBy = coachInfo.coachName || "Seu Personal Trainer";
+          pkg.prescribedAt = "Pendente de Prescrição";
+          pkg.coachNotes = "Seu personal trainer ainda está elaborando a sua rotina técnica.";
+        }
+      }
+
       return pkg;
     }
 
-    // Se ainda não tiver ficha salva para esse aluno, associa de acordo com seu objetivo individual
+    // Se o aluno possui personal trainer, a ficha DEVE começar ZERADA!
+    if (coachInfo.hasCoach) {
+      const awaitingPackage: StudentWorkoutPackage = {
+        studentId,
+        routineTitle: "Aguardando Prescrição do Personal",
+        prescribedBy: coachInfo.coachName || "Seu Personal Trainer",
+        prescribedAt: "Pendente de Prescrição",
+        coachNotes: "Seu personal trainer ainda está elaborando a sua rotina técnica.",
+        splits: [], // ZERADA!
+        isAwaitingCoachPrescription: true,
+        hasPersonalTrainer: true,
+        coachName: coachInfo.coachName,
+        coachPhone: coachInfo.coachPhone,
+        isLocked: matchedStudent?.isWorkoutLocked,
+        lockedReason: matchedStudent?.workoutLockedReason,
+        lockedAt: matchedStudent?.workoutLockedAt,
+      };
+
+      workoutsMap[studentId] = awaitingPackage;
+      localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
+      return awaitingPackage;
+    }
+
+    // Se NÃO tem personal trainer, o aluno pode fazer a ficha do jeito que quiser (inicia com rotina editável)
     const userGoal = currentUser?.id === studentId ? currentUser.goal : "Hipertrofia";
 
     let matchedRoutine = PREFORMED_ROUTINES[0];
@@ -1113,12 +1254,14 @@ export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
       studentId,
       routineTitle: matchedRoutine.name,
       prescribedBy: "",
-      prescribedAt: "Ficha Inicial",
+      prescribedAt: "Treino Personalizável",
       coachNotes: "Foco na postura, cadência controlada e respiração correta.",
       splits: matchedRoutine.splits,
       isLocked: matchedStudent?.isWorkoutLocked,
       lockedReason: matchedStudent?.workoutLockedReason,
       lockedAt: matchedStudent?.workoutLockedAt,
+      isAwaitingCoachPrescription: false,
+      hasPersonalTrainer: false,
     };
 
     workoutsMap[studentId] = initialPackage;
@@ -1163,6 +1306,9 @@ export function assignWorkoutToStudent(
       prescribedAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       coachNotes: data.coachNotes || "Prescrição individualizada com foco em resultados progressivos.",
       splits: data.splits,
+      isAwaitingCoachPrescription: false,
+      hasPersonalTrainer: true,
+      coachName: data.prescribedBy || defaultCoachName,
     };
 
     workoutsMap[studentId] = workoutPackage;
@@ -1333,5 +1479,176 @@ export function updateStudentSplitExercises(
     splits: updatedSplits,
     prescribedBy: currentWorkout.prescribedBy,
   });
+}
+
+export function saveStudentWorkoutPackageDirectly(
+  studentId: string,
+  pkg: StudentWorkoutPackage
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const rawWorkouts = localStorage.getItem(STORAGE_KEY_WORKOUTS);
+    const workoutsMap: Record<string, StudentWorkoutPackage> = rawWorkouts ? JSON.parse(rawWorkouts) : {};
+    workoutsMap[studentId] = pkg;
+    localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
+    saveWorkoutToSupabase(pkg).catch(() => {});
+    window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { studentId } }));
+  } catch (err) {
+    console.error("Erro ao salvar pacote de treino:", err);
+  }
+}
+
+export function addSplitToStudentWorkout(
+  studentId: string,
+  split: WorkoutSplitTemplate
+): StudentWorkoutPackage {
+  const current = getStudentWorkout(studentId);
+  const updatedSplits = [...current.splits, split];
+  const updatedPkg: StudentWorkoutPackage = {
+    ...current,
+    splits: updatedSplits,
+    isAwaitingCoachPrescription: false,
+  };
+  saveStudentWorkoutPackageDirectly(studentId, updatedPkg);
+  return updatedPkg;
+}
+
+export function removeSplitFromStudentWorkout(
+  studentId: string,
+  splitId: string
+): StudentWorkoutPackage {
+  const current = getStudentWorkout(studentId);
+  const updatedSplits = current.splits.filter((s) => s.id !== splitId);
+  const updatedPkg: StudentWorkoutPackage = {
+    ...current,
+    splits: updatedSplits,
+  };
+  saveStudentWorkoutPackageDirectly(studentId, updatedPkg);
+  return updatedPkg;
+}
+
+export function updateSplitInStudentWorkout(
+  studentId: string,
+  splitId: string,
+  updates: Partial<WorkoutSplitTemplate>
+): StudentWorkoutPackage {
+  const current = getStudentWorkout(studentId);
+  const updatedSplits = current.splits.map((s) =>
+    s.id === splitId ? { ...s, ...updates } : s
+  );
+  const updatedPkg: StudentWorkoutPackage = {
+    ...current,
+    splits: updatedSplits,
+  };
+  saveStudentWorkoutPackageDirectly(studentId, updatedPkg);
+  return updatedPkg;
+}
+
+export function addCardioToStudentSplit(
+  studentId: string,
+  splitId: string,
+  cardio: CardioItem
+): StudentWorkoutPackage {
+  const current = getStudentWorkout(studentId);
+  const updatedSplits = current.splits.map((s) => {
+    if (s.id === splitId) {
+      return {
+        ...s,
+        cardio: [...(s.cardio || []), cardio],
+      };
+    }
+    return s;
+  });
+  const updatedPkg: StudentWorkoutPackage = {
+    ...current,
+    splits: updatedSplits,
+  };
+  saveStudentWorkoutPackageDirectly(studentId, updatedPkg);
+  return updatedPkg;
+}
+
+export function removeCardioFromStudentSplit(
+  studentId: string,
+  splitId: string,
+  cardioId: string
+): StudentWorkoutPackage {
+  const current = getStudentWorkout(studentId);
+  const updatedSplits = current.splits.map((s) => {
+    if (s.id === splitId) {
+      return {
+        ...s,
+        cardio: (s.cardio || []).filter((c) => c.id !== cardioId),
+      };
+    }
+    return s;
+  });
+  const updatedPkg: StudentWorkoutPackage = {
+    ...current,
+    splits: updatedSplits,
+  };
+  saveStudentWorkoutPackageDirectly(studentId, updatedPkg);
+  return updatedPkg;
+}
+
+export function updateCardioInStudentSplit(
+  studentId: string,
+  splitId: string,
+  cardioId: string,
+  updates: Partial<CardioItem>
+): StudentWorkoutPackage {
+  const current = getStudentWorkout(studentId);
+  const updatedSplits = current.splits.map((s) => {
+    if (s.id === splitId) {
+      return {
+        ...s,
+        cardio: (s.cardio || []).map((c) => (c.id === cardioId ? { ...c, ...updates } : c)),
+      };
+    }
+    return s;
+  });
+  const updatedPkg: StudentWorkoutPackage = {
+    ...current,
+    splits: updatedSplits,
+  };
+  saveStudentWorkoutPackageDirectly(studentId, updatedPkg);
+  return updatedPkg;
+}
+
+export function toggleCardioCompleted(
+  studentId: string,
+  splitId: string,
+  cardioId: string,
+  actualSeconds?: number,
+  actualCalories?: number
+): StudentWorkoutPackage {
+  const current = getStudentWorkout(studentId);
+  const nowIso = new Date().toISOString();
+  const updatedSplits = current.splits.map((s) => {
+    if (s.id === splitId) {
+      return {
+        ...s,
+        cardio: (s.cardio || []).map((c) => {
+          if (c.id === cardioId) {
+            const nextCompleted = !c.completed;
+            return {
+              ...c,
+              completed: nextCompleted,
+              completedAt: nextCompleted ? nowIso : undefined,
+              actualSeconds: nextCompleted ? (actualSeconds || c.durationMinutes * 60) : undefined,
+              actualCalories: nextCompleted ? (actualCalories || c.targetCalories) : undefined,
+            };
+          }
+          return c;
+        }),
+      };
+    }
+    return s;
+  });
+  const updatedPkg: StudentWorkoutPackage = {
+    ...current,
+    splits: updatedSplits,
+  };
+  saveStudentWorkoutPackageDirectly(studentId, updatedPkg);
+  return updatedPkg;
 }
 

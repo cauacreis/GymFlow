@@ -70,7 +70,7 @@ import {
   BookingRequest,
 } from "@/lib/booking-store";
 import { getCurrentUser, saveUserProfile } from "@/lib/auth-store";
-import { ExerciseInWorkout, WorkoutSplitTemplate } from "@/lib/exercisedb";
+import { ExerciseInWorkout, WorkoutSplitTemplate, CardioItem, CardioType, CARDIO_TYPES_METADATA } from "@/lib/exercisedb";
 import { StudentFullProfileModal } from "./StudentFullProfileModal";
 import { CoachWhatsAppModal } from "./CoachWhatsAppModal";
 import { CoachRemindersCenterModal } from "./CoachRemindersCenterModal";
@@ -116,6 +116,17 @@ export function CoachStudentsManager({
   const [newExerciseSets, setNewExerciseSets] = useState("4");
   const [newExerciseReps, setNewExerciseReps] = useState("10-12");
   const [newExerciseMuscle, setNewExerciseMuscle] = useState("Peito");
+
+  // Configuração de cárdio no split pelo professor
+  const [newCardioType, setNewCardioType] = useState<CardioType>("esteira_corrida");
+  const [newCardioTitle, setNewCardioTitle] = useState("Esteira (Corrida)");
+  const [newCardioDuration, setNewCardioDuration] = useState(20);
+  const [newCardioCalories, setNewCardioCalories] = useState(230);
+  const [newCardioIntensity, setNewCardioIntensity] = useState<"leve" | "moderada" | "alta" | "hiit">("moderada");
+  const [newCardioSpeed, setNewCardioSpeed] = useState("");
+  const [newCardioIncline, setNewCardioIncline] = useState("");
+  const [newCardioNotes, setNewCardioNotes] = useState("");
+  const [isAddingCardioToSplit, setIsAddingCardioToSplit] = useState(false);
 
   // Formulário para novo plano personalizado
   const [newPlanName, setNewPlanName] = useState("");
@@ -545,6 +556,52 @@ export function CoachStudentsManager({
     if (updatedSplits[splitIdx]) {
       updatedSplits[splitIdx].exercises = updatedSplits[splitIdx].exercises.filter(
         (ex) => ex.id !== exerciseId
+      );
+      setEditingWorkoutData({ ...editingWorkoutData, splits: updatedSplits });
+    }
+  };
+
+  // Adicionar cárdio ao split em edição pelo professor
+  const handleAddCardioToEditingSplit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWorkoutData || !newCardioTitle.trim()) return;
+    triggerHaptic("medium");
+
+    const newCardio: CardioItem = {
+      id: `cardio_${Date.now()}`,
+      type: newCardioType,
+      title: newCardioTitle.trim(),
+      durationMinutes: newCardioDuration,
+      targetCalories: newCardioCalories > 0 ? newCardioCalories : undefined,
+      intensity: newCardioIntensity,
+      speedKmh: newCardioSpeed ? parseFloat(newCardioSpeed) : undefined,
+      inclinePercent: newCardioIncline ? parseFloat(newCardioIncline) : undefined,
+      notes: newCardioNotes.trim() || undefined,
+      completed: false,
+    };
+
+    const updatedSplits = [...editingWorkoutData.splits];
+    const targetSplit = updatedSplits[editingActiveSplitIndex];
+    if (targetSplit) {
+      targetSplit.cardio = [...(targetSplit.cardio || []), newCardio];
+      setEditingWorkoutData({ ...editingWorkoutData, splits: updatedSplits });
+    }
+
+    setIsAddingCardioToSplit(false);
+    setNewCardioNotes("");
+    setNewCardioSpeed("");
+    setNewCardioIncline("");
+    showToast(`Cárdio "${newCardio.title}" adicionado ao Treino ${targetSplit?.id || ""}! 🔥`);
+  };
+
+  // Remover cárdio do split em edição pelo professor
+  const handleRemoveCardioFromEditingSplit = (splitIdx: number, cardioId: string) => {
+    if (!editingWorkoutData) return;
+    triggerHaptic("warning");
+    const updatedSplits = [...editingWorkoutData.splits];
+    if (updatedSplits[splitIdx]) {
+      updatedSplits[splitIdx].cardio = (updatedSplits[splitIdx].cardio || []).filter(
+        (c) => c.id !== cardioId
       );
       setEditingWorkoutData({ ...editingWorkoutData, splits: updatedSplits });
     }
@@ -2329,6 +2386,210 @@ export function CoachStudentsManager({
                           </button>
                         </div>
                       </form>
+
+                      {/* Sessão de Cárdio do Split configurada pelo professor */}
+                      <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-bold text-amber-400 uppercase flex items-center gap-1">
+                            <Flame className="w-3 h-3 fill-amber-400" /> Cárdio & Aeróbico deste Split ({(activeSplit.cardio || []).length})
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              triggerHaptic("selection");
+                              setIsAddingCardioToSplit(!isAddingCardioToSplit);
+                            }}
+                            className="text-[10px] font-bold text-amber-300 hover:text-amber-200 flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>{isAddingCardioToSplit ? "Fechar" : "+ Configurar Cárdio"}</span>
+                          </button>
+                        </div>
+
+                        {/* Lista de Cárdios deste split */}
+                        {(activeSplit.cardio || []).length > 0 ? (
+                          <div className="space-y-1.5">
+                            {(activeSplit.cardio || []).map((cardio, cIdx) => (
+                              <div
+                                key={cardio.id || cIdx}
+                                className="p-2 rounded-xl bg-zinc-950 border border-white/[0.06] flex items-center justify-between gap-2"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <h6 className="text-xs font-bold text-white truncate">{cardio.title}</h6>
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-300 font-mono">
+                                      {cardio.durationMinutes} min • ~{cardio.targetCalories || 200} kcal
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-[9px] text-zinc-400 mt-0.5">
+                                    {cardio.intensity && <span className="capitalize">{cardio.intensity}</span>}
+                                    {cardio.speedKmh && <span>• {cardio.speedKmh} km/h</span>}
+                                    {cardio.inclinePercent && <span>• {cardio.inclinePercent}% inc.</span>}
+                                    {cardio.notes && <span className="truncate italic">• "{cardio.notes}"</span>}
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveCardioFromEditingSplit(editingActiveSplitIndex, cardio.id)}
+                                  className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0"
+                                  title="Remover cárdio"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-2.5 text-center text-[10px] text-zinc-500 bg-zinc-950/40 rounded-xl border border-white/[0.03]">
+                            Nenhum cárdio prescrito para este split. Clique em "+ Configurar Cárdio" para adicionar.
+                          </div>
+                        )}
+
+                        {/* Formulário para prescrever cárdio */}
+                        {isAddingCardioToSplit && (
+                          <form
+                            onSubmit={handleAddCardioToEditingSplit}
+                            className="p-3 rounded-xl bg-zinc-950 border border-amber-500/20 space-y-2 animate-in fade-in"
+                          >
+                            <span className="text-[9px] font-bold uppercase text-amber-400 block">
+                              Prescrever Cárdio no Treino {activeSplit.id}
+                            </span>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <select
+                                value={newCardioType}
+                                onChange={(e) => {
+                                  const t = e.target.value as CardioType;
+                                  setNewCardioType(t);
+                                  const meta = CARDIO_TYPES_METADATA[t] || CARDIO_TYPES_METADATA.outro;
+                                  setNewCardioTitle(meta.label);
+                                  setNewCardioCalories(Math.round(newCardioDuration * meta.defaultKcalPerMinute));
+                                }}
+                                className="p-2 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                              >
+                                {Object.entries(CARDIO_TYPES_METADATA).map(([tKey, meta]) => (
+                                  <option key={tKey} value={tKey}>
+                                    {meta.label}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <input
+                                type="text"
+                                maxLength={60}
+                                value={newCardioTitle}
+                                onChange={(e) => setNewCardioTitle(e.target.value)}
+                                placeholder="Nome do Cárdio"
+                                className="p-2 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                                required
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <label className="text-[8px] font-bold text-zinc-400 uppercase block mb-0.5">
+                                  Minutos
+                                </label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={300}
+                                  value={newCardioDuration}
+                                  onChange={(e) => {
+                                    const dur = Math.max(1, parseInt(e.target.value) || 20);
+                                    setNewCardioDuration(dur);
+                                    const meta = CARDIO_TYPES_METADATA[newCardioType] || CARDIO_TYPES_METADATA.outro;
+                                    setNewCardioCalories(Math.round(dur * meta.defaultKcalPerMinute));
+                                  }}
+                                  className="w-full p-1.5 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-white font-mono text-center focus:outline-none focus:border-amber-500/50"
+                                  required
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[8px] font-bold text-zinc-400 uppercase block mb-0.5">
+                                  Meta Kcal
+                                </label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={3000}
+                                  value={newCardioCalories}
+                                  onChange={(e) => setNewCardioCalories(parseInt(e.target.value) || 0)}
+                                  className="w-full p-1.5 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-amber-400 font-mono text-center focus:outline-none focus:border-amber-500/50"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[8px] font-bold text-zinc-400 uppercase block mb-0.5">
+                                  Intensidade
+                                </label>
+                                <select
+                                  value={newCardioIntensity}
+                                  onChange={(e) => setNewCardioIntensity(e.target.value as any)}
+                                  className="w-full p-1.5 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                                >
+                                  <option value="leve">Leve</option>
+                                  <option value="moderada">Moderada</option>
+                                  <option value="alta">Alta</option>
+                                  <option value="hiit">HIIT</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="number"
+                                step="0.5"
+                                min={1}
+                                max={40}
+                                value={newCardioSpeed}
+                                onChange={(e) => setNewCardioSpeed(e.target.value)}
+                                placeholder="Velocidade (km/h, opcional)"
+                                className="p-1.5 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                              />
+
+                              <input
+                                type="number"
+                                step="0.5"
+                                min={0}
+                                max={30}
+                                value={newCardioIncline}
+                                onChange={(e) => setNewCardioIncline(e.target.value)}
+                                placeholder="Inclinação (%, opcional)"
+                                className="p-1.5 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-amber-500/50"
+                              />
+                            </div>
+
+                            <textarea
+                              rows={2}
+                              maxLength={150}
+                              value={newCardioNotes}
+                              onChange={(e) => setNewCardioNotes(e.target.value)}
+                              placeholder="Instrução do personal (ex: Fazer pós-musculação com inclinação 10%, sem apoiar nas barras laterais)."
+                              className="w-full p-2 rounded-lg bg-zinc-900 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50"
+                            />
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setIsAddingCardioToSplit(false)}
+                                className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="submit"
+                                className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs uppercase"
+                              >
+                                + Inserir Cárdio
+                              </button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
                     </div>
                   );
                 })()}
