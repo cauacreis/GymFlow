@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Flame,
   Trophy,
   Award,
   Zap,
@@ -407,20 +406,61 @@ export function GymBadgesStreak() {
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="w-13 h-13 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
-              <Flame className="w-7 h-7 text-amber-400 animate-pulse" />
+            {/* Ícone 3D da Chama com Fundo Transparente & Brilho Volumétrico */}
+            <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent border border-amber-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)] shrink-0 overflow-hidden group">
+              <div className="absolute inset-0 rounded-full bg-amber-500/30 blur-xl pointer-events-none" />
+              <motion.div
+                animate={{
+                  y: [-2, 2, -2],
+                  scale: [1, 1.04, 1],
+                  rotate: [-1.5, 1.5, -1.5],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="w-10 h-10 sm:w-11 sm:h-11 relative"
+              >
+                <Image
+                  src="/images/flame_3d.png"
+                  alt="Chama 3D Sequência"
+                  fill
+                  sizes="48px"
+                  priority
+                  className="object-contain drop-shadow-[0_4px_12px_rgba(245,158,11,0.6)]"
+                />
+              </motion.div>
             </div>
+
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <span className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
                   {streakCount} DIAS
                 </span>
-                <span className="text-[11px] font-bold uppercase text-amber-400 bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                  On Fire 🔥
-                </span>
+                <motion.div
+                  animate={{
+                    scale: [1, 1.15, 1],
+                    rotate: [-3, 3, -3],
+                  }}
+                  transition={{
+                    duration: 2.2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="w-7 h-7 relative shrink-0"
+                >
+                  <Image
+                    src="/images/flame_3d.png"
+                    alt="Chama 3D"
+                    fill
+                    sizes="28px"
+                    className="object-contain drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)]"
+                  />
+                </motion.div>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5 font-medium">
-                Sua maior sequência na história do GymFlow!
+                Sua maior sequência na história da academia!
               </p>
             </div>
           </div>

@@ -2385,6 +2385,8 @@ async function runAllTests() {
   const badge404Path = path.join(rootDir, "public", "badges", "badge_secret_404.png");
   const hero404Path = path.join(rootDir, "public", "images", "404_dumbbell_shatter.png");
 
+  const flame3dPath = path.join(rootDir, "public", "images", "flame_3d.png");
+
   assert(
     fs.existsSync(badge404Path) && fs.statSync(badge404Path).size > 10000,
     "Gamificação: Asset 3D da medalha secreta 404 (badge_secret_404.png) existe e possui resolução válida"
@@ -2393,6 +2395,11 @@ async function runAllTests() {
   assert(
     fs.existsSync(hero404Path) && fs.statSync(hero404Path).size > 10000,
     "Página 404: Asset 3D do haltere quebrado (404_dumbbell_shatter.png) existe e possui resolução válida"
+  );
+
+  assert(
+    fs.existsSync(flame3dPath) && fs.statSync(flame3dPath).size > 10000,
+    "Gamificação: Asset 3D da chama translúcida (flame_3d.png) com fundo transparente existe e possui resolução válida"
   );
 
   // Teste 22.2: Desbloqueio e Persistência da Medalha Secreta 404
