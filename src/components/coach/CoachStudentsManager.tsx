@@ -749,72 +749,75 @@ export function CoachStudentsManager({
       )}
 
       {/* Header do Módulo de Alunos */}
-      <div className="flex flex-col gap-2 pb-1">
-        <div className="flex items-start sm:items-center justify-between gap-2">
+      <div className="flex flex-col gap-2.5 pb-1">
+        {/* Linha Principal: Título & Botão Novo Aluno */}
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-black text-white">
+            <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
               Alunos do Treinador
             </h2>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-zinc-400 border border-white/[0.08] inline-flex items-center gap-1">
                 <span>{students.length} cadastrados</span>
                 <span>•</span>
-                <span className="text-emerald-400">{students.filter((s) => (s.status || "ativo") === "ativo").length} ativos</span>
+                <span className="text-emerald-400 font-semibold">{students.filter((s) => (s.status || "ativo") === "ativo").length} ativos</span>
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => {
-                triggerHaptic("selection");
-                setIsRemindersCenterOpen(true);
-              }}
-              className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all whitespace-nowrap shadow-sm"
-              title="Central de Lembretes de Aulas e Pagamentos"
-            >
-              <Bell className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Lembretes</span>
-              {remindersSummary.totalPending > 0 && (
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-              )}
-            </button>
-
-            <button
-              onClick={handleOpenManagePlans}
-              className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all whitespace-nowrap"
-              title="Configurar tabela de planos do personal"
-            >
-              <Tag className="w-3.5 h-3.5 text-amber-400" />
-              <span>Planos ({coachPlans.length})</span>
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHaptic("selection");
-                setDueDayModalSelection(coachDefaultDueDay);
-                setApplyDueDayToAll(false);
-                setIsDueDayModalOpen(true);
-              }}
-              className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all whitespace-nowrap"
-              title="Configurar dia de vencimento das mensalidades (global ou em massa)"
-            >
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              <span>Vencimento (Dia {coachDefaultDueDay})</span>
-            </button>
-
-            <button
-              onClick={() => {
-                triggerHaptic("medium");
-                setIsNewStudentModalOpen(true);
-              }}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-all whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Novo Aluno</span>
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              triggerHaptic("medium");
+              setIsNewStudentModalOpen(true);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition-all shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Novo Aluno</span>
+          </button>
         </div>
+
+        {/* Linha de Ações Rápidas: Lembretes, Planos e Vencimento */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <button
+            onClick={() => {
+              triggerHaptic("selection");
+              setIsRemindersCenterOpen(true);
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all whitespace-nowrap shadow-sm shrink-0"
+            title="Central de Lembretes de Aulas e Pagamentos"
+          >
+            <Bell className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Lembretes</span>
+            {remindersSummary.totalPending > 0 && (
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            )}
+          </button>
+
+          <button
+            onClick={handleOpenManagePlans}
+            className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all whitespace-nowrap shrink-0"
+            title="Configurar tabela de planos do personal"
+          >
+            <Tag className="w-3.5 h-3.5 text-amber-400" />
+            <span>Planos ({coachPlans.length})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic("selection");
+              setDueDayModalSelection(coachDefaultDueDay);
+              setApplyDueDayToAll(false);
+              setIsDueDayModalOpen(true);
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all whitespace-nowrap shrink-0"
+            title="Configurar dia de vencimento das mensalidades (global ou em massa)"
+          >
+            <Calendar className="w-3.5 h-3.5 text-amber-400" />
+            <span>Vencimento (Dia {coachDefaultDueDay})</span>
+          </button>
+        </div>
+
         <p className="text-xs text-zinc-400">
           Gerencie frequência, presenças, planos e fichas técnicas com sincronização instantânea.
         </p>
