@@ -960,7 +960,9 @@ export function GymBadgesStreak() {
                           : "Progresso"}
                       </span>
                       <span className="font-semibold text-zinc-300">
-                        {badge.currentProgress} / {badge.targetProgress} {badge.unit}
+                        {isSecretLocked
+                          ? `${badge.currentProgress} de ${badge.targetProgress}`
+                          : `${badge.currentProgress} / ${badge.targetProgress} ${badge.unit}`}
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/[0.04]">
@@ -1144,6 +1146,7 @@ export function GymBadgesStreak() {
                 {(() => {
                   const targetLvl = selectedBadge.levels[selectedTierLevel - 1];
                   const tierMeta = TIER_META[targetLvl.tier];
+                  const isSecretLocked = selectedBadge.isSecret && !selectedBadge.unlocked;
 
                   return (
                     <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex flex-col gap-1.5">
@@ -1151,7 +1154,7 @@ export function GymBadgesStreak() {
                         <span className={`text-xs font-black ${tierMeta.text} flex items-center gap-1.5`}>
                           <span>{tierMeta.icon}</span>
                           <span>
-                            Nível {targetLvl.level} • {targetLvl.title} ({tierMeta.label})
+                            Nível {targetLvl.level} • {isSecretLocked ? "Desafio Oculto" : targetLvl.title} ({tierMeta.label})
                           </span>
                         </span>
                         <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
@@ -1159,7 +1162,10 @@ export function GymBadgesStreak() {
                         </span>
                       </div>
                       <p className="text-xs text-zinc-300 leading-snug">
-                        <strong>Requisito:</strong> {targetLvl.requirement}
+                        <strong>Requisito:</strong>{" "}
+                        {isSecretLocked
+                          ? "Critério secreto oculto. Desvende a pista e continue treinando para descobrir!"
+                          : targetLvl.requirement}
                       </p>
                     </div>
                   );
@@ -1174,8 +1180,11 @@ export function GymBadgesStreak() {
                   </span>
                 ) : (
                   <span className="text-zinc-400 flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-zinc-500" />
-                    Progresso: {selectedBadge.currentProgress} / {selectedBadge.targetProgress} {selectedBadge.unit}
+                    <Lock className={`w-4 h-4 ${selectedBadge.isSecret ? "text-purple-400" : "text-zinc-500"}`} />
+                    Progresso:{" "}
+                    {selectedBadge.isSecret
+                      ? `${selectedBadge.currentProgress} de ${selectedBadge.targetProgress}`
+                      : `${selectedBadge.currentProgress} / ${selectedBadge.targetProgress} ${selectedBadge.unit}`}
                   </span>
                 )}
                 <span className="text-amber-400 font-bold">
