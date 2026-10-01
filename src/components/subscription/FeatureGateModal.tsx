@@ -45,16 +45,16 @@ export function FeatureGateModal({
   const planPerks =
     requiredPlan === "vip"
       ? [
-          "Acompanhamento presencial prioritário com Personal Trainer",
-          "Remanejamento flexível de horários de treino",
-          "Bioimpedância InBody gratuita todo mês",
-          "Leve 1 amigo para treinar 4x ao mês",
+          "Módulo de Avaliação Física e Bioimpedância detalhada",
+          "Comparativo de medidas corporais e fotos de evolução",
+          "Protocolos avançados de alta performance",
+          "Suporte VIP prioritário e recomendações exclusivas",
         ]
       : [
-          "Acesso irrestrito a todas as Aulas Coletivas (Spinning, Muay Thai, WOD)",
+          "Fichas completas com guia de biomecânica 3D em tempo real",
           "GymBot IA 24/7 com suporte nutricional e biomecânico",
-          "Fichas completas com guia de execução postural em tempo real",
-          "Acesso total à rede GymFlow",
+          "Histórico detalhado de evolução de cargas e recordes (PRs)",
+          "Calculadora inteligente de descanso e substituição de exercícios",
         ];
 
   return (

@@ -48,7 +48,7 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
     price: 35.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Musculação, aeróbico, catraca digital e fichas essenciais",
+    description: "Musculação, acompanhamento de cargas e fichas essenciais",
   },
   pro: {
     id: "pro",
@@ -58,7 +58,7 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
     price: 45.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Fichas completas com animações, todas as aulas coletivas e GymBot IA",
+    description: "Fichas completas com animações 3D, histórico de PRs e GymBot IA",
   },
   student_pro: {
     id: "student_pro",
@@ -68,7 +68,7 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
     price: 45.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Fichas completas com animações, todas as aulas coletivas e GymBot IA",
+    description: "Fichas completas com animações 3D, histórico de PRs e GymBot IA",
   },
   vip: {
     id: "vip",
@@ -78,7 +78,7 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
     price: 55.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Acesso VIP total, acompanhamento com Personal Trainer e Bioimpedância InBody",
+    description: "Acesso VIP total, bioimpedância detalhada e suporte prioritário",
   },
   student_vip: {
     id: "student_vip",
@@ -88,7 +88,7 @@ export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
     price: 55.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Acesso VIP total, acompanhamento com Personal Trainer e Bioimpedância InBody",
+    description: "Acesso VIP total, bioimpedância detalhada e suporte prioritário",
   },
   monthly_recurring: {
     id: "monthly_recurring",

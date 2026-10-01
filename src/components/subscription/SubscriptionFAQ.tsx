@@ -31,7 +31,7 @@ export const FAQ_ITEMS: FAQItem[] = [
     category: "planos",
     question: "Qual é a diferença entre os planos de Aluno e de Professor / Personal?",
     answer:
-      "Os planos de Aluno são desenhados para a evolução do seu treino individual: liberam fichas, animações de biomecânica 3D, catraca digital na portaria, aulas coletivas e GymBot IA. Já os planos de Professor são ferramentas profissionais completas: liberam limites ampliados de alunos simultâneos (10, 35 ou ilimitados), prescrição de fichas digitais com 3D para seus clientes, destaque no Marketplace da cidade para atrair novos alunos e gestão financeira de mensalidades.",
+      "Os planos de Aluno são desenhados para a evolução do seu treino individual: liberam fichas completas, animações de biomecânica 3D, histórico de cargas e recordes, gráficos de evolução e GymBot IA. Já os planos de Professor são ferramentas profissionais completas: liberam limites ampliados de alunos simultâneos (10, 35 ou ilimitados), prescrição de fichas digitais com 3D para seus clientes, destaque no Marketplace da cidade para atrair novos alunos e gestão financeira de mensalidades.",
     highlight: "Planos específicos para quem treina ou para quem atende e prescreve treinos",
     icon: Users,
   },
@@ -49,7 +49,7 @@ export const FAQ_ITEMS: FAQItem[] = [
     category: "planos",
     question: "Como funciona o período de teste grátis de 7 dias?",
     answer:
-      "Tanto para Alunos quanto para Professores, você experimenta todos os recursos do Plano Pro por 7 dias corridos sem pagar nada hoje. Alunos podem testar biomecânica 3D, aulas e GymBot IA; professores podem cadastrar alunos, prescrever treinos e testar as ferramentas profissionais. Se cancelar durante os 7 dias, nenhum valor será cobrado.",
+      "Tanto para Alunos quanto para Professores, você experimenta todos os recursos do Plano Pro por 7 dias corridos sem pagar nada hoje. Alunos podem testar biomecânica 3D, gráficos de cargas e GymBot IA; professores podem cadastrar alunos, prescrever treinos e testar as ferramentas profissionais. Se cancelar durante os 7 dias, nenhum valor será cobrado.",
     highlight: "7 dias com acesso Pro completo • R$ 0,00 cobrado hoje",
     icon: Sparkles,
   },

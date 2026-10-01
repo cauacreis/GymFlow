@@ -54,8 +54,8 @@ export const FEATURES_METADATA: Record<FeatureKey, PlanFeatureDetails> = {
     minTier: "pro",
   },
   turnstile_checkin: {
-    name: "Catraca Digital QR Code",
-    description: "Liberação instantânea do acesso na portaria da academia via token dinâmico.",
+    name: "Check-in e Frequência Digital",
+    description: "Registro de presenças e histórico de frequência de treinos.",
     minTier: "basico",
   },
   basic_agenda: {
@@ -64,8 +64,8 @@ export const FEATURES_METADATA: Record<FeatureKey, PlanFeatureDetails> = {
     minTier: "basico",
   },
   collective_classes: {
-    name: "Aulas Coletivas Completas",
-    description: "Spinning Indoor, Muay Thai, Cross Training WOD, Funcional e Alongamento.",
+    name: "Aulas e Rotinas Guiadas",
+    description: "Vídeos e rotinas guiadas de treino funcional, mobilidade e alongamento.",
     badge: "PRO & VIP",
     minTier: "pro",
   },
@@ -81,8 +81,8 @@ export const FEATURES_METADATA: Record<FeatureKey, PlanFeatureDetails> = {
     minTier: "basico",
   },
   vip_personal_perks: {
-    name: "Acompanhamento VIP com Personal Trainer",
-    description: "Aulas com Personal inclusas, remanejamento flexível prioritário e convite para 1 amigo.",
+    name: "Recursos VIP de Alta Performance",
+    description: "Módulo avançado de medidas, bioimpedância, protocolos de força e suporte prioritário.",
     badge: "VIP",
     minTier: "vip",
   },

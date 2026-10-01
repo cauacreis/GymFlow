@@ -42,7 +42,7 @@ export const STUDENT_PLANS: PlanOption[] = [
     features: [
       "Acesso à musculação e aeróbico",
       "Fichas de treino essenciais",
-      "Catraca digital via QR Code dinâmico",
+      "Registro e evolução de cargas em tempo real",
       "Histórico de presenças e frequência",
       "Marketplace para contratar Personal",
     ],
@@ -57,7 +57,7 @@ export const STUDENT_PLANS: PlanOption[] = [
     features: [
       "Tudo do Plano Básico incluso",
       "Biomecânica 3D postural & GIFs de 233+ exercícios",
-      "Todas as aulas coletivas (Spinning, Muay Thai, Funcional)",
+      "Calculadora de descanso e substituição de exercícios",
       "GymBot IA 24/7 para dúvidas de treino e dieta",
       "Gráficos de evolução de força e PRs",
     ],
@@ -71,9 +71,9 @@ export const STUDENT_PLANS: PlanOption[] = [
     features: [
       "Tudo do Plano Pro incluso",
       "Bioimpedância InBody mensal inclusa",
-      "1 Consultoria/treino presencial com Personal parceiro",
-      "Leve 1 amigo para treinar 4x ao mês",
-      "Reserva prioritária em aulas concorridas",
+      "Módulo de Avaliação Física & Bioimpedância",
+      "Acompanhamento comparativo de medidas e fotos",
+      "Suporte VIP prioritário e recomendações exclusivas",
     ],
   },
 ];
@@ -515,7 +515,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                 </div>
                 <p className="text-[11px] text-zinc-400 px-1 text-center">
                   {selectedRole === "student"
-                    ? "Planos para treinar, ver fichas 3D, catraca, aulas coletivas e GymBot IA."
+                    ? "Planos para treinar, ver fichas 3D, periodização e GymBot IA."
                     : "Planos profissionais para prescrever treinos 3D, gerenciar alunos e captar clientes."}
                 </p>
               </div>
@@ -748,7 +748,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
               <div>
                 <h3 className="text-lg font-black text-white">Plano Ativado com Sucesso!</h3>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Seu acesso ao <b>{currentPlan.name}</b> foi liberado na catraca e no app.
+                  Seu acesso ao <b>{currentPlan.name}</b> foi liberado no app com sucesso.
                 </p>
               </div>
 

@@ -206,7 +206,7 @@ async function runAllTests() {
 
   const userBasico = makeUser("basico");
   assert(canAccessFeature("basic_workout", userBasico).allowed === true, "Básico: Tem acesso a Musculação Essencial");
-  assert(canAccessFeature("turnstile_checkin", userBasico).allowed === true, "Básico: Tem acesso à Catraca Digital QR Code");
+  assert(canAccessFeature("turnstile_checkin", userBasico).allowed === true, "Básico: Tem acesso ao Check-in Digital");
   assert(canAccessFeature("basic_agenda", userBasico).allowed === true, "Básico: Tem acesso à Agenda de Treinos");
   assert(canAccessFeature("personal_marketplace", userBasico).allowed === true, "Básico: Tem acesso ao Marketplace de Personals");
 
@@ -214,7 +214,7 @@ async function runAllTests() {
   assert(canAccessFeature("collective_classes", userBasico).allowed === false, "Básico BLOQUEADO: Aulas Coletivas requer PRO");
   assert(canAccessFeature("gymbot_ai", userBasico).allowed === false, "Básico BLOQUEADO: GymBot IA requer PRO");
   assert(canAccessFeature("inbody_bioimpedance", userBasico).allowed === false, "Básico BLOQUEADO: Bioimpedância InBody requer VIP");
-  assert(canAccessFeature("vip_personal_perks", userBasico).allowed === false, "Básico BLOQUEADO: Personal Incluso requer VIP");
+  assert(canAccessFeature("vip_personal_perks", userBasico).allowed === false, "Básico BLOQUEADO: Recursos VIP requer VIP");
 
   const userPro = makeUser("pro");
   assert(canAccessFeature("basic_workout", userPro).allowed === true, "Pro: Tem acesso a Musculação Essencial");
@@ -222,7 +222,7 @@ async function runAllTests() {
   assert(canAccessFeature("collective_classes", userPro).allowed === true, "Pro: Tem acesso liberado a Aulas Coletivas");
   assert(canAccessFeature("gymbot_ai", userPro).allowed === true, "Pro: Tem acesso liberado ao GymBot IA");
   assert(canAccessFeature("inbody_bioimpedance", userPro).allowed === false, "Pro BLOQUEADO: Bioimpedância InBody é exclusivo VIP");
-  assert(canAccessFeature("vip_personal_perks", userPro).allowed === false, "Pro BLOQUEADO: Benefícios VIP com Personal é exclusivo VIP");
+  assert(canAccessFeature("vip_personal_perks", userPro).allowed === false, "Pro BLOQUEADO: Recursos VIP é exclusivo VIP");
 
   const userVip = makeUser("vip");
   assert(canAccessFeature("basic_workout", userVip).allowed === true, "VIP: Tem acesso a Musculação Essencial");
@@ -230,7 +230,7 @@ async function runAllTests() {
   assert(canAccessFeature("collective_classes", userVip).allowed === true, "VIP: Tem acesso a Aulas Coletivas");
   assert(canAccessFeature("gymbot_ai", userVip).allowed === true, "VIP: Tem acesso ao GymBot IA");
   assert(canAccessFeature("inbody_bioimpedance", userVip).allowed === true, "VIP: Tem acesso LIBERADO a Bioimpedância InBody");
-  assert(canAccessFeature("vip_personal_perks", userVip).allowed === true, "VIP: Tem acesso LIBERADO a Personal Incluso");
+  assert(canAccessFeature("vip_personal_perks", userVip).allowed === true, "VIP: Tem acesso LIBERADO a Recursos VIP");
 
   const userCoach = makeUser("pro", "coach");
   assert(canAccessFeature("coach_tools", userCoach).allowed === true, "Coach: Tem acesso ao Painel de Prescrição");
@@ -257,7 +257,7 @@ async function runAllTests() {
   };
   assert(isSubscriptionExpired(expiredStudent) === true, "Aluno com data vencida detectado como expirado");
   assert(canAccessFeature("basic_workout", expiredStudent).allowed === false, "Aluno expirado é BLOQUEADO até mesmo da musculação básica");
-  assert(canAccessFeature("turnstile_checkin", expiredStudent).allowed === false, "Aluno expirado tem CATRACA BLOQUEADA");
+  assert(canAccessFeature("turnstile_checkin", expiredStudent).allowed === false, "Aluno expirado tem CHECK-IN BLOQUEADO");
 
   const activeTrialStudent = {
     ...userPro,
@@ -1210,7 +1210,7 @@ async function runAllTests() {
   );
   assert(
     canAccessFeature("turnstile_checkin", canceledProfile).allowed === true,
-    "canAccessFeature: Catraca digital liberada normalmente durante o ciclo cancelado"
+    "canAccessFeature: Check-in digital liberado normalmente durante o ciclo cancelado"
   );
 
   // Teste 15.3: Bloqueio de Acesso APÓS o término do ciclo cancelado

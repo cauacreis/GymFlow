@@ -77,14 +77,14 @@ export const STUDENT_PLANS: PlanConfig[] = [
     badge: "EXPERIMENTE GRÁTIS",
     badgeColor: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     name: "7 Dias Grátis Aluno Pro",
-    tagline: "Desbloqueia Biomecânica 3D, GymBot IA e aulas coletivas sem pagar nada hoje.",
+    tagline: "Desbloqueia Biomecânica 3D, GymBot IA e periodização sem pagar nada hoje.",
     recurringPrice: 0,
     pixPrice: 0,
     includedUsability: [
       "Acesso completo ao Plano Pro de Aluno por 7 dias",
       "Biomecânica 3D & GIFs de 233+ exercícios",
       "GymBot IA 24/7 (Substituições & Dieta)",
-      "Reserva de vagas em Aulas Coletivas",
+      "Histórico completo de evolução e PRs",
       "Sem cobrança imediata (Cancele quando quiser)",
     ],
   },
@@ -95,19 +95,19 @@ export const STUDENT_PLANS: PlanConfig[] = [
     badge: "ESSENCIAL",
     badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30",
     name: "Aluno Básico",
-    tagline: "A base sólida para registrar treinos e acessar a academia.",
+    tagline: "A base sólida para registrar treinos e acompanhar sua evolução.",
     recurringPrice: 29.9,
     pixPrice: 35.0,
     includedUsability: [
       "Fichas de musculação (séries, reps e cargas)",
-      "Catraca Digital QR Code na portaria",
-      "Agenda de treinos, presenças e faltas",
+      "Registro e evolução de cargas em tempo real",
+      "Agenda de treinos, presenças e metas",
       "Marketplace para contratar Personais",
     ],
     lockedUsability: [
       "Sem animações de biomecânica postural 3D",
-      "Sem acesso às aulas coletivas de ginástica",
       "Sem assistente GymBot IA de treino e dieta",
+      "Sem gráficos avançados de progressão de carga",
     ],
   },
   {
@@ -124,9 +124,9 @@ export const STUDENT_PLANS: PlanConfig[] = [
     includedUsability: [
       "Tudo do Plano Básico incluso",
       "Biomecânica 3D postural & GIFs de 233+ exercícios",
-      "Aulas Coletivas (Spinning, Muay Thai, Funcional, Cross)",
       "GymBot IA 24/7 para ajustes de séries e macros",
       "Gráficos detalhados de evolução de cargas e PRs",
+      "Calculadora de descanso e substituição de exercícios",
     ],
   },
   {
@@ -141,10 +141,10 @@ export const STUDENT_PLANS: PlanConfig[] = [
     pixPrice: 55.0,
     includedUsability: [
       "Tudo do Plano Pro incluso",
-      "1 Consultoria/treino presencial com Personal incluso/mês",
-      "Bioimpedância InBody Mensal Gratuita (% gordura/músculo)",
-      "Remarcação e reserva prioritária de vagas",
-      "Convite cortesia para 1 amigo treinar junto 2x/mês",
+      "Módulo de Avaliação Física & Bioimpedância",
+      "Acompanhamento comparativo de medidas e fotos",
+      "Protocolos avançados de alta performance",
+      "Suporte VIP prioritário e recomendações exclusivas",
     ],
   },
 ];
@@ -234,15 +234,13 @@ export const COACH_PLANS: PlanConfig[] = [
 
 const STUDENT_COMPARISON_ROWS = [
   { feature: "Musculação, Séries e Cargas", basico: true, pro: true, vip: true },
-  { feature: "Catraca Digital QR Code", basico: true, pro: true, vip: true },
-  { feature: "Agenda de Presenças e Histórico", basico: true, pro: true, vip: true },
+  { feature: "Agenda de Treinos e Histórico", basico: true, pro: true, vip: true },
   { feature: "Marketplace de Personais", basico: true, pro: true, vip: true },
   { feature: "Biomecânica 3D & GIFs Posturais", basico: false, pro: true, vip: true },
-  { feature: "Aulas Coletivas com Reserva", basico: false, pro: true, vip: true },
   { feature: "GymBot IA 24/7 (Treino & Macros)", basico: false, pro: true, vip: true },
-  { feature: "Bioimpedância InBody Mensal", basico: false, pro: false, vip: true },
-  { feature: "Sessão Presencial com Personal", basico: false, pro: false, vip: true },
-  { feature: "Convite Cortesia para Amigo", basico: false, pro: false, vip: true },
+  { feature: "Gráficos de Cargas e Recordes (PRs)", basico: false, pro: true, vip: true },
+  { feature: "Módulo Avaliação Física & InBody", basico: false, pro: false, vip: true },
+  { feature: "Suporte VIP Prioritário", basico: false, pro: false, vip: true },
 ];
 
 const COACH_COMPARISON_ROWS = [
@@ -761,7 +759,7 @@ export function SubscriptionOnboardingModal({
                 </div>
                 <p className="text-[11px] text-zinc-400 px-1 text-center">
                   {selectedRole === "student"
-                    ? "Treinos inteligentes, Biomecânica 3D, catraca digital, aulas coletivas e GymBot IA."
+                    ? "Treinos inteligentes, Biomecânica 3D, periodização e GymBot IA."
                     : "Gestão completa de alunos, prescrição digital com 3D, marketplace regional e controle de mensalidades."}
                 </p>
               </div>
