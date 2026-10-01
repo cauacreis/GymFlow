@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Sparkles,
   MessageSquare,
+  Trophy,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser } from "@/lib/auth-store";
@@ -71,6 +72,8 @@ export function NotificationBellModal({
         return <RotateCcw className="w-4 h-4 text-blue-400" />;
       case "booking_message":
         return <MessageSquare className="w-4 h-4 text-emerald-400" />;
+      case "achievement_unlocked":
+        return <Trophy className="w-4 h-4 text-amber-400" />;
       case "subscription_canceled":
         return <AlertTriangle className="w-4 h-4 text-amber-400" />;
       default:

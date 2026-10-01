@@ -22,6 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { recordClassCompleted } from "@/lib/gamification-service";
 import type { GymClass } from "./GymClassesView";
 
 interface ClassVideoModalProps {
@@ -104,6 +105,8 @@ export function ClassVideoModal({
         }
       } catch {}
     }
+
+    recordClassCompleted(gymClass.title, gymClass.caloriesBurnEstimate || 500);
 
     if (onCompleteClass) {
       onCompleteClass(gymClass.id);

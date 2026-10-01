@@ -70,6 +70,12 @@ import { ExerciseGifModal, ExerciseModalData } from "./ExerciseGifModal";
 import { CardioTimerModal } from "./CardioTimerModal";
 import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
 import { canAccessFeature } from "@/lib/subscription-features";
+import {
+  recordWorkoutCompleted,
+  recordCardioCompleted,
+  recordPRBreaker,
+  awardBadgeProgress,
+} from "@/lib/gamification-service";
 
 export interface ExerciseSet {
   setNumber: number;
@@ -274,11 +280,22 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
     setSplits((prev) =>
       prev.map((s) => {
         if (s.id === selectedSplitId) {
+          const updatedCardio = (s.cardio || []).map((c) => {
+            if (c.id === cardioId) {
+              const nextCompleted = !c.completed;
+              if (nextCompleted) {
+                recordCardioCompleted({
+                  caloriesBurned: c.targetCalories || 180,
+                  durationMinutes: c.durationMinutes || 15,
+                });
+              }
+              return { ...c, completed: nextCompleted };
+            }
+            return c;
+          });
           return {
             ...s,
-            cardio: (s.cardio || []).map((c) =>
-              c.id === cardioId ? { ...c, completed: !c.completed } : c
-            ),
+            cardio: updatedCardio,
           };
         }
         return s;
@@ -292,6 +309,10 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
     actualCalories: number
   ) => {
     toggleCardioCompleted(studentId, selectedSplitId, cardioId, actualSeconds, actualCalories);
+    recordCardioCompleted({
+      caloriesBurned: actualCalories || 180,
+      durationMinutes: Math.round(actualSeconds / 60) || 15,
+    });
     setSplits((prev) =>
       prev.map((s) => {
         if (s.id === selectedSplitId) {
@@ -859,23 +880,72 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
   // Toggle de conclusão de série
   const handleToggleSet = (exerciseId: string, setNumber: number) => {
     triggerHaptic("medium");
+    let wasNewlyCompleted = false;
+    let completedWeight = 0;
+    let completedReps = 10;
+    let exerciseName = "";
+
     const updated = splits.map((split) => {
       if (split.id !== selectedSplitId) return split;
       return {
         ...split,
         exercises: split.exercises.map((ex) => {
           if (ex.id !== exerciseId) return ex;
+          exerciseName = ex.name;
           return {
             ...ex,
             sets: ex.sets.map((s) => {
               if (s.setNumber !== setNumber) return s;
-              return { ...s, completed: !s.completed };
+              const nextVal = !s.completed;
+              if (nextVal) {
+                wasNewlyCompleted = true;
+                completedWeight = s.weightKg || 0;
+                let rNum = 10;
+                if (typeof s.reps === "number") rNum = s.reps;
+                else if (typeof s.reps === "string") {
+                  const m = s.reps.match(/\d+/);
+                  if (m) rNum = parseInt(m[0], 10);
+                }
+                completedReps = rNum;
+              }
+              return { ...s, completed: nextVal };
             }),
           };
         }),
       };
     });
     persistSplitsChange(updated);
+
+    if (wasNewlyCompleted) {
+      if (completedWeight > 0) {
+        awardBadgeProgress("raw-tonnage", completedWeight * completedReps, {
+          reason: `ao concluir série de ${completedWeight} kg × ${completedReps} reps`,
+        });
+      }
+
+      const currentSplit = updated.find((s) => s.id === selectedSplitId);
+      if (currentSplit && currentSplit.exercises.length > 0) {
+        const allDone = currentSplit.exercises.every((ex) =>
+          ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+        );
+        if (allDone) {
+          const totalVol = currentSplit.exercises.reduce(
+            (acc, ex) =>
+              acc +
+              ex.sets.reduce((sAcc, s) => {
+                const reps = typeof s.reps === "number" ? s.reps : 10;
+                return sAcc + s.weightKg * reps;
+              }, 0),
+            0
+          );
+          recordWorkoutCompleted({
+            totalExercises: currentSplit.exercises.length,
+            totalVolumeKg: totalVol,
+            isBefore7Am: new Date().getHours() < 7,
+          });
+        }
+      }
+    }
   };
 
   // Ajuste de carga (+/- delta kg)

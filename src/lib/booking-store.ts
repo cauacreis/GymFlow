@@ -111,6 +111,7 @@ export interface AppNotification {
     | "delay_warning"
     | "workout_updated"
     | "booking_message"
+    | "achievement_unlocked"
     | "subscription_canceled";
   title: string;
   message: string;

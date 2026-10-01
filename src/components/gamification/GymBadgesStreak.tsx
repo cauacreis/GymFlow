@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser } from "@/lib/auth-store";
+import { getAllGamificationBadges } from "@/lib/gamification-service";
 
 export type BadgeTier = "bronze" | "prata" | "ouro" | "diamante";
 export type BadgeRarity = "comum" | "raro" | "epico" | "lendario" | "mitico";
@@ -575,31 +576,14 @@ export function GymBadgesStreak() {
   const [activeRole, setActiveRole] = useState<"student" | "coach">(() =>
     user.activeRole === "coach" ? "coach" : "student"
   );
-  const [badges, setBadges] = useState<BadgeItem[]>(INITIAL_ALL_BADGES);
+  const [badges, setBadges] = useState<BadgeItem[]>(() => getAllGamificationBadges());
   const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
   const [selectedTierLevel, setSelectedTierLevel] = useState<number>(1);
   const [filterTab, setFilterTab] = useState<"todas" | "desbloqueadas" | "progresso" | "secretas">("todas");
 
   useEffect(() => {
     const syncBadges = () => {
-      if (typeof window === "undefined") return;
-      const is404Unlocked = localStorage.getItem("gymflow_badge_secret_404_unlocked") === "true";
-      const unlockDate = localStorage.getItem("gymflow_badge_secret_404_date") || "Hoje";
-
-      setBadges((prev) =>
-        prev.map((b) => {
-          if (b.id === "secret-glitch-404" && is404Unlocked) {
-            return {
-              ...b,
-              unlocked: true,
-              currentLevel: 1,
-              currentProgress: 1,
-              unlockedAt: unlockDate,
-            };
-          }
-          return b;
-        })
-      );
+      setBadges(getAllGamificationBadges());
     };
 
     syncBadges();

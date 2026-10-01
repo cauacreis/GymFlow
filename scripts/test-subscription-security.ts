@@ -2475,6 +2475,57 @@ async function runAllTests() {
   }
 
   // ---------------------------------------------------------------------------
+  // 24. GAMIFICAÇÃO EM TEMPO REAL, DESBLOQUEIO DE CONQUISTAS E NOTIFICAÇÕES
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 24. Testando Gamificação em Tempo Real, Desbloqueio e Notificações...");
+
+  const {
+    awardBadgeProgress,
+    recordCardioCompleted,
+    recordWorkoutCompleted,
+    recordSecretAchievement,
+    getAllGamificationBadges,
+  } = await import("../src/lib/gamification-service");
+
+  // 24.1 Desbloqueio e subida de nível de conquista
+  const resultProgress = awardBadgeProgress("cardio-master", 16000, {
+    isAbsoluteValue: true,
+    reason: "ao acumular 16.000 kcal em treinos de esteira e bike",
+    triggerCelebration: false,
+  });
+
+  assert(
+    Boolean(resultProgress.levelUpNow === true || (resultProgress.badge && resultProgress.badge.currentLevel >= 3)),
+    "Gamificação: Mestre do Cárdio sobe para Nível 3 (Ouro) ao registrar 16.000 kcal"
+  );
+
+  // 24.2 Verificação da notificação gerada na Central de Notificações
+  const notifs = getStoredNotifications("student_carlos", "student");
+  const achievementNotif = notifs.find(
+    (n) => n.type === "achievement_unlocked" && n.title.includes("Mestre do Cárdio")
+  );
+
+  assert(
+    achievementNotif !== undefined,
+    "Notificações: Alerta de conquista desbloqueada ('achievement_unlocked') registrado automaticamente"
+  );
+
+  assert(
+    Boolean(achievementNotif && achievementNotif.message.includes("Mestre do Cárdio") && achievementNotif.message.includes("XP")),
+    "Notificações: Mensagem detalha insígnia, motivo de conquista e recompensa de XP"
+  );
+
+  // 24.3 Desbloqueio de Conquista Secreta
+  recordSecretAchievement("secret-glitch-404", "ao encontrar a página secreta 404 da Matrix");
+  const badgesAfter404 = getAllGamificationBadges("student");
+  const secret404Badge = badgesAfter404.find((b) => b.id === "secret-glitch-404");
+
+  assert(
+    Boolean(secret404Badge && secret404Badge.unlocked === true && secret404Badge.currentLevel >= 1),
+    "Gamificação: Falha na Matrix 404 desbloqueada com sucesso no perfil do aluno"
+  );
+
+  // ---------------------------------------------------------------------------
   // RESULTADO FINAL
   // ---------------------------------------------------------------------------
   console.log("\n=======================================================");

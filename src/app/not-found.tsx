@@ -18,6 +18,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { recordSecretAchievement } from "@/lib/gamification-service";
 
 const GYM_FAIL_QUOTES = [
   "Até os maiores campeões erram o caminho da academia às vezes. O importante é não pular o treino de perna!",
@@ -43,7 +44,7 @@ export default function NotFound() {
       localStorage.setItem("gymflow_badge_secret_404_unlocked", "true");
       const todayStr = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
       localStorage.setItem("gymflow_badge_secret_404_date", todayStr);
-      window.dispatchEvent(new Event("gymflow:badges-updated"));
+      recordSecretAchievement("secret-glitch-404", "ao encontrar a página secreta 404 da Matrix");
       triggerHaptic("success");
       setShowSecretModal(true);
       setAlreadyUnlocked(true);

@@ -7,6 +7,7 @@ import { WorkoutSheet } from "@/components/workout/WorkoutSheet";
 import { RestTimerModal } from "@/components/workout/RestTimerModal";
 import { GymClassesView } from "@/components/classes/GymClassesView";
 import { GymBadgesStreak } from "@/components/gamification/GymBadgesStreak";
+import { AchievementCelebrationModal } from "@/components/gamification/AchievementCelebrationModal";
 import { GymPlansModal } from "@/components/plans/GymPlansModal";
 import { GymBotAIModal } from "@/components/ai/GymBotAIModal";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -605,6 +606,8 @@ export default function GymFlowApp() {
         onClose={() => setIsGymBotOpen(false)}
         onOpenPlans={() => setIsPlansOpen(true)}
       />
+      {/* Modal de Celebração de Conquistas Gamificadas */}
+      <AchievementCelebrationModal />
     </div>
   );
 }
