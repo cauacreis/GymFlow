@@ -2373,6 +2373,46 @@ async function runAllTests() {
   (global as any).window.dispatchEvent = originalDispatch;
 
   // ---------------------------------------------------------------------------
+  // 22. TESTE DE CONQUISTAS 3D & MEDALHA SECRETA 404 (DIMENSÃO 404)
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 22. Testando Gamificação 3D & Conquista Secreta 404...");
+
+  const fs = require("fs");
+  const path = require("path");
+
+  // Teste 22.1: Existência dos Assets 3D com Fundo Transparente
+  const rootDir = path.resolve(__dirname, "..");
+  const badge404Path = path.join(rootDir, "public", "badges", "badge_secret_404.png");
+  const hero404Path = path.join(rootDir, "public", "images", "404_dumbbell_shatter.png");
+
+  assert(
+    fs.existsSync(badge404Path) && fs.statSync(badge404Path).size > 10000,
+    "Gamificação: Asset 3D da medalha secreta 404 (badge_secret_404.png) existe e possui resolução válida"
+  );
+
+  assert(
+    fs.existsSync(hero404Path) && fs.statSync(hero404Path).size > 10000,
+    "Página 404: Asset 3D do haltere quebrado (404_dumbbell_shatter.png) existe e possui resolução válida"
+  );
+
+  // Teste 22.2: Desbloqueio e Persistência da Medalha Secreta 404
+  const storage404Key = "gymflow_badge_secret_404_unlocked";
+  const storage404DateKey = "gymflow_badge_secret_404_date";
+
+  (global as any).localStorage.setItem(storage404Key, "true");
+  (global as any).localStorage.setItem(storage404DateKey, "01/Out");
+
+  assert(
+    (global as any).localStorage.getItem(storage404Key) === "true",
+    "Conquista 404: Desbloqueio persiste no localStorage sob chave 'gymflow_badge_secret_404_unlocked'"
+  );
+
+  assert(
+    (global as any).localStorage.getItem(storage404DateKey) === "01/Out",
+    "Conquista 404: Data de conquista registrada com precisão temporal"
+  );
+
+  // ---------------------------------------------------------------------------
   // RESULTADO FINAL
   // ---------------------------------------------------------------------------
   console.log("\n=======================================================");

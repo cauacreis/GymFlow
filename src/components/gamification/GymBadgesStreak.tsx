@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -311,6 +311,28 @@ const BADGES: BadgeItem[] = [
       { level: 4, tier: "diamante", title: "Singularidade Biônica", requirement: "Subir carga em 4 exercícios em 20 treinos", targetValue: 20, xpReward: 6000 },
     ],
   },
+  {
+    id: "secret-glitch-404",
+    name: "Dimensão 404",
+    category: "Secreta",
+    description: "Praticamente impossível: encontrou uma fenda na realidade do GymFlow e sobreviveu à lendária página de erro 404.",
+    image: "/badges/badge_secret_404.png",
+    unlocked: false,
+    currentLevel: 0,
+    maxLevel: 4,
+    currentProgress: 0,
+    targetProgress: 1,
+    unit: "anomalias",
+    isSecret: true,
+    secretClue: "Praticamente impossível. Dizem que apenas quem se perde nas fendas do sistema e falha uma repetição dimensional encontra esta relíquia...",
+    rarity: "mitico",
+    levels: [
+      { level: 1, tier: "bronze", title: "Fenda Dimensional", requirement: "Acessar a página 404 de erro do sistema", targetValue: 1, xpReward: 500 },
+      { level: 2, tier: "prata", title: "Caçador de Glitches", requirement: "Descobrir 2 anomalias ou rotas ocultas", targetValue: 2, xpReward: 1200 },
+      { level: 3, tier: "ouro", title: "Lorde do Vazio", requirement: "Dominar 5 anomalias do sistema", targetValue: 5, xpReward: 3000 },
+      { level: 4, tier: "diamante", title: "Singularidade Cósmica", requirement: "Trascender os limites do código", targetValue: 10, xpReward: 10000 },
+    ],
+  },
 ];
 
 const PR_RECORDS: PRRecord[] = [
@@ -321,9 +343,41 @@ const PR_RECORDS: PRRecord[] = [
 ];
 
 export function GymBadgesStreak() {
+  const [badges, setBadges] = useState<BadgeItem[]>(BADGES);
   const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
   const [selectedTierLevel, setSelectedTierLevel] = useState<number>(1);
   const [filterTab, setFilterTab] = useState<"todas" | "desbloqueadas" | "progresso" | "secretas">("todas");
+
+  useEffect(() => {
+    const syncBadges = () => {
+      if (typeof window === "undefined") return;
+      const is404Unlocked = localStorage.getItem("gymflow_badge_secret_404_unlocked") === "true";
+      const unlockDate = localStorage.getItem("gymflow_badge_secret_404_date") || "Hoje";
+
+      setBadges((prev) =>
+        prev.map((b) => {
+          if (b.id === "secret-glitch-404" && is404Unlocked) {
+            return {
+              ...b,
+              unlocked: true,
+              currentLevel: 1,
+              currentProgress: 1,
+              unlockedAt: unlockDate,
+            };
+          }
+          return b;
+        })
+      );
+    };
+
+    syncBadges();
+    window.addEventListener("gymflow:badges-updated", syncBadges);
+    window.addEventListener("storage", syncBadges);
+    return () => {
+      window.removeEventListener("gymflow:badges-updated", syncBadges);
+      window.removeEventListener("storage", syncBadges);
+    };
+  }, []);
 
   const streakCount = 16;
   const nextMilestone = 20;
@@ -334,15 +388,15 @@ export function GymBadgesStreak() {
     setSelectedTierLevel(badge.currentLevel > 0 ? badge.currentLevel : 1);
   };
 
-  const filteredBadges = BADGES.filter((badge) => {
+  const filteredBadges = badges.filter((badge) => {
     if (filterTab === "desbloqueadas") return badge.unlocked;
     if (filterTab === "progresso") return !badge.unlocked && !badge.isSecret;
     if (filterTab === "secretas") return badge.isSecret;
     return true;
   });
 
-  const unlockedCount = BADGES.filter((b) => b.unlocked).length;
-  const totalCount = BADGES.length;
+  const unlockedCount = badges.filter((b) => b.unlocked).length;
+  const totalCount = badges.length;
 
   return (
     <div className="flex flex-col gap-4 text-left w-full">
