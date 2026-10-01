@@ -640,15 +640,6 @@ export function PersonalMarketplaceView({
       <div className="rounded-3xl p-4 bg-gradient-to-br from-amber-950/30 via-zinc-900 to-zinc-950 border border-amber-500/30 shadow-xl relative overflow-hidden">
         <div className="absolute -top-8 -right-8 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-              Personal Presencial & Online
-            </span>
-          </div>
-          <span className="text-[10px] font-mono text-zinc-400">Agendamento em Tempo Real</span>
-        </div>
-
         <h2 className="text-base font-black text-white">Treine com um Especialista</h2>
         <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
           Encontre os melhores Personal Trainers na sua área, compare horários vagos, escolha seu plano e garanta seu acompanhamento.
