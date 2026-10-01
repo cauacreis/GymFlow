@@ -11,42 +11,34 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import {
   Flame,
   Timer,
   Activity,
   HeartPulse,
+  Award,
+  Plus,
+  X,
   TrendingUp,
   Sparkles,
   Zap,
-  Award,
-  ChevronRight,
-  Plus,
+  Bike,
+  Footprints,
+  Waves,
+  RotateCw,
+  CheckCircle2,
 } from "lucide-react";
 import Image from "next/image";
 import { triggerHaptic } from "@/lib/haptic";
-import { getCurrentUser } from "@/lib/auth-store";
-import { getStudentWorkout, subscribeToWorkoutChanges } from "@/lib/workout-store";
+import { getCurrentUser, subscribeToAuth } from "@/lib/auth-store";
+import {
+  calculateRealWeeklyCardioStats,
+  saveCardioSession,
+  subscribeToCardioHistory,
+  WeeklyCardioStats,
+} from "@/lib/cardio-store";
 import { CARDIO_TYPES_METADATA, CardioType } from "@/lib/exercisedb";
-
-interface CardioHistoryPoint {
-  day: string;
-  minutos: number;
-  calorias: number;
-  modalidade: string;
-}
-
-const DEFAULT_WEEKLY_CARDIO: CardioHistoryPoint[] = [
-  { day: "Seg", minutos: 25, calorias: 210, modalidade: "Esteira" },
-  { day: "Ter", minutos: 20, calorias: 180, modalidade: "Bicicleta" },
-  { day: "Qua", minutos: 0, calorias: 0, modalidade: "Descanso" },
-  { day: "Qui", minutos: 30, calorias: 290, modalidade: "Simulador de Escada" },
-  { day: "Sex", minutos: 25, calorias: 230, modalidade: "Esteira" },
-  { day: "Sáb", minutos: 40, calorias: 420, modalidade: "HIIT" },
-  { day: "Dom", minutos: 0, calorias: 0, modalidade: "Descanso" },
-];
 
 function CardioTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -63,33 +55,77 @@ function CardioTooltip({ active, payload, label }: any) {
 }
 
 export function CardioEvolutionDashboard() {
-  const user = getCurrentUser();
-  const [workoutPkg, setWorkoutPkg] = useState(() => getStudentWorkout(user.id));
+  const [stats, setStats] = useState<WeeklyCardioStats>(() => calculateRealWeeklyCardioStats());
   const [activeTab, setActiveTab] = useState<"semana" | "modalidades">("semana");
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+
+  // Formulário de registro rápido de cárdio
+  const [selectedType, setSelectedType] = useState<CardioType>("esteira_corrida");
+  const [duration, setDuration] = useState(25);
+  const [customCalories, setCustomCalories] = useState<number | "">("");
+  const [intensity, setIntensity] = useState<"leve" | "moderada" | "alta" | "hiit">("moderada");
+  const [speedKmh, setSpeedKmh] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const refreshStats = () => {
+    const user = getCurrentUser();
+    setStats(calculateRealWeeklyCardioStats(user?.id));
+  };
 
   useEffect(() => {
-    const refresh = () => setWorkoutPkg(getStudentWorkout(user.id));
-    const unsub = subscribeToWorkoutChanges(refresh);
-    return unsub;
-  }, [user.id]);
+    refreshStats();
+    const unsubCardio = subscribeToCardioHistory(refreshStats);
+    const unsubAuth = subscribeToAuth(refreshStats);
+    return () => {
+      unsubCardio();
+      unsubAuth();
+    };
+  }, []);
 
-  // Extrai sessões reais de cardio da ficha do aluno
-  const allCardioItems = (workoutPkg?.splits || []).flatMap((s) => s.cardio || []);
-  const completedCardioItems = allCardioItems.filter((c) => c.completed);
+  const handleTypeChange = (type: CardioType) => {
+    setSelectedType(type);
+    const meta = CARDIO_TYPES_METADATA[type];
+    if (meta && typeof customCalories !== "number") {
+      setCustomCalories(Math.round(duration * meta.defaultKcalPerMinute));
+    }
+  };
 
-  // Cálculos consolidados
-  const totalMinutesThisWeek = 140; // Base calculada com histórico
-  const targetWeeklyMinutes = 150; // Recomendação oficial OMS
-  const totalCaloriesThisWeek = 1330;
-  const totalLifetimeCalories = 4850 + completedCardioItems.reduce((acc, c) => acc + (c.actualCalories || c.targetCalories || 0), 0);
-  const totalLifetimeMinutes = 520 + completedCardioItems.reduce((acc, c) => acc + (c.actualSeconds ? Math.round(c.actualSeconds / 60) : (c.durationMinutes || 0)), 0);
+  const handleDurationChange = (val: number) => {
+    const clamped = Math.max(1, Math.min(300, val));
+    setDuration(clamped);
+    const meta = CARDIO_TYPES_METADATA[selectedType];
+    if (meta) {
+      setCustomCalories(Math.round(clamped * meta.defaultKcalPerMinute));
+    }
+  };
 
-  const modalitiesDistribution = [
-    { name: "Esteira Corrida", percent: 40, calorias: 530, color: "#10b981" },
-    { name: "Simulador Escada", percent: 25, calorias: 330, color: "#f59e0b" },
-    { name: "Bicicleta Ergo", percent: 20, calorias: 270, color: "#06b6d4" },
-    { name: "HIIT & Corda", percent: 15, calorias: 200, color: "#a855f7" },
-  ];
+  const handleSaveManualCardio = (e: React.FormEvent) => {
+    e.preventDefault();
+    triggerHaptic("success");
+    const meta = CARDIO_TYPES_METADATA[selectedType];
+    const calcKcal = typeof customCalories === "number" && customCalories > 0
+      ? customCalories
+      : Math.round(duration * (meta?.defaultKcalPerMinute || 10));
+
+    saveCardioSession({
+      title: meta?.label || "Cárdio",
+      modality: selectedType,
+      modalityLabel: meta?.label || "Cárdio",
+      durationMinutes: duration,
+      actualCalories: calcKcal,
+      intensity,
+      speedKmh: speedKmh ? parseFloat(speedKmh) : undefined,
+      notes: notes.trim() || undefined,
+      source: "manual",
+      completedAt: new Date().toISOString(),
+    });
+
+    setIsManualModalOpen(false);
+    setNotes("");
+    setSpeedKmh("");
+  };
+
+  const hasAnyCardioThisWeek = stats.totalMinutesThisWeek > 0 || stats.totalCaloriesThisWeek > 0;
 
   return (
     <div className="rounded-3xl p-4 sm:p-5 bg-zinc-900/70 border border-white/[0.08] shadow-xl backdrop-blur-sm text-left flex flex-col gap-4">
@@ -109,18 +145,35 @@ export function CardioEvolutionDashboard() {
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 mt-0.5">
-              Acompanhamento de gasto calórico, tempo sob esforço e modalidades
+              Gasto calórico real, tempo sob esforço e distribuição de modalidades
             </p>
           </div>
         </div>
 
-        {/* Status da Meta Semanal */}
-        <div className="flex items-center gap-2 self-start sm:self-auto bg-black/40 px-3 py-1.5 rounded-2xl border border-white/[0.06]">
-          <Timer className="w-4 h-4 text-emerald-400" />
-          <div className="text-right font-mono">
-            <span className="text-xs font-bold text-white">{totalMinutesThisWeek} / {targetWeeklyMinutes} min</span>
-            <span className="text-[9px] text-emerald-400 ml-1 font-bold">({Math.round((totalMinutesThisWeek / targetWeeklyMinutes) * 100)}% da meta)</span>
+        {/* Status da Meta Semanal e Botão Rápido */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-2xl border border-white/[0.06]">
+            <Timer className="w-4 h-4 text-emerald-400" />
+            <div className="text-right font-mono">
+              <span className="text-xs font-bold text-white">
+                {stats.totalMinutesThisWeek} / {stats.targetWeeklyMinutes} min
+              </span>
+              <span className="text-[9px] text-emerald-400 ml-1 font-bold">
+                ({stats.weeklyGoalPercent}% da meta)
+              </span>
+            </div>
           </div>
+
+          <button
+            onClick={() => {
+              triggerHaptic("medium");
+              setIsManualModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all shadow-sm active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Registrar</span>
+          </button>
         </div>
       </div>
 
@@ -132,7 +185,7 @@ export function CardioEvolutionDashboard() {
           </span>
           <div className="mt-1">
             <span className="text-xl font-black text-white font-mono tracking-tight">
-              {totalCaloriesThisWeek.toLocaleString("pt-BR")}
+              {stats.totalCaloriesThisWeek.toLocaleString("pt-BR")}
             </span>
             <span className="text-[10px] text-zinc-400 ml-1">kcal</span>
           </div>
@@ -144,7 +197,7 @@ export function CardioEvolutionDashboard() {
           </span>
           <div className="mt-1">
             <span className="text-xl font-black text-white font-mono tracking-tight">
-              {Math.floor(totalMinutesThisWeek / 60)}h {totalMinutesThisWeek % 60}m
+              {Math.floor(stats.totalMinutesThisWeek / 60)}h {stats.totalMinutesThisWeek % 60}m
             </span>
           </div>
         </div>
@@ -155,7 +208,7 @@ export function CardioEvolutionDashboard() {
           </span>
           <div className="mt-1">
             <span className="text-xl font-black text-white font-mono tracking-tight">
-              {totalLifetimeCalories.toLocaleString("pt-BR")}
+              {stats.totalLifetimeCalories.toLocaleString("pt-BR")}
             </span>
             <span className="text-[10px] text-zinc-400 ml-1">kcal</span>
           </div>
@@ -166,8 +219,11 @@ export function CardioEvolutionDashboard() {
             <Award className="w-3.5 h-3.5 text-purple-400" /> Nível Aeróbico
           </span>
           <div className="mt-1">
-            <span className="text-xs font-black text-purple-300 font-mono tracking-tight uppercase">
-              Pulmões de Aço
+            <span
+              className="text-xs font-black font-mono tracking-tight uppercase truncate block"
+              style={{ color: stats.aerobicLevel.color }}
+            >
+              {stats.aerobicLevel.title}
             </span>
           </div>
         </div>
@@ -205,7 +261,7 @@ export function CardioEvolutionDashboard() {
         </div>
 
         <span className="text-[10px] font-mono text-zinc-400">
-          Últimos 7 dias
+          Segunda a Domingo
         </span>
       </div>
 
@@ -213,7 +269,7 @@ export function CardioEvolutionDashboard() {
       <div className="h-56 w-full mt-1">
         {activeTab === "semana" ? (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={DEFAULT_WEEKLY_CARDIO} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={stats.days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="cardioKcalGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
@@ -250,8 +306,8 @@ export function CardioEvolutionDashboard() {
           </ResponsiveContainer>
         ) : (
           <div className="h-full w-full flex flex-col justify-center gap-3">
-            {modalitiesDistribution.map((mod) => (
-              <div key={mod.name} className="flex flex-col gap-1">
+            {stats.modalitiesDistribution.map((mod) => (
+              <div key={mod.key || mod.name} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
                   <span className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: mod.color }} />
@@ -278,7 +334,7 @@ export function CardioEvolutionDashboard() {
 
       {/* Banner de Conexão com Medalha Mestre do Cárdio */}
       <div className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-950/30 via-zinc-900 to-black border border-rose-500/20 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="relative w-12 h-12 shrink-0">
             <Image
               src="/badges/badge_mestre_cardio.png"
@@ -287,21 +343,170 @@ export function CardioEvolutionDashboard() {
               className="object-contain drop-shadow-[0_4px_12px_rgba(244,63,94,0.4)]"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <span className="text-[10px] font-mono font-bold text-rose-400 uppercase">
               Insígnia em Progresso
             </span>
-            <h4 className="text-xs font-black text-white font-mono">Mestre do Cárdio (Nível 2 • Prata)</h4>
-            <p className="text-[10px] text-zinc-400">
-              Faltam apenas 150 kcal para desbloquear o próximo tier!
+            <h4 className="text-xs font-black text-white font-mono truncate">
+              Mestre do Cárdio • {stats.cardioBadgeInfo.nextTierName}
+            </h4>
+            <p className="text-[10px] text-zinc-400 truncate">
+              {stats.cardioBadgeInfo.neededKcal > 0
+                ? `Faltam ${stats.cardioBadgeInfo.neededKcal.toLocaleString("pt-BR")} kcal para o próximo nível!`
+                : "Nível máximo alcançado nesta insígnia!"}
             </p>
           </div>
         </div>
 
         <span className="text-xs font-mono font-bold text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/20 shrink-0">
-          90%
+          {stats.cardioBadgeInfo.progressPercent}%
         </span>
       </div>
+
+      {/* Modal de Registro Manual de Cárdio */}
+      {isManualModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => setIsManualModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-md bg-zinc-950 border border-white/10 rounded-3xl p-5 shadow-2xl overflow-hidden flex flex-col gap-4 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Registrar Cárdio</h3>
+                  <p className="text-[10px] text-zinc-400">Gasto calórico e tempo real</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsManualModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveManualCardio} className="flex flex-col gap-3">
+              <div>
+                <label className="text-[11px] font-bold text-zinc-300 block mb-1">
+                  Modalidade
+                </label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => handleTypeChange(e.target.value as CardioType)}
+                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                >
+                  {Object.entries(CARDIO_TYPES_METADATA).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v.label} (~{v.defaultKcalPerMinute} kcal/min)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-300 block mb-1">
+                    Duração (minutos)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={duration}
+                    onChange={(e) => handleDurationChange(parseInt(e.target.value) || 0)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500 font-mono"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-300 block mb-1">
+                    Calorias (kcal)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={5000}
+                    value={customCalories}
+                    onChange={(e) => setCustomCalories(e.target.value ? parseInt(e.target.value) : "")}
+                    placeholder="Estimado"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-300 block mb-1">
+                    Intensidade
+                  </label>
+                  <select
+                    value={intensity}
+                    onChange={(e) => setIntensity(e.target.value as any)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                  >
+                    <option value="leve">Leve (Aquecimento)</option>
+                    <option value="moderada">Moderada (Zona 2/3)</option>
+                    <option value="alta">Alta (Ritmo Forte)</option>
+                    <option value="hiit">HIIT (Máximo / Tiros)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-zinc-300 block mb-1">
+                    Velocidade (km/h opcional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    value={speedKmh}
+                    onChange={(e) => setSpeedKmh(e.target.value)}
+                    placeholder="Ex: 8.5"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-zinc-300 block mb-1">
+                  Notas / Sensação (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ex: Pós-treino de perna, esteira com 5% de inclinação"
+                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.08]">
+                <button
+                  type="button"
+                  onClick={() => setIsManualModalOpen(false)}
+                  className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-bold text-zinc-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-xs font-black text-black transition-all flex items-center gap-1.5 shadow-lg shadow-rose-500/20"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Salvar Sessão
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

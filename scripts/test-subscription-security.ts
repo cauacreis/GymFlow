@@ -2526,6 +2526,112 @@ async function runAllTests() {
   );
 
   // ---------------------------------------------------------------------------
+  // 25. HISTÓRICO REAL DE CÁRDIO, EVOLUÇÃO AERÓBICA & AGREGAÇÃO SEMANAL
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 25. Testando Histórico Real de Cárdio, Evolução Aeróbica e Agregações...");
+
+  const {
+    saveCardioSession,
+    getStoredCardioSessions,
+    calculateRealWeeklyCardioStats,
+    deleteCardioSession,
+  } = await import("../src/lib/cardio-store");
+
+  const testStudentCardioId = "student_test_cardio_real";
+
+  // 25.1 Registro de sessões de cardio em diferentes modalidades e datas
+  const session1 = saveCardioSession(
+    {
+      studentId: testStudentCardioId,
+      title: "Esteira Corrida Intervalada",
+      modality: "esteira_corrida",
+      durationMinutes: 30,
+      actualCalories: 320,
+      intensity: "alta",
+      completedAt: new Date().toISOString(),
+    },
+    testStudentCardioId
+  );
+
+  const session2 = saveCardioSession(
+    {
+      studentId: testStudentCardioId,
+      title: "Simulador de Escada Intenso",
+      modality: "escada",
+      durationMinutes: 20,
+      actualCalories: 240,
+      intensity: "alta",
+      completedAt: new Date().toISOString(),
+    },
+    testStudentCardioId
+  );
+
+  const session3 = saveCardioSession(
+    {
+      studentId: testStudentCardioId,
+      title: "Spinning Indoor",
+      modality: "bicicleta",
+      durationMinutes: 40,
+      actualCalories: 360,
+      intensity: "moderada",
+      completedAt: new Date().toISOString(),
+    },
+    testStudentCardioId
+  );
+
+  const allSavedCardio = getStoredCardioSessions(testStudentCardioId);
+  assert(
+    allSavedCardio.length >= 3,
+    "Cardio Store: 3 sessões de cárdio reais persistidas e recuperadas com sucesso"
+  );
+
+  assert(
+    allSavedCardio.some((s) => s.id === session1.id && s.actualCalories === 320),
+    "Cardio Store: Sessão de Esteira registrada com 320 kcal e duração de 30 min"
+  );
+
+  // 25.2 Cálculo consolidado de estatísticas semanais e all-time
+  const realStats = calculateRealWeeklyCardioStats(testStudentCardioId);
+
+  assert(
+    realStats.totalMinutesThisWeek >= 90,
+    `Cardio Stats: Tempo semanal consolidado real (esperado >= 90 min, obtido: ${realStats.totalMinutesThisWeek} min)`
+  );
+
+  assert(
+    realStats.totalCaloriesThisWeek >= 920,
+    `Cardio Stats: Gasto calórico semanal consolidado real (esperado >= 920 kcal, obtido: ${realStats.totalCaloriesThisWeek} kcal)`
+  );
+
+  assert(
+    realStats.days.length === 7,
+    "Cardio Stats: Gráfico semanal contém exatamente 7 dias (Segunda a Domingo)"
+  );
+
+  // 25.3 Distribuição por modalidades calculada matematicamente
+  assert(
+    realStats.modalitiesDistribution.length >= 3,
+    "Cardio Stats: Distribuição contém as modalidades praticadas (Esteira, Escada, Bicicleta)"
+  );
+
+  const sumPercentages = realStats.modalitiesDistribution.reduce((acc, m) => acc + m.percent, 0);
+  assert(
+    sumPercentages >= 98 && sumPercentages <= 102,
+    `Cardio Stats: Soma percentual das modalidades totaliza ~100% (obtido: ${sumPercentages}%)`
+  );
+
+  // 25.4 Nível Aeróbico e Insígnia
+  assert(
+    typeof realStats.aerobicLevel.title === "string" && realStats.aerobicLevel.title.length > 0,
+    `Cardio Stats: Nível aeróbico dinâmico calculado ('${realStats.aerobicLevel.title}')`
+  );
+
+  assert(
+    realStats.cardioBadgeInfo.neededKcal >= 0 && realStats.cardioBadgeInfo.progressPercent <= 100,
+    "Cardio Stats: Progresso da insígnia Mestre do Cárdio calculado sem discrepâncias"
+  );
+
+  // ---------------------------------------------------------------------------
   // RESULTADO FINAL
   // ---------------------------------------------------------------------------
   console.log("\n=======================================================");

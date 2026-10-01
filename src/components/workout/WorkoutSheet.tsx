@@ -76,6 +76,7 @@ import {
   recordPRBreaker,
   awardBadgeProgress,
 } from "@/lib/gamification-service";
+import { saveCardioSession } from "@/lib/cardio-store";
 
 export interface ExerciseSet {
   setNumber: number;
@@ -284,9 +285,19 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
             if (c.id === cardioId) {
               const nextCompleted = !c.completed;
               if (nextCompleted) {
-                recordCardioCompleted({
-                  caloriesBurned: c.targetCalories || 180,
-                  durationMinutes: c.durationMinutes || 15,
+                const cal = c.targetCalories || Math.round((c.durationMinutes || 20) * 10);
+                const dur = c.durationMinutes || 15;
+                saveCardioSession({
+                  studentId,
+                  title: c.title,
+                  modality: c.type,
+                  durationMinutes: dur,
+                  actualCalories: cal,
+                  intensity: c.intensity || "moderada",
+                  speedKmh: c.speedKmh,
+                  inclinePercent: c.inclinePercent,
+                  source: "workout_sheet",
+                  completedAt: new Date().toISOString(),
                 });
               }
               return { ...c, completed: nextCompleted };
@@ -309,10 +320,24 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
     actualCalories: number
   ) => {
     toggleCardioCompleted(studentId, selectedSplitId, cardioId, actualSeconds, actualCalories);
-    recordCardioCompleted({
-      caloriesBurned: actualCalories || 180,
-      durationMinutes: Math.round(actualSeconds / 60) || 15,
+    const targetItem = (splits.find((s) => s.id === selectedSplitId)?.cardio || []).find((c) => c.id === cardioId);
+    const durMin = Math.max(1, Math.round(actualSeconds / 60));
+    const finalCal = Math.max(1, actualCalories || Math.round(durMin * 10));
+
+    saveCardioSession({
+      studentId,
+      title: targetItem?.title || "Cárdio",
+      modality: targetItem?.type || "esteira_corrida",
+      durationMinutes: durMin,
+      actualSeconds,
+      actualCalories: finalCal,
+      intensity: targetItem?.intensity || "moderada",
+      speedKmh: targetItem?.speedKmh,
+      inclinePercent: targetItem?.inclinePercent,
+      source: "timer",
+      completedAt: new Date().toISOString(),
     });
+
     setSplits((prev) =>
       prev.map((s) => {
         if (s.id === selectedSplitId) {

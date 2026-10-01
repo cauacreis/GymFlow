@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { recordClassCompleted } from "@/lib/gamification-service";
+import { saveCardioSession } from "@/lib/cardio-store";
 import type { GymClass } from "./GymClassesView";
 
 interface ClassVideoModalProps {
@@ -106,7 +107,29 @@ export function ClassVideoModal({
       } catch {}
     }
 
-    recordClassCompleted(gymClass.title, gymClass.caloriesBurnEstimate || 500);
+    const categoryModalityMap: Record<string, string> = {
+      "Spinning": "bicicleta",
+      "HIIT & Funcional": "hiit",
+      "Cardio & Lutas": "hiit",
+      "Dança & Ritmos": "aula_coletiva",
+      "Alongamento & Mobilidade": "caminhada",
+    };
+    const modType = categoryModalityMap[gymClass.category] || "aula_coletiva";
+    const finalCal = gymClass.caloriesBurnEstimate || 450;
+    const durMin = gymClass.durationMinutes || 45;
+
+    saveCardioSession({
+      title: gymClass.title,
+      modality: modType,
+      modalityLabel: gymClass.category,
+      durationMinutes: durMin,
+      actualCalories: finalCal,
+      intensity: "alta",
+      source: "on_demand_class",
+      completedAt: new Date().toISOString(),
+    });
+
+    recordClassCompleted(gymClass.title, finalCal);
 
     if (onCompleteClass) {
       onCompleteClass(gymClass.id);
