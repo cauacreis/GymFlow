@@ -884,7 +884,13 @@ export function AccountCustomizationModal({
 
       // 4. Se for professor, atualiza perfil público no marketplace
       if (role === "coach") {
-        updateCoachPublicProfile(user.id || "coach_me", {
+        const resolveCoachId = (u: UserProfile) => {
+          if (u.id && u.id !== "user_me") return u.id;
+          if (u.name && u.name.toLowerCase().includes("rodrigo")) return "coach_rodrigo";
+          return `coach_${u.id || "me"}`;
+        };
+        const coachTargetId = resolveCoachId(updatedUserPayload);
+        updateCoachPublicProfile(coachTargetId, {
           name: updatedUserPayload.name,
           cref: updatedUserPayload.cref,
           specialty: updatedUserPayload.specialty || "Personal Trainer",

@@ -475,7 +475,12 @@ export function UserProfileModal({
     });
 
     // Se possui perfil no marketplace, atualiza para refletir novo personal
-    const targetCoachId = updated.id && updated.id !== "coach_rodrigo" ? updated.id : (profile.id && profile.id !== "coach_rodrigo" ? profile.id : "coach_me");
+    const resolveCoachId = (u: UserProfile) => {
+      if (u.id && u.id !== "user_me") return u.id;
+      if (u.name && u.name.toLowerCase().includes("rodrigo")) return "coach_rodrigo";
+      return `coach_${u.id || "me"}`;
+    };
+    const targetCoachId = resolveCoachId(updated);
     updateCoachPublicProfile(targetCoachId, {
       name: updated.name,
       cref: cleanCref,
@@ -484,7 +489,14 @@ export function UserProfileModal({
       phone: updated.phone || "",
       avatarUrl: updated.avatarUrl || avatarUrl,
       instagram: cleanInstagram || "",
-      location: cleanLocation,
+      location: cleanLocation || `${city || "Salão Principal"}${state ? ` - ${state}` : ""}`,
+      city: city || undefined,
+      state: state || undefined,
+      neighborhood: neighborhood || undefined,
+      latitude: isValidCoordinate(latitude, longitude) ? latitude : undefined,
+      longitude: isValidCoordinate(latitude, longitude) ? longitude : undefined,
+      serviceModality,
+      operatingRadiusKm,
       pricing: pricingObj,
       allowBookingMessages: upgradeAllowBookingMessages,
     });
@@ -580,7 +592,12 @@ export function UserProfileModal({
 
     // Se for professor, atualiza os dados públicos no marketplace
     if (isCoach) {
-      const targetCoachId = updated.id && updated.id !== "coach_rodrigo" ? updated.id : (profile.id && profile.id !== "coach_rodrigo" ? profile.id : "coach_me");
+      const resolveCoachId = (u: UserProfile) => {
+        if (u.id && u.id !== "user_me") return u.id;
+        if (u.name && u.name.toLowerCase().includes("rodrigo")) return "coach_rodrigo";
+        return `coach_${u.id || "me"}`;
+      };
+      const targetCoachId = resolveCoachId(updated);
       updateCoachPublicProfile(targetCoachId, {
         name,
         cref: cref.trim() || undefined,
@@ -589,7 +606,7 @@ export function UserProfileModal({
         phone,
         avatarUrl,
         instagram,
-        location: location || `${cleanCity || "Salão Principal"} - ${cleanState || "SP"}`,
+        location: location || `${cleanCity || "Salão Principal"}${cleanState ? ` - ${cleanState}` : ""}`,
         city: cleanCity || undefined,
         state: cleanState || undefined,
         neighborhood: cleanNeighborhood || undefined,

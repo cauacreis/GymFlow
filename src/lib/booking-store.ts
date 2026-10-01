@@ -58,6 +58,7 @@ export interface CoachTrainer {
   pixName?: string;
   pixBank?: string;
   allowBookingMessages?: boolean; // Receber mensagens e dúvidas de alunos antes da contratação
+  isCurrentUserProfile?: boolean; // Indica se este perfil público pertence à conta do usuário autenticado
   slots: TrainerSlot[];
 }
 
@@ -520,12 +521,11 @@ export function getStoredCoaches(): CoachTrainer[] {
     // Normalização defensiva: garante preços 35/45/55 e migra dados geográficos de INITIAL_COACHES
     const normalized = filteredList.map((c) => {
       const initial = INITIAL_COACHES.find((ic) => ic.id === c.id);
-      const isRodrigo = c.id === "coach_rodrigo";
-      const resolvedName = (isRodrigo && initial ? initial.name : c.name) || "Personal Trainer";
-      const resolvedCref = isRodrigo && initial ? initial.cref : c.cref;
-      const resolvedAvatar = (isRodrigo && initial ? initial.avatarUrl : (c.avatarUrl || initial?.avatarUrl)) || "";
-      const resolvedSpecialty = (isRodrigo && initial ? initial.specialty : (c.specialty || initial?.specialty)) || "Musculação & Hipertrofia";
-      const resolvedPhone = (isRodrigo && initial ? initial.phone : (c.phone || initial?.phone)) || "";
+      const resolvedName = c.name || initial?.name || "Personal Trainer";
+      const resolvedCref = c.cref || initial?.cref;
+      const resolvedAvatar = c.avatarUrl || initial?.avatarUrl || "";
+      const resolvedSpecialty = c.specialty || initial?.specialty || "Musculação & Hipertrofia";
+      const resolvedPhone = c.phone || initial?.phone || "";
 
       const basic = c.pricing?.basicMonthly && c.pricing.basicMonthly <= 60 ? c.pricing.basicMonthly : 35;
       const pro = c.pricing?.proMonthly && c.pricing.proMonthly <= 75 ? c.pricing.proMonthly : 45;
@@ -541,6 +541,7 @@ export function getStoredCoaches(): CoachTrainer[] {
         city: c.city || initial?.city,
         state: c.state || initial?.state,
         neighborhood: c.neighborhood || initial?.neighborhood,
+        location: c.location || initial?.location,
         latitude: c.latitude ?? initial?.latitude,
         longitude: c.longitude ?? initial?.longitude,
         operatingRadiusKm: c.operatingRadiusKm ?? initial?.operatingRadiusKm,
@@ -1462,13 +1463,33 @@ export function updateBookingNotes(bookingId: string, notes: string): void {
   }
 }
 
+export const EVENT_COACHES_UPDATED = "gymflow:coaches-updated";
+
 export function updateCoachPublicProfile(coachId: string, profile: Partial<CoachTrainer>): void {
   if (typeof window === "undefined") return;
   const coaches = getStoredCoaches();
-  const exists = coaches.some((c) => c.id === coachId);
+
+  // Busca coach existente por ID, e-mail, telefone ou nome normalizado
+  const normalize = (str?: string) =>
+    (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const cleanDigits = (str?: string) => (str || "").replace(/\D/g, "");
+
+  const targetName = normalize(profile.name);
+  const targetPhone = cleanDigits(profile.phone);
+  const targetEmail = normalize(profile.email);
+
+  const existingIndex = coaches.findIndex((c) => {
+    if (c.id === coachId) return true;
+    if (targetEmail && c.email && normalize(c.email) === targetEmail) return true;
+    if (targetPhone && c.phone && cleanDigits(c.phone) === targetPhone) return true;
+    if (targetName && normalize(c.name) === targetName) return true;
+    return false;
+  });
+
   let updated: CoachTrainer[];
-  if (exists) {
-    updated = coaches.map((c) => (c.id === coachId ? { ...c, ...profile } : c));
+  if (existingIndex >= 0) {
+    const matched = coaches[existingIndex];
+    updated = coaches.map((c, idx) => (idx === existingIndex ? { ...matched, ...profile, id: matched.id } : c));
   } else {
     const newCoach: CoachTrainer = {
       id: coachId,
@@ -1505,13 +1526,28 @@ export function updateCoachPublicProfile(coachId: string, profile: Partial<Coach
     };
     updated = [newCoach, ...coaches];
   }
+
   localStorage.setItem(STORAGE_COACHES, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_BOOKING));
+  window.dispatchEvent(new Event(EVENT_COACHES_UPDATED));
+  window.dispatchEvent(new Event("gymflow:auth-changed"));
 }
 
 // ----------------------------------------------------------------------
 // SUBSCRIPTIONS
 // ----------------------------------------------------------------------
+
+export function subscribeToCoaches(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(EVENT_COACHES_UPDATED, callback);
+  window.addEventListener(EVENT_BOOKING, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(EVENT_COACHES_UPDATED, callback);
+    window.removeEventListener(EVENT_BOOKING, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
 
 export function subscribeToBookings(callback: () => void): () => void {
   if (typeof window === "undefined") return () => {};

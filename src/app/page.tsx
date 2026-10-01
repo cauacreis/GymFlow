@@ -474,6 +474,7 @@ export default function GymFlowApp() {
                   studentName={userProfile.name}
                   studentPhone={userProfile.phone || ""}
                   onOpenPlans={() => setIsPlansOpen(true)}
+                  onOpenProfile={() => setIsProfileOpen(true)}
                 />
               </div>
             )}

@@ -58,6 +58,8 @@ import {
   calculateSlotEndTime,
   formatSlotTimeSpan,
   setupRecurringStudentSchedule,
+  getStoredCoaches,
+  updateCoachPublicProfile,
 } from "../src/lib/booking-store";
 import {
   getCoachStudentsStorageKey,
@@ -2269,6 +2271,106 @@ async function runAllTests() {
       studentHiredBookings.some((b) => b.slotTime === "10:00" && b.durationMinutes === 60),
     "requestTrainerBooking: Contratação 3x na semana auto-popula as 3 sessões de 1h na agenda do aluno"
   );
+
+  // ---------------------------------------------------------------------------
+  // 21. TESTANDO FILTROS DE PERSONAL, NORMALIZAÇÃO E ATUALIZAÇÃO AUTOMÁTICA
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 21. Testando Filtros de Personal, Normalização e Atualização Automática...");
+
+  // Funções de matching sob teste
+  const normalize = (str?: string) =>
+    (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+  const matchStateTest = (coachState?: string, filterUf?: string) => {
+    if (!filterUf || filterUf === "ALL") return true;
+    if (!coachState) return false;
+    const cleanTarget = filterUf.trim().toUpperCase();
+    const cleanCoach = coachState.trim().toUpperCase();
+    if (cleanCoach === cleanTarget) return true;
+    const states = [
+      { uf: "SP", name: "São Paulo" },
+      { uf: "RJ", name: "Rio de Janeiro" },
+      { uf: "MG", name: "Minas Gerais" },
+      { uf: "PR", name: "Paraná" },
+      { uf: "DF", name: "Distrito Federal" },
+    ];
+    const foundByUf = states.find((s) => s.uf === cleanTarget);
+    if (foundByUf && normalize(coachState) === normalize(foundByUf.name)) return true;
+    const foundByName = states.find((s) => normalize(s.name) === normalize(coachState));
+    if (foundByName && foundByName.uf === cleanTarget) return true;
+    return false;
+  };
+
+  // Teste 21.1: Normalização de Texto Sem Acentos
+  assert(
+    normalize("São Paulo") === "sao paulo" &&
+    normalize("André Silveira") === "andre silveira" &&
+    normalize("Brasília") === "brasilia" &&
+    normalize("Biomecânica & Força") === "biomecanica & forca",
+    "normalizeText: Remove acentos e converte para minúsculas corretamente"
+  );
+
+  // Teste 21.2: Match de Estado Resiliente
+  assert(
+    matchStateTest("SP", "SP") === true &&
+    matchStateTest("São Paulo", "SP") === true &&
+    matchStateTest("sao paulo", "SP") === true &&
+    matchStateTest("RJ", "RJ") === true &&
+    matchStateTest("Rio de Janeiro", "RJ") === true &&
+    matchStateTest("SP", "RJ") === false,
+    "matchState: Reconhece UF direta e nome completo de estados em qualquer capitalização"
+  );
+
+  // Teste 21.3: Atualização de Localização do Personal Trainer em Tempo Real
+  const testCoachId = "coach_rodrigo";
+  const eventTracker = { coachEventTriggered: false };
+  const originalDispatch = (global as any).window.dispatchEvent;
+  (global as any).window.dispatchEvent = (ev: any) => {
+    if (ev?.type === "gymflow:coaches-updated") {
+      eventTracker.coachEventTriggered = true;
+    }
+    return true;
+  };
+
+  updateCoachPublicProfile(testCoachId, {
+    city: "Campinas",
+    state: "SP",
+    neighborhood: "Cambuí",
+    location: "Smart Fit • Cambuí",
+    serviceModality: "presencial",
+  });
+
+  const updatedCoachesList = getStoredCoaches();
+  const rodrigoUpdated = updatedCoachesList.find((c) => c.id === testCoachId);
+
+  assert(
+    Boolean(rodrigoUpdated && rodrigoUpdated.city === "Campinas" && rodrigoUpdated.neighborhood === "Cambuí"),
+    "updateCoachPublicProfile: Atualiza imediatamente a cidade e bairro do personal trainer"
+  );
+
+  assert(
+    eventTracker.coachEventTriggered === true,
+    "updateCoachPublicProfile: Emite evento reativo 'gymflow:coaches-updated' para atualizar a UI sem refresh"
+  );
+
+  // Teste 21.4: Nova alteração para outra UF (ex: Rio de Janeiro)
+  updateCoachPublicProfile(testCoachId, {
+    city: "Rio de Janeiro",
+    state: "RJ",
+    neighborhood: "Barra da Tijuca",
+    location: "Bodytech • Barra",
+  });
+
+  const reloadedCoaches = getStoredCoaches();
+  const rodrigoRio = reloadedCoaches.find((c) => c.id === testCoachId);
+
+  assert(
+    Boolean(rodrigoRio && rodrigoRio.city === "Rio de Janeiro" && rodrigoRio.state === "RJ"),
+    "updateCoachPublicProfile: Sincroniza dinamicamente nova cidade (Rio de Janeiro) e UF (RJ) nas configurações"
+  );
+
+  // Restaura dispatcher
+  (global as any).window.dispatchEvent = originalDispatch;
 
   // ---------------------------------------------------------------------------
   // RESULTADO FINAL

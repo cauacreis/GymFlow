@@ -42,6 +42,7 @@ import {
   getStudentBookings,
   requestTrainerBooking,
   subscribeToBookings,
+  subscribeToCoaches,
   CoachTrainer,
   BookingRequest,
   getCoachSlotsForDate,
@@ -63,6 +64,7 @@ interface PersonalMarketplaceViewProps {
   studentName?: string;
   studentPhone?: string;
   onOpenPlans?: () => void;
+  onOpenProfile?: () => void;
 }
 
 function decodeHtml(str?: string): string {
@@ -75,11 +77,34 @@ function decodeHtml(str?: string): string {
     .replace(/&#x27;/g, "'");
 }
 
+function normalizeText(str?: string): string {
+  if (!str) return "";
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function matchState(coachState?: string, filterUf?: string): boolean {
+  if (!filterUf || filterUf === "ALL") return true;
+  if (!coachState) return false;
+  const cleanTarget = filterUf.trim().toUpperCase();
+  const cleanCoach = coachState.trim().toUpperCase();
+  if (cleanCoach === cleanTarget) return true;
+  const foundByUf = BRAZIL_STATES.find((s) => s.uf === cleanTarget);
+  if (foundByUf && normalizeText(coachState) === normalizeText(foundByUf.name)) return true;
+  const foundByName = BRAZIL_STATES.find((s) => normalizeText(s.name) === normalizeText(coachState));
+  if (foundByName && foundByName.uf === cleanTarget) return true;
+  return false;
+}
+
 export function PersonalMarketplaceView({
   studentId = "student_carlos",
   studentName = "Aluno",
   studentPhone = "",
   onOpenPlans,
+  onOpenProfile,
 }: PersonalMarketplaceViewProps) {
   const [coaches, setCoaches] = useState<CoachTrainer[]>([]);
   const [selectedCoachId, setSelectedCoachId] = useState<string>("coach_rodrigo");
@@ -119,22 +144,29 @@ export function PersonalMarketplaceView({
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "price_asc">("distance");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Sincroniza coaches e agendamentos
+  // Sincroniza coaches e agendamentos reativamente em tempo real
   useEffect(() => {
     const refreshData = () => {
       setCoaches(getStoredCoaches());
       setMyBookings(getStudentBookings(effectiveStudentId));
     };
     refreshData();
-    const unsub = subscribeToBookings(refreshData);
-    return () => unsub();
+    const unsubBookings = subscribeToBookings(refreshData);
+    const unsubCoaches = subscribeToCoaches(refreshData);
+    window.addEventListener("gymflow:coaches-updated", refreshData);
+    return () => {
+      unsubBookings();
+      unsubCoaches();
+      window.removeEventListener("gymflow:coaches-updated", refreshData);
+    };
   }, [effectiveStudentId]);
 
-  // Ouve mudanças de autenticação/perfil do usuário
+  // Ouve mudanças de autenticação/perfil do usuário e atualiza catálogo e localização
   useEffect(() => {
     const handleAuthChange = () => {
       const updated = getCurrentUser();
       setCurrentUserProfile(updated);
+      setCoaches(getStoredCoaches());
       setMyBookings(getStudentBookings(updated.id || effectiveStudentId));
     };
     window.addEventListener("gymflow:auth-changed", handleAuthChange);
@@ -208,158 +240,161 @@ export function PersonalMarketplaceView({
     );
   };
 
-  // Lista enriquecida com cálculo de distância ortodrômica (Haversine)
-  // E exclusão estrita do próprio usuário da listagem de contratação
+  // Lista enriquecida com cálculo de proximidade e identificação de perfil próprio
   const enrichedCoaches = useMemo(() => {
     const userLat = currentUserProfile.latitude;
     const userLng = currentUserProfile.longitude;
     const hasUserCoords = isValidCoordinate(userLat, userLng);
-    const userCity = (currentUserProfile.city || "").trim().toLowerCase();
+    const userCity = normalizeText(currentUserProfile.city);
+    const userState = (currentUserProfile.state || "").trim().toUpperCase();
 
-    // 🛡️ NUNCA deixa a própria pessoa se ver como personal para contratação!
-    const availableCoaches = coaches.filter((coach) => {
-      // 1. Checagem por ID
-      if (currentUserProfile.id && coach.id === currentUserProfile.id) return false;
-      if (studentId && coach.id === studentId) return false;
-      if (coach.id === "coach_me" || coach.id === "user_me") return false;
+    const userDigits = (currentUserProfile.phone || studentPhone || "").replace(/\D/g, "");
+    const currentUserName = normalizeText(currentUserProfile.name || studentName || "");
 
-      // 2. Checagem por E-mail
-      if (
-        currentUserProfile.email &&
-        coach.email &&
-        currentUserProfile.email.trim().toLowerCase() === coach.email.trim().toLowerCase()
-      ) {
-        return false;
-      }
+    return coaches
+      .filter((c) => Boolean(c && c.id && c.name))
+      .map((coach) => {
+        const coachDigits = (coach.phone || "").replace(/\D/g, "");
+        const coachName = normalizeText(coach.name);
 
-      // 3. Checagem por Telefone (comparando apenas dígitos numéricos)
-      const userDigits = (currentUserProfile.phone || studentPhone || "").replace(/\D/g, "");
-      const coachDigits = (coach.phone || "").replace(/\D/g, "");
-      if (userDigits && coachDigits && userDigits.length >= 8 && userDigits === coachDigits) {
-        return false;
-      }
-
-      // 4. Checagem por Nome Completo do Usuário
-      const currentUserName = (currentUserProfile.name || studentName || "").trim().toLowerCase();
-      const coachName = (coach.name || "").trim().toLowerCase();
-      if (currentUserName && coachName && currentUserName === coachName) {
-        return false;
-      }
-
-      return true;
-    });
-
-    return availableCoaches.map((coach) => {
-      let calculatedDistanceKm: number | null = null;
-      let proximityLabel = "";
-      let isSameCity = false;
-
-      // 1. Se aluno e personal possuem coordenadas válidas: calcula Haversine
-      if (hasUserCoords && isValidCoordinate(coach.latitude, coach.longitude)) {
-        calculatedDistanceKm = calculateDistanceKm(
-          userLat as number,
-          userLng as number,
-          coach.latitude as number,
-          coach.longitude as number
+        // Identifica se este card pertence à conta do próprio usuário
+        const isCurrentUserProfile = Boolean(
+          (currentUserProfile.id && (coach.id === currentUserProfile.id || coach.id === `coach_${currentUserProfile.id}`)) ||
+          (studentId && (coach.id === studentId || coach.id === `coach_${studentId}`)) ||
+          (currentUserProfile.email && coach.email && normalizeText(currentUserProfile.email) === normalizeText(coach.email)) ||
+          (userDigits && coachDigits && userDigits.length >= 8 && userDigits === coachDigits) ||
+          (currentUserName && coachName && currentUserName === coachName && currentUserName !== "aluno" && currentUserName !== "aluno convidado")
         );
-      }
 
-      // 2. Se personal tem cidade e bate com a cidade do aluno
-      if (userCity && coach.city && coach.city.trim().toLowerCase() === userCity) {
-        isSameCity = true;
-      }
+        let calculatedDistanceKm: number | null = null;
+        let proximityLabel = "";
+        let isSameCity = false;
+        let isSameState = false;
 
-      // 3. Rótulo de exibição de proximidade
-      if (calculatedDistanceKm !== null) {
-        proximityLabel = `A ${formatDistance(calculatedDistanceKm)} de você`;
-      } else if (isSameCity) {
-        proximityLabel = `Na sua cidade (${coach.city}${coach.state ? ` - ${coach.state}` : ""})`;
-      } else if (coach.serviceModality === "online") {
-        proximityLabel = "Atendimento 100% Online";
-      } else if (coach.city) {
-        proximityLabel = `${coach.city}${coach.state ? ` - ${coach.state}` : ""}`;
-      } else {
-        proximityLabel = coach.distance || "Salão Principal";
-      }
+        // 1. Se aluno e personal possuem coordenadas válidas: calcula Haversine
+        if (hasUserCoords && isValidCoordinate(coach.latitude, coach.longitude)) {
+          calculatedDistanceKm = calculateDistanceKm(
+            userLat as number,
+            userLng as number,
+            coach.latitude as number,
+            coach.longitude as number
+          );
+        }
 
-      const baseMonthlyPrice = coach.pricing.basicMonthly ?? coach.pricing.dailySession ?? 35;
+        // 2. Se personal tem cidade e bate com a cidade do aluno
+        if (userCity && coach.city && normalizeText(coach.city) === userCity) {
+          isSameCity = true;
+        }
 
-      return {
-        ...coach,
-        calculatedDistanceKm,
-        proximityLabel,
-        isSameCity,
-        baseMonthlyPrice,
-      };
-    });
+        // 3. Se está no mesmo estado
+        if (userState && matchState(coach.state, userState)) {
+          isSameState = true;
+        }
+
+        // 4. Rótulo de exibição de proximidade
+        if (calculatedDistanceKm !== null) {
+          proximityLabel = `A ${formatDistance(calculatedDistanceKm)} de você`;
+        } else if (isSameCity) {
+          proximityLabel = `Na sua cidade (${coach.city}${coach.state ? ` - ${coach.state}` : ""})`;
+        } else if (isSameState) {
+          proximityLabel = `No seu estado (${coach.state}${coach.city ? ` • ${coach.city}` : ""})`;
+        } else if (coach.serviceModality === "online") {
+          proximityLabel = "Atendimento 100% Online";
+        } else if (coach.city) {
+          proximityLabel = `${coach.city}${coach.state ? ` - ${coach.state}` : ""}`;
+        } else {
+          proximityLabel = coach.distance || "Salão Principal";
+        }
+
+        const baseMonthlyPrice = coach.pricing.basicMonthly ?? coach.pricing.dailySession ?? 35;
+
+        return {
+          ...coach,
+          isCurrentUserProfile,
+          calculatedDistanceKm,
+          proximityLabel,
+          isSameCity,
+          isSameState,
+          baseMonthlyPrice,
+        };
+      });
   }, [coaches, currentUserProfile, studentId, studentName, studentPhone]);
 
   // Filtros aplicados e ordenação por proximidade
   const filteredAndSortedCoaches = useMemo(() => {
     let result = enrichedCoaches;
 
-    // 1. Busca textual
+    // 1. Busca textual resiliente a acentos e maiúsculas
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+      const q = normalizeText(searchQuery);
       result = result.filter(
         (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.specialty.toLowerCase().includes(q) ||
-          (c.city && c.city.toLowerCase().includes(q)) ||
-          (c.neighborhood && c.neighborhood.toLowerCase().includes(q)) ||
-          (c.location && c.location.toLowerCase().includes(q)) ||
-          c.proximityLabel.toLowerCase().includes(q)
+          normalizeText(c.name).includes(q) ||
+          normalizeText(c.specialty).includes(q) ||
+          normalizeText(c.city).includes(q) ||
+          normalizeText(c.neighborhood).includes(q) ||
+          normalizeText(c.location).includes(q) ||
+          normalizeText(c.bio).includes(q) ||
+          normalizeText(c.proximityLabel).includes(q)
       );
     }
 
     // 2. Filtro por Estado (UF)
     if (selectedState !== "ALL") {
       result = result.filter((c) => {
-        if (c.serviceModality === "online") return true;
-        return c.state?.toUpperCase() === selectedState.toUpperCase();
+        if (c.serviceModality === "online" && selectedModality !== "presencial") return true;
+        return matchState(c.state, selectedState) || matchState(c.location, selectedState);
       });
     }
 
     // 3. Filtro por Cidade
     if (selectedCity.trim()) {
-      const cQuery = selectedCity.toLowerCase().trim();
+      const cQuery = normalizeText(selectedCity);
       result = result.filter(
         (c) =>
-          c.serviceModality === "online" ||
-          (c.city && c.city.toLowerCase().includes(cQuery))
+          (c.serviceModality === "online" && selectedModality !== "presencial") ||
+          normalizeText(c.city).includes(cQuery) ||
+          normalizeText(c.neighborhood).includes(cQuery) ||
+          normalizeText(c.location).includes(cQuery)
       );
     }
 
     // 4. Filtro por Modalidade
     if (selectedModality !== "ALL") {
       result = result.filter((c) => {
+        const mod = c.serviceModality || "presencial";
         if (selectedModality === "presencial") {
-          return c.serviceModality === "presencial" || c.serviceModality === "hibrido" || !c.serviceModality;
+          return mod === "presencial" || mod === "hibrido";
         }
         if (selectedModality === "online") {
-          return c.serviceModality === "online" || c.serviceModality === "hibrido";
+          return mod === "online" || mod === "hibrido";
         }
         if (selectedModality === "hibrido") {
-          return c.serviceModality === "hibrido";
+          return mod === "hibrido";
         }
         return true;
       });
     }
 
-    // 5. Filtro por Raio Máximo (se GPS estiver ativo)
+    // 5. Filtro por Raio Máximo (se GPS estiver ativo ou na mesma cidade)
     if (maxDistanceRadiusKm !== "ALL") {
       const maxKm = Number(maxDistanceRadiusKm);
       result = result.filter((c) => {
-        if (c.serviceModality === "online") return true;
+        if (c.serviceModality === "online" && selectedModality !== "presencial") return true;
         if (c.calculatedDistanceKm !== null) {
           return c.calculatedDistanceKm <= maxKm;
         }
+        if (c.isSameCity) return true;
         return false;
       });
     }
 
-    // 6. Ordenação
+    // 6. Ordenação inteligente
     return [...result].sort((a, b) => {
+      // Se for o próprio treinador navegando, destaca seu perfil no topo
+      if (a.isCurrentUserProfile && !b.isCurrentUserProfile) return -1;
+      if (!a.isCurrentUserProfile && b.isCurrentUserProfile) return 1;
+
       if (sortBy === "distance") {
         if (a.calculatedDistanceKm !== null && b.calculatedDistanceKm !== null) {
           return a.calculatedDistanceKm - b.calculatedDistanceKm;
@@ -368,6 +403,8 @@ export function PersonalMarketplaceView({
         if (b.calculatedDistanceKm !== null) return 1;
         if (a.isSameCity && !b.isSameCity) return -1;
         if (!a.isSameCity && b.isSameCity) return 1;
+        if (a.isSameState && !b.isSameState) return -1;
+        if (!a.isSameState && b.isSameState) return 1;
         return b.rating - a.rating;
       }
 
@@ -533,6 +570,12 @@ export function PersonalMarketplaceView({
   // Enviar Solicitação de Agendamento
   const handleConfirmBooking = () => {
     const user = getCurrentUser();
+    if (currentCoach?.isCurrentUserProfile) {
+      setBookingErrorMessage("Este é o seu próprio perfil de treinador. Para editar seus dados, especialidade ou localização, use o botão de Configurações.");
+      triggerHaptic("warning");
+      return;
+    }
+
     if (isSubscriptionExpired(user)) {
       setBookingErrorMessage("Sua assinatura ou período de teste está expirado. Renove seu plano para agendar treinos presenciais.");
       triggerHaptic("warning");
@@ -628,6 +671,17 @@ export function PersonalMarketplaceView({
   };
 
   const hasUserGps = isValidCoordinate(currentUserProfile.latitude, currentUserProfile.longitude);
+  const userRegisteredCity = (currentUserProfile.city || "").trim();
+  const userRegisteredState = (currentUserProfile.state || "").trim().toUpperCase();
+  const userRegisteredNeighborhood = (currentUserProfile.neighborhood || "").trim();
+  const hasUserRegisteredLocation = Boolean(userRegisteredCity || userRegisteredState || hasUserGps);
+
+  const userLocationDisplay = [
+    userRegisteredNeighborhood,
+    userRegisteredCity,
+    userRegisteredState,
+  ].filter(Boolean).join(" - ") || (hasUserGps ? "Coordenadas GPS ativas" : "");
+
   const activeFiltersCount =
     (selectedState !== "ALL" ? 1 : 0) +
     (selectedModality !== "ALL" ? 1 : 0) +
@@ -646,8 +700,49 @@ export function PersonalMarketplaceView({
         </p>
       </div>
 
-      {/* Banner de Geolocalização / Ativação de GPS do Aluno */}
-      {!hasUserGps ? (
+      {/* Banner de Localização Cadastrada ou Ativação de GPS do Aluno */}
+      {hasUserRegisteredLocation ? (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-zinc-950 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
+              <MapPin className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Sua Localização</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {hasUserGps ? "GPS & Perfil" : "Cadastrada"}
+                </span>
+              </div>
+              <p className="text-xs font-black text-white truncate mt-0.5">
+                {userLocationDisplay}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleRequestUserLocation}
+              disabled={isLocatingUser}
+              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[11px] font-bold border border-white/[0.08] transition-all flex items-center gap-1.5 active:scale-95"
+              title="Atualizar localização via GPS do dispositivo"
+            >
+              {isLocatingUser ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                  <span>Obtendo GPS...</span>
+                </>
+              ) : (
+                <>
+                  <Navigation className="w-3 h-3 text-emerald-400" />
+                  <span>Atualizar GPS</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-zinc-900 to-zinc-950 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
@@ -678,24 +773,6 @@ export function PersonalMarketplaceView({
                 <span>Detectar Localização</span>
               </>
             )}
-          </button>
-        </div>
-      ) : (
-        <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-xs text-emerald-300 font-medium truncate">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="truncate">
-              Mostrando personais por proximidade{" "}
-              {currentUserProfile.city ? `(${currentUserProfile.city} - ${currentUserProfile.state || "SP"})` : ""}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleRequestUserLocation}
-            className="text-[10px] text-emerald-400 hover:underline shrink-0 font-bold"
-          >
-            Atualizar GPS
           </button>
         </div>
       )}
@@ -1109,6 +1186,11 @@ export function PersonalMarketplaceView({
                               {coach.cref}
                             </span>
                           )}
+                          {coach.isCurrentUserProfile && (
+                            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                              Seu Perfil
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1 text-[10px] text-amber-400 font-bold shrink-0">
@@ -1139,6 +1221,12 @@ export function PersonalMarketplaceView({
                           </span>
                         )}
 
+                        {coach.isCurrentUserProfile && (
+                          <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                            ✨ Visualização Pública
+                          </span>
+                        )}
+
                         {coach.allowBookingMessages !== false && (
                           <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20">
                             <MessageSquare className="w-2.5 h-2.5 text-blue-400" />
@@ -1165,8 +1253,15 @@ export function PersonalMarketplaceView({
           {/* Cabeçalho do Personal Selecionado */}
           <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
             <div>
-              <span className="text-[10px] uppercase font-bold text-zinc-400">Agenda & Contratação</span>
-              <h3 className="text-xs font-black text-white">{decodeHtml(currentCoach.name)}</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Agenda & Contratação</span>
+                {currentCoach.isCurrentUserProfile && (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Seu Perfil de Treinador
+                  </span>
+                )}
+              </div>
+              <h3 className="text-xs font-black text-white mt-0.5">{decodeHtml(currentCoach.name)}</h3>
               {currentCoach.location && (
                 <span className="text-[10px] text-zinc-400 block mt-0.5">
                   📍 {currentCoach.location}
@@ -1427,14 +1522,32 @@ export function PersonalMarketplaceView({
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleConfirmBooking}
-              className="py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"
-            >
-              <span>Confirmar Agendamento</span>
-              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-            </button>
+            {currentCoach.isCurrentUserProfile ? (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("selection");
+                  if (onOpenProfile) {
+                    onOpenProfile();
+                  } else {
+                    window.dispatchEvent(new CustomEvent("gymflow:open-profile"));
+                  }
+                }}
+                className="py-3 px-5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-amber-500/20 active:scale-95 transition-all"
+              >
+                <span>Editar Suas Configurações</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConfirmBooking}
+                className="py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-zinc-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"
+              >
+                <span>Confirmar Agendamento</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            )}
           </div>
         </div>
       )}
