@@ -562,9 +562,11 @@ export function PersonalMarketplaceView({
       slotTime: selectedTimeSlot,
       planType: selectedPlanType,
       extraOfferedAmount: extraAmount,
+      durationMinutes: 60,
+      workoutTitle: `Treino com ${currentCoach.name}`,
       notes: isContract
-        ? `Início da assinatura em ${selectedDateFormatted} às ${selectedTimeSlot}. Válido até ${validUntilFormatted}.`
-        : `Sessão presencial agendada para ${selectedDateFormatted} às ${selectedTimeSlot}.`,
+        ? `Início da assinatura em ${selectedDateFormatted} às ${selectedTimeSlot}. 3x na semana, 1h por aula. Válido até ${validUntilFormatted}.`
+        : `Sessão presencial agendada para ${selectedDateFormatted} às ${selectedTimeSlot} (Duração: 1h).`,
     });
 
     setShowSuccessModal(true);

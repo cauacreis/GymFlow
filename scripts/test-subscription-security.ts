@@ -55,6 +55,9 @@ import {
   getStudentBookings,
   requestTrainerBooking,
   addNotification,
+  calculateSlotEndTime,
+  formatSlotTimeSpan,
+  setupRecurringStudentSchedule,
 } from "../src/lib/booking-store";
 import {
   getCoachStudentsStorageKey,
@@ -2150,6 +2153,121 @@ async function runAllTests() {
       coachCardioFinished?.actualSeconds === 900 &&
       coachCardioFinished?.actualCalories === 192,
     "Timer no Aluno: Aluno com personal conclui o cárdio prescrito pelo professor registrando 900s e 192 kcal"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 20. AGENDA DO ALUNO: CONTRATAÇÃO 3X NA SEMANA, DURAÇÃO (1H) E TÍTULOS
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 20. Testando Agenda do Aluno: Contratação 3x na Semana, Duração e Títulos de Treino...");
+
+  // Teste 20.1: Cálculo dinâmico de término de horário
+  const end1 = calculateSlotEndTime("09:00", 60);
+  assert(
+    end1 === "10:00",
+    "calculateSlotEndTime: Início às 09:00 com duração de 1h (60 min) termina exatamente às 10:00"
+  );
+
+  const end2 = calculateSlotEndTime("18:30", 45);
+  assert(
+    end2 === "19:15",
+    "calculateSlotEndTime: Início às 18:30 com duração de 45 min termina às 19:15"
+  );
+
+  // Teste 20.2: Formatação de timespan e badge de duração
+  const span = formatSlotTimeSpan("09:00", 60);
+  assert(
+    span.timeSpan === "09:00 - 10:00" && span.durationLabel === "1h" && span.endTime === "10:00",
+    "formatSlotTimeSpan: Gera '09:00 - 10:00' com rótulo '1h' e término '10:00'"
+  );
+
+  // Teste 20.3: Contratação recorrente 3x na semana (1h/dia) para o aluno
+  const studentRecId = "student_caua_3x_week";
+  const coachViniciusRecId = "coach_vinicius_rec";
+
+  const recurringSessions = setupRecurringStudentSchedule({
+    studentId: studentRecId,
+    studentName: "Cauã Felype",
+    coachId: coachViniciusRecId,
+    coachName: "Prof. Vinícius Personal",
+    coachPhone: "11988887777",
+    daysOfWeek: ["Segunda", "Quarta", "Sexta"],
+    startTime: "09:00",
+    durationMinutes: 60,
+    planType: "pro",
+    workoutTitles: [
+      "Treino A - Peitoral e Deltoides",
+      "Treino B - Dorsal e Bíceps",
+      "Treino C - Pernas e Glúteos",
+    ],
+  });
+
+  assert(
+    recurringSessions.length === 3,
+    "setupRecurringStudentSchedule: Gera exatamente as 3 sessões na semana contratadas (Segunda, Quarta, Sexta)"
+  );
+
+  // Teste 20.4: Validação de que cada sessão traz o treino prescrito e o término
+  const segSession = recurringSessions.find((s) => s.slotDay === "Segunda");
+  const quaSession = recurringSessions.find((s) => s.slotDay === "Quarta");
+  const sexSession = recurringSessions.find((s) => s.slotDay === "Sexta");
+
+  assert(
+    segSession?.workoutTitle === "Treino A - Peitoral e Deltoides" &&
+      segSession?.slotTime === "09:00" &&
+      segSession?.durationMinutes === 60,
+    "Sessão de Segunda: Exibe 'Treino A - Peitoral e Deltoides' das 09:00 até as 10:00 (1h de duração)"
+  );
+
+  assert(
+    quaSession?.workoutTitle === "Treino B - Dorsal e Bíceps" &&
+      quaSession?.slotTime === "09:00" &&
+      calculateSlotEndTime(quaSession.slotTime, quaSession.durationMinutes) === "10:00",
+    "Sessão de Quarta: Exibe 'Treino B - Dorsal e Bíceps' com término calculado em 10:00 (1h)"
+  );
+
+  assert(
+    sexSession?.workoutTitle === "Treino C - Pernas e Glúteos" &&
+      sexSession?.slotTime === "09:00" &&
+      calculateSlotEndTime(sexSession.slotTime, sexSession.durationMinutes) === "10:00",
+    "Sessão de Sexta: Exibe 'Treino C - Pernas e Glúteos' com término calculado em 10:00 (1h)"
+  );
+
+  // Teste 20.5: Sincronização mútua - Acessível tanto pelo aluno quanto pelo professor
+  const studentBookingsFromStore = getStudentBookings(studentRecId);
+  const coachBookingsFromStore = getCoachBookings(coachViniciusRecId);
+
+  assert(
+    studentBookingsFromStore.length >= 3 &&
+      studentBookingsFromStore.some((b) => b.slotDay === "Segunda" && b.slotTime === "09:00"),
+    "Sincronização Aluno: getStudentBookings lista as 3 aulas de 1h na agenda do aluno"
+  );
+
+  assert(
+    coachBookingsFromStore.length >= 3 &&
+      coachBookingsFromStore.some((b) => b.studentId === studentRecId && b.slotTime === "09:00"),
+    "Sincronização Coach: getCoachBookings lista os mesmos agendamentos na grade do treinador"
+  );
+
+  // Teste 20.6: requestTrainerBooking com plano semanal (3x na semana, 1h) auto-popula a grade
+  const newStudentAutoId = "student_auto_hired_3x";
+  requestTrainerBooking({
+    studentId: newStudentAutoId,
+    studentName: "Lucas Hired",
+    studentPhone: "11977776666",
+    coachId: coachViniciusRecId,
+    slotDay: "Segunda, 05/10/2026 (Início)",
+    slotTime: "10:00",
+    planType: "semanal",
+    extraOfferedAmount: 0,
+    durationMinutes: 60,
+    workoutTitle: "Treino com Prof. Vinícius Personal",
+  });
+
+  const studentHiredBookings = getStudentBookings(newStudentAutoId);
+  assert(
+    studentHiredBookings.length >= 3 &&
+      studentHiredBookings.some((b) => b.slotTime === "10:00" && b.durationMinutes === 60),
+    "requestTrainerBooking: Contratação 3x na semana auto-popula as 3 sessões de 1h na agenda do aluno"
   );
 
   // ---------------------------------------------------------------------------

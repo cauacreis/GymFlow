@@ -91,6 +91,8 @@ export interface BookingRequest {
   notes?: string;
   createdAt: string;
   rescheduleRequest?: RescheduleProposal;
+  durationMinutes?: number;
+  workoutTitle?: string;
 }
 
 export interface AppNotification {
@@ -763,6 +765,135 @@ export function markAllNotificationsAsRead(): void {
 // BOOKING ACTIONS (ALUNO & PROFESSOR)
 // ----------------------------------------------------------------------
 
+export function calculateSlotEndTime(startTime: string, durationMinutes: number = 60): string {
+  if (!startTime) return "";
+  const parts = startTime.split(":");
+  if (parts.length < 2) return startTime;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10) || 0;
+  if (isNaN(h)) return startTime;
+
+  const totalMinutes = h * 60 + m + (durationMinutes || 60);
+  const endH = Math.floor(totalMinutes / 60) % 24;
+  const endM = totalMinutes % 60;
+  return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+}
+
+export function formatSlotTimeSpan(startTime: string, durationMinutes: number = 60): {
+  startTime: string;
+  endTime: string;
+  timeSpan: string;
+  durationLabel: string;
+} {
+  const endTime = calculateSlotEndTime(startTime, durationMinutes);
+  const durationLabel =
+    durationMinutes >= 60
+      ? `${durationMinutes / 60 === 1 ? "1h" : `${(durationMinutes / 60).toFixed(1).replace(".0", "")}h`}`
+      : `${durationMinutes}m`;
+  return {
+    startTime,
+    endTime,
+    timeSpan: `${startTime} - ${endTime}`,
+    durationLabel,
+  };
+}
+
+export function setupRecurringStudentSchedule(params: {
+  studentId: string;
+  studentName: string;
+  studentPhone?: string;
+  coachId: string;
+  coachName?: string;
+  coachPhone?: string;
+  daysOfWeek: string[]; // ex: ["Segunda", "Quarta", "Sexta"]
+  startTime: string;    // ex: "09:00"
+  durationMinutes?: number; // ex: 60 (1 hora)
+  planType?: "basico" | "pro" | "vip" | "diario" | "semanal" | "mensal";
+  workoutTitles?: string[]; // ex: ["Treino A - Peitoral", "Treino B - Costas", "Treino C - Pernas"]
+}): BookingRequest[] {
+  const coaches = getStoredCoaches();
+  const coach = coaches.find((c) => c.id === params.coachId);
+  const resolvedCoachName = params.coachName || coach?.name || "Personal Trainer";
+  const resolvedCoachPhone = params.coachPhone || coach?.phone || "";
+  const duration = params.durationMinutes || 60;
+
+  const currentBookings = getAllRawBookings();
+  // Filtra agendamentos recorrentes anteriores desse aluno com esse coach para não duplicar
+  const filtered = currentBookings.filter(
+    (b) => !(b.studentId === params.studentId && b.coachId === params.coachId && b.id.startsWith("rec_"))
+  );
+
+  const newBookings: BookingRequest[] = params.daysOfWeek.map((day, idx) => {
+    const defaultTitle = params.workoutTitles?.[idx] || `Treino ${String.fromCharCode(65 + idx)}`;
+    return {
+      id: `rec_${params.studentId}_${day.toLowerCase().slice(0, 3)}_${Date.now()}_${idx}`,
+      studentId: params.studentId,
+      studentName: params.studentName,
+      studentPhone: params.studentPhone || "",
+      coachId: params.coachId,
+      coachName: resolvedCoachName,
+      coachPhone: resolvedCoachPhone,
+      slotDay: day,
+      slotTime: params.startTime,
+      durationMinutes: duration,
+      workoutTitle: defaultTitle,
+      planType: params.planType || "pro",
+      basePrice: 45,
+      extraOfferedAmount: 0,
+      totalPrice: 45,
+      status: "accepted",
+      paymentStatus: "paid",
+      attendanceStatus: "scheduled",
+      notes: `Acompanhamento Recorrente (${params.daysOfWeek.length}x na semana, ${duration >= 60 ? `${Math.floor(duration / 60)}h` : `${duration}m`} por sessão).`,
+      createdAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+    };
+  });
+
+  const updated = [...newBookings, ...filtered];
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
+    window.dispatchEvent(new Event(EVENT_BOOKING));
+
+    // Atualiza weeklySchedule no perfil do estudante em todos os armazenamentos
+    try {
+      const scheduleStrings = params.daysOfWeek.map((d) => `${d.split("-")[0].trim()} · ${params.startTime}`);
+      const studentKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k === "gymflow_students_v3" || k.startsWith("gymflow_students_"))) {
+          studentKeys.push(k);
+        }
+      }
+      for (const k of studentKeys) {
+        const val = localStorage.getItem(k);
+        if (val) {
+          const list = JSON.parse(val);
+          if (Array.isArray(list)) {
+            let changed = false;
+            const updatedList = list.map((st: any) => {
+              if (st.id === params.studentId || (params.studentName && st.name === params.studentName)) {
+                changed = true;
+                return {
+                  ...st,
+                  weeklySchedule: scheduleStrings,
+                  scheduledTimeToday: params.startTime,
+                  plan: `${params.daysOfWeek.length}x na semana (${duration >= 60 ? `${Math.floor(duration / 60)}h` : `${duration}m`}/aula)`,
+                };
+              }
+              return st;
+            });
+            if (changed) {
+              localStorage.setItem(k, JSON.stringify(updatedList));
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return newBookings;
+}
+
 export function requestTrainerBooking(params: {
   studentId: string;
   studentName: string;
@@ -773,12 +904,15 @@ export function requestTrainerBooking(params: {
   planType: "basico" | "pro" | "vip" | "diario" | "semanal" | "mensal";
   extraOfferedAmount: number;
   notes?: string;
+  durationMinutes?: number;
+  workoutTitle?: string;
 }): BookingRequest {
   const coaches = getStoredCoaches();
   const coach = coaches.find((c) => c.id === params.coachId);
   const resolvedCoachId = coach ? coach.id : params.coachId;
   const resolvedCoachName = coach ? coach.name : "Personal Trainer";
   const resolvedCoachPhone = coach ? coach.phone : "";
+  const duration = params.durationMinutes || 60;
 
   const basePrice = coach
     ? params.planType === "basico" || params.planType === "diario"
@@ -800,12 +934,14 @@ export function requestTrainerBooking(params: {
     coachPhone: resolvedCoachPhone,
     slotDay: params.slotDay,
     slotTime: params.slotTime,
+    durationMinutes: duration,
+    workoutTitle: params.workoutTitle || "Treino Presencial",
     planType: params.planType,
     basePrice,
     extraOfferedAmount: params.extraOfferedAmount,
     totalPrice,
-    status: "pending",
-    paymentStatus: "pending",
+    status: "accepted",
+    paymentStatus: "paid",
     attendanceStatus: "scheduled",
     notes: params.notes,
     createdAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
@@ -817,13 +953,36 @@ export function requestTrainerBooking(params: {
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updatedBookings));
 
-    // Notifica o treinador sobre a nova solicitação
+    // Se contratou plano semanal/3x na semana ou mensal/5x na semana, já gera a grade completa da semana!
+    const is3xWeek = params.planType === "semanal" || params.planType === "pro" || (params.notes && params.notes.includes("3x"));
+    const is5xWeek = params.planType === "mensal" || params.planType === "vip" || (params.notes && params.notes.includes("5x"));
+
+    if (is3xWeek || is5xWeek) {
+      const days = is5xWeek
+        ? ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+        : ["Segunda", "Quarta", "Sexta"];
+
+      setupRecurringStudentSchedule({
+        studentId: params.studentId,
+        studentName: params.studentName,
+        studentPhone: params.studentPhone,
+        coachId: resolvedCoachId,
+        coachName: resolvedCoachName,
+        coachPhone: resolvedCoachPhone,
+        daysOfWeek: days,
+        startTime: params.slotTime,
+        durationMinutes: duration,
+        planType: params.planType,
+      });
+    }
+
+    // Notifica o treinador sobre a nova contratação/agendamento
     addNotification({
       targetRole: "coach",
       coachId: resolvedCoachId,
       type: "training_reminder",
-      title: "Nova Solicitação de Treino! 📅",
-      message: `${params.studentName} solicitou o horário de ${params.slotDay} às ${params.slotTime} (Plano ${params.planType.toUpperCase()}${params.extraOfferedAmount > 0 ? ` com +R$ ${params.extraOfferedAmount} extra` : ""}).`,
+      title: "Novo Aluno Agendado! 📅",
+      message: `${params.studentName} contratou treino para ${params.slotDay} às ${params.slotTime} (Duração: ${duration}min).`,
     });
 
     window.dispatchEvent(new Event(EVENT_BOOKING));
