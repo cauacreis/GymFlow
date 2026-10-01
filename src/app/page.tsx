@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { BottomTabBar, GymTabType } from "@/components/layout/BottomTabBar";
-import { PWAInstaller } from "@/components/pwa/PWAInstaller";
 import { WorkoutSheet } from "@/components/workout/WorkoutSheet";
 import { RestTimerModal } from "@/components/workout/RestTimerModal";
 import { GymClassesView } from "@/components/classes/GymClassesView";
@@ -348,8 +347,6 @@ export default function GymFlowApp() {
 
   return (
     <div className="w-full min-h-screen bg-[#070709] text-white flex flex-col justify-between relative selection:bg-emerald-500/30 selection:text-emerald-300">
-      {/* Banner PWA para celular */}
-      <PWAInstaller />
 
       {/* Header com Papel Ativo, Alternância de Modo & Notificações */}
       <Header

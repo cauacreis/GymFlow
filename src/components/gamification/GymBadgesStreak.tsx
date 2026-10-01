@@ -17,8 +17,11 @@ import {
   Shield,
   Star,
   X,
+  UserCheck,
+  GraduationCap,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getCurrentUser } from "@/lib/auth-store";
 
 export type BadgeTier = "bronze" | "prata" | "ouro" | "diamante";
 export type BadgeRarity = "comum" | "raro" | "epico" | "lendario" | "mitico";
@@ -35,15 +38,28 @@ export interface BadgeLevelInfo {
 export interface BadgeItem {
   id: string;
   name: string;
-  category: "Constância" | "Disciplina" | "Dedicação" | "Força" | "Frequência" | "Resistência" | "Volume" | "Secreta";
+  role: "student" | "coach";
+  category:
+    | "Constância"
+    | "Disciplina"
+    | "Dedicação"
+    | "Força"
+    | "Frequência"
+    | "Resistência"
+    | "Volume"
+    | "Saúde"
+    | "Consultoria"
+    | "Prescrição"
+    | "Excelência"
+    | "Secreta";
   description: string;
   image: string;
   unlocked: boolean;
   unlockedAt?: string;
   currentLevel: number;
   maxLevel: number;
-  currentProgress: number; // valor atual
-  targetProgress: number; // valor para o próximo nível
+  currentProgress: number;
+  targetProgress: number;
   unit: string;
   isSecret?: boolean;
   secretClue?: string;
@@ -97,10 +113,14 @@ const RARITY_META: Record<BadgeRarity, { label: string; color: string }> = {
   mitico: { label: "Mítico", color: "bg-rose-500/20 text-rose-300 border-rose-500/40" },
 };
 
-const BADGES: BadgeItem[] = [
+export const INITIAL_ALL_BADGES: BadgeItem[] = [
+  // ==========================================
+  // CONQUISTAS DO ALUNO
+  // ==========================================
   {
     id: "streak-fire",
     name: "Fogo Sagrado",
+    role: "student",
     category: "Constância",
     description: "Mantenha a chama acesa comparecendo à academia em dias consecutivos sem quebrar o ritmo.",
     image: "/badges/badge_fogo_sagrado.png",
@@ -122,6 +142,7 @@ const BADGES: BadgeItem[] = [
   {
     id: "early-bird",
     name: "Clube das 06h",
+    role: "student",
     category: "Disciplina",
     description: "Vença a cama e conclua suas sessões antes das 07:00 da manhã com dedicação inabalável.",
     image: "/badges/badge_clube_06h.png",
@@ -143,6 +164,7 @@ const BADGES: BadgeItem[] = [
   {
     id: "century-club",
     name: "Centurião",
+    role: "student",
     category: "Dedicação",
     description: "Acumule centenas de treinos registrados com disciplina e evolução consistente no GymFlow.",
     image: "/badges/badge_centuriao.png",
@@ -164,6 +186,7 @@ const BADGES: BadgeItem[] = [
   {
     id: "pr-breaker",
     name: "Batedor de PR",
+    role: "student",
     category: "Força",
     description: "Quebre recordes pessoais de carga máxima em exercícios livres e demonstre pura sobrecarga progressiva.",
     image: "/badges/badge_batedor_pr.png",
@@ -183,8 +206,95 @@ const BADGES: BadgeItem[] = [
     ],
   },
   {
+    id: "cardio-master",
+    name: "Mestre do Cárdio",
+    role: "student",
+    category: "Resistência",
+    description: "Queime calorias e amplie sua capacidade cardiovascular com esteira, bike, simulador de escada e HIIT.",
+    image: "/badges/badge_mestre_cardio.png",
+    unlocked: true,
+    unlockedAt: "15/Set",
+    currentLevel: 2,
+    maxLevel: 4,
+    currentProgress: 4850,
+    targetProgress: 5000,
+    unit: "kcal",
+    rarity: "epico",
+    levels: [
+      { level: 1, tier: "bronze", title: "Coração Turbinado", requirement: "1.500 kcal queimadas em cárdio", targetValue: 1500, xpReward: 120 },
+      { level: 2, tier: "prata", title: "Pulmões de Aço", requirement: "5.000 kcal queimadas em cárdio", targetValue: 5000, xpReward: 350 },
+      { level: 3, tier: "ouro", title: "Motor Hiperbólico", requirement: "15.000 kcal queimadas em cárdio", targetValue: 15000, xpReward: 1000 },
+      { level: 4, tier: "diamante", title: "Lenda Aeróbica", requirement: "50.000 kcal queimadas em cárdio", targetValue: 50000, xpReward: 2800 },
+    ],
+  },
+  {
+    id: "hydro-titan",
+    name: "Hidratação de Titã",
+    role: "student",
+    category: "Saúde",
+    description: "Mantenha a célula muscular hiper-hidratada atingindo a meta saudável de 3 litros de água diários.",
+    image: "/badges/badge_hydro_titan.png",
+    unlocked: true,
+    unlockedAt: "Ontem",
+    currentLevel: 1,
+    maxLevel: 4,
+    currentProgress: 12,
+    targetProgress: 15,
+    unit: "dias",
+    rarity: "comum",
+    levels: [
+      { level: 1, tier: "bronze", title: "Fonte Vital", requirement: "5 dias com 3L de água", targetValue: 5, xpReward: 80 },
+      { level: 2, tier: "prata", title: "Célula Anabólica", requirement: "15 dias com 3L de água", targetValue: 15, xpReward: 220 },
+      { level: 3, tier: "ouro", title: "Oceano Muscular", requirement: "30 dias com 3L de água", targetValue: 30, xpReward: 500 },
+      { level: 4, tier: "diamante", title: "Hidratação Perfeita", requirement: "90 dias com 3L de água", targetValue: 90, xpReward: 1400 },
+    ],
+  },
+  {
+    id: "raw-tonnage",
+    name: "Clube do Milhão",
+    role: "student",
+    category: "Volume",
+    description: "Some o volume bruto total de todas as repetições e séries levantadas na academia no GymFlow.",
+    image: "/badges/badge_raw_tonnage.png",
+    unlocked: false,
+    currentLevel: 0,
+    maxLevel: 4,
+    currentProgress: 8400,
+    targetProgress: 10000,
+    unit: "kg",
+    rarity: "lendario",
+    levels: [
+      { level: 1, tier: "bronze", title: "10 Toneladas", requirement: "10.000 kg acumulados", targetValue: 10000, xpReward: 200 },
+      { level: 2, tier: "prata", title: "50 Toneladas", requirement: "50.000 kg acumulados", targetValue: 50000, xpReward: 600 },
+      { level: 3, tier: "ouro", title: "200 Toneladas", requirement: "200.000 kg acumulados", targetValue: 200000, xpReward: 1800 },
+      { level: 4, tier: "diamante", title: "1 Milhão de Quilos", requirement: "1.000.000 kg acumulados", targetValue: 1000000, xpReward: 5000 },
+    ],
+  },
+  {
+    id: "rest-master",
+    name: "Cronometrista de Aço",
+    role: "student",
+    category: "Disciplina",
+    description: "Respeite rigorosamente o timer de descanso entre as séries sem dispersão para máxima intensidade.",
+    image: "/badges/badge_rest_master.png",
+    unlocked: false,
+    currentLevel: 0,
+    maxLevel: 4,
+    currentProgress: 6,
+    targetProgress: 10,
+    unit: "treinos",
+    rarity: "raro",
+    levels: [
+      { level: 1, tier: "bronze", title: "Foco no Timer", requirement: "10 treinos com descanso cronometrado", targetValue: 10, xpReward: 150 },
+      { level: 2, tier: "prata", title: "Precisão Cirúrgica", requirement: "30 treinos com descanso cronometrado", targetValue: 30, xpReward: 400 },
+      { level: 3, tier: "ouro", title: "Ritmo Inflexível", requirement: "75 treinos com descanso cronometrado", targetValue: 75, xpReward: 1000 },
+      { level: 4, tier: "diamante", title: "Maestro do Tempo", requirement: "150 treinos com descanso cronometrado", targetValue: 150, xpReward: 2500 },
+    ],
+  },
+  {
     id: "streak-30",
     name: "Titã da Disciplina",
+    role: "student",
     category: "Constância",
     description: "Atinja o ápice da regularidade inabalável completando 30 dias de treinos consecutivos sem desculpas.",
     image: "/badges/badge_tita_disciplina.png",
@@ -205,6 +315,7 @@ const BADGES: BadgeItem[] = [
   {
     id: "beast-mode",
     name: "Semana Perfeita",
+    role: "student",
     category: "Frequência",
     description: "Conclua 6 dias de treino na mesma semana com 100% das séries prescritas executadas até o final.",
     image: "/badges/badge_semana_perfeita.png",
@@ -222,32 +333,13 @@ const BADGES: BadgeItem[] = [
       { level: 4, tier: "diamante", title: "Rei da Selva de Ferro", requirement: "16 semanas perfeitas", targetValue: 16, xpReward: 3000 },
     ],
   },
-  {
-    id: "cardio-master",
-    name: "Mestre do Cárdio",
-    category: "Resistência",
-    description: "Queime calorias e amplie sua capacidade cardiovascular com sessões consistentes de esteira, bike ou escada.",
-    image: "/badges/badge_mestre_cardio.png",
-    unlocked: false,
-    currentLevel: 0,
-    maxLevel: 4,
-    currentProgress: 980,
-    targetProgress: 1500,
-    unit: "kcal",
-    rarity: "epico",
-    levels: [
-      { level: 1, tier: "bronze", title: "Coração Turbinado", requirement: "1.500 kcal queimadas em cárdio", targetValue: 1500, xpReward: 120 },
-      { level: 2, tier: "prata", title: "Pulmões de Aço", requirement: "5.000 kcal queimadas em cárdio", targetValue: 5000, xpReward: 350 },
-      { level: 3, tier: "ouro", title: "Motor Hiperbólico", requirement: "15.000 kcal queimadas em cárdio", targetValue: 15000, xpReward: 1000 },
-      { level: 4, tier: "diamante", title: "Lenda Aeróbica", requirement: "50.000 kcal queimadas em cárdio", targetValue: 50000, xpReward: 2800 },
-    ],
-  },
-  // MEDALHAS SECRETAS
+  // Medalhas Secretas de Aluno
   {
     id: "secret-night-owl",
     name: "Coruja Noturna",
+    role: "student",
     category: "Secreta",
-    description: "Treine no silêncio da noite quando a maioria dorme. Completou sessões intensas após as 22h30.",
+    description: "Treine no silêncio da noite quando a maioria dorme. Concluiu sessões intensas após as 22h30.",
     image: "/badges/badge_coruja_noturna.png",
     unlocked: true,
     unlockedAt: "12/Set",
@@ -269,6 +361,7 @@ const BADGES: BadgeItem[] = [
   {
     id: "secret-berserk",
     name: "Modo Berserk",
+    role: "student",
     category: "Secreta",
     description: "Sem feriado para o progresso. Treinou com vigor destemido em dias comemorativos ou domingos.",
     image: "/badges/badge_modo_berserk.png",
@@ -291,6 +384,7 @@ const BADGES: BadgeItem[] = [
   {
     id: "secret-cyborg",
     name: "Ciborgue da Sobrecarga",
+    role: "student",
     category: "Secreta",
     description: "Engenharia biomecânica pura: progrediu a carga em 4 exercícios compostos na mesma sessão de treino.",
     image: "/badges/badge_ciborgue_sobrecarga.png",
@@ -313,6 +407,7 @@ const BADGES: BadgeItem[] = [
   {
     id: "secret-glitch-404",
     name: "Dimensão 404",
+    role: "student",
     category: "Secreta",
     description: "Praticamente impossível: encontrou uma fenda na realidade do GymFlow e sobreviveu à lendária página de erro 404.",
     image: "/badges/badge_secret_404.png",
@@ -332,6 +427,140 @@ const BADGES: BadgeItem[] = [
       { level: 4, tier: "diamante", title: "Singularidade Cósmica", requirement: "Trascender os limites do código", targetValue: 10, xpReward: 10000 },
     ],
   },
+
+  // ==========================================
+  // CONQUISTAS DO PROFESSOR / PERSONAL TRAINER
+  // ==========================================
+  {
+    id: "coach-mentor",
+    name: "Mentor de Elite",
+    role: "coach",
+    category: "Prescrição",
+    description: "Prescreva rotinas e divisões técnicas de musculação e cárdio personalizadas para seus alunos.",
+    image: "/badges/badge_coach_mentor.png",
+    unlocked: true,
+    unlockedAt: "Hoje",
+    currentLevel: 2,
+    maxLevel: 4,
+    currentProgress: 6,
+    targetProgress: 15,
+    unit: "fichas",
+    rarity: "raro",
+    levels: [
+      { level: 1, tier: "bronze", title: "Primeiro Aluno", requirement: "1 ficha técnica prescrita", targetValue: 1, xpReward: 200 },
+      { level: 2, tier: "prata", title: "Orientador Técnico", requirement: "5 fichas técnicas prescritas", targetValue: 5, xpReward: 500 },
+      { level: 3, tier: "ouro", title: "Mestre da Periodização", requirement: "15 fichas técnicas prescritas", targetValue: 15, xpReward: 1200 },
+      { level: 4, tier: "diamante", title: "Guru da Hipertrofia", requirement: "50 fichas técnicas prescritas", targetValue: 50, xpReward: 3000 },
+    ],
+  },
+  {
+    id: "coach-five-stars",
+    name: "Sensei 5 Estrelas",
+    role: "coach",
+    category: "Excelência",
+    description: "Mantenha o padrão máximo de satisfação com avaliações 5 estrelas e feedbacks elogiosos de alunos.",
+    image: "/badges/badge_coach_five_stars.png",
+    unlocked: true,
+    unlockedAt: "Ontem",
+    currentLevel: 1,
+    maxLevel: 4,
+    currentProgress: 4,
+    targetProgress: 10,
+    unit: "avaliações",
+    rarity: "epico",
+    levels: [
+      { level: 1, tier: "bronze", title: "Padrão de Ouro", requirement: "3 avaliações 5 estrelas", targetValue: 3, xpReward: 250 },
+      { level: 2, tier: "prata", title: "Mentor Aclamado", requirement: "10 avaliações 5 estrelas", targetValue: 10, xpReward: 600 },
+      { level: 3, tier: "ouro", title: "Estrela do Marketplace", requirement: "25 avaliações 5 estrelas", targetValue: 25, xpReward: 1500 },
+      { level: 4, tier: "diamante", title: "Lenda da Consultoria", requirement: "75 avaliações 5 estrelas", targetValue: 75, xpReward: 4000 },
+    ],
+  },
+  {
+    id: "coach-monster-factory",
+    name: "Fábrica de Monstros",
+    role: "coach",
+    category: "Consultoria",
+    description: "Conduza seus alunos a quebrarem recordes pessoais de carga máxima sob sua supervisão técnica.",
+    image: "/badges/badge_coach_monster_factory.png",
+    unlocked: true,
+    unlockedAt: "20/Set",
+    currentLevel: 1,
+    maxLevel: 4,
+    currentProgress: 8,
+    targetProgress: 20,
+    unit: "PRs",
+    rarity: "lendario",
+    levels: [
+      { level: 1, tier: "bronze", title: "Forja de Titãs", requirement: "Alunos bateram 5 recordes de carga", targetValue: 5, xpReward: 300 },
+      { level: 2, tier: "prata", title: "Fábrica em Alta", requirement: "Alunos bateram 20 recordes de carga", targetValue: 20, xpReward: 800 },
+      { level: 3, tier: "ouro", title: "Usina de Força", requirement: "Alunos bateram 50 recordes de carga", targetValue: 50, xpReward: 2000 },
+      { level: 4, tier: "diamante", title: "Templo dos Recordistas", requirement: "Alunos bateram 150 recordes de carga", targetValue: 150, xpReward: 5000 },
+    ],
+  },
+  {
+    id: "coach-punctual",
+    name: "Pontualidade Real",
+    role: "coach",
+    category: "Excelência",
+    description: "Ministre aulas presenciais e consultorias pontualmente na grade de horários da agenda.",
+    image: "/badges/badge_coach_punctual.png",
+    unlocked: true,
+    unlockedAt: "10/Set",
+    currentLevel: 2,
+    maxLevel: 4,
+    currentProgress: 24,
+    targetProgress: 60,
+    unit: "aulas",
+    rarity: "comum",
+    levels: [
+      { level: 1, tier: "bronze", title: "Pontualidade Britânica", requirement: "5 aulas ministradas pontualmente", targetValue: 5, xpReward: 150 },
+      { level: 2, tier: "prata", title: "Compromisso de Ferro", requirement: "20 aulas ministradas pontualmente", targetValue: 20, xpReward: 450 },
+      { level: 3, tier: "ouro", title: "Relógio Suíço", requirement: "60 aulas ministradas pontualmente", targetValue: 60, xpReward: 1200 },
+      { level: 4, tier: "diamante", title: "Pontualidade Absoluta", requirement: "150 aulas ministradas pontualmente", targetValue: 150, xpReward: 3500 },
+    ],
+  },
+  {
+    id: "coach-legend",
+    name: "Treinador Lendário",
+    role: "coach",
+    category: "Consultoria",
+    description: "Construa uma carteira sólida e fidelizada de alunos ativos na plataforma GymFlow.",
+    image: "/badges/badge_coach_legend.png",
+    unlocked: false,
+    currentLevel: 0,
+    maxLevel: 4,
+    currentProgress: 2,
+    targetProgress: 3,
+    unit: "alunos",
+    rarity: "lendario",
+    levels: [
+      { level: 1, tier: "bronze", title: "Time Formado", requirement: "3 alunos ativos simultâneos", targetValue: 3, xpReward: 200 },
+      { level: 2, tier: "prata", title: "Esquadrão de Elite", requirement: "8 alunos ativos simultâneos", targetValue: 8, xpReward: 600 },
+      { level: 3, tier: "ouro", title: "Comunidade de Campeões", requirement: "15 alunos ativos simultâneos", targetValue: 15, xpReward: 1500 },
+      { level: 4, tier: "diamante", title: "Império do Treinador", requirement: "30 alunos ativos simultâneos", targetValue: 30, xpReward: 4500 },
+    ],
+  },
+  {
+    id: "coach-architect",
+    name: "Arquiteto Biomecânico",
+    role: "coach",
+    category: "Prescrição",
+    description: "Crie rotinas avançadas combinando musculação pesada, cárdio intervalado e técnicas especiais.",
+    image: "/badges/badge_coach_architect.png",
+    unlocked: false,
+    currentLevel: 0,
+    maxLevel: 4,
+    currentProgress: 1,
+    targetProgress: 2,
+    unit: "rotinas",
+    rarity: "epico",
+    levels: [
+      { level: 1, tier: "bronze", title: "Estrutura Sólida", requirement: "2 rotinas complexas criadas", targetValue: 2, xpReward: 150 },
+      { level: 2, tier: "prata", title: "Engenharia Corporal", requirement: "8 rotinas complexas criadas", targetValue: 8, xpReward: 400 },
+      { level: 3, tier: "ouro", title: "Biomecânica Quântica", requirement: "20 rotinas complexas criadas", targetValue: 20, xpReward: 1000 },
+      { level: 4, tier: "diamante", title: "Mestre da Fisiologia", requirement: "50 rotinas complexas criadas", targetValue: 50, xpReward: 2800 },
+    ],
+  },
 ];
 
 const PR_RECORDS: PRRecord[] = [
@@ -342,7 +571,11 @@ const PR_RECORDS: PRRecord[] = [
 ];
 
 export function GymBadgesStreak() {
-  const [badges, setBadges] = useState<BadgeItem[]>(BADGES);
+  const user = getCurrentUser();
+  const [activeRole, setActiveRole] = useState<"student" | "coach">(() =>
+    user.activeRole === "coach" ? "coach" : "student"
+  );
+  const [badges, setBadges] = useState<BadgeItem[]>(INITIAL_ALL_BADGES);
   const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
   const [selectedTierLevel, setSelectedTierLevel] = useState<number>(1);
   const [filterTab, setFilterTab] = useState<"todas" | "desbloqueadas" | "progresso" | "secretas">("todas");
@@ -387,26 +620,28 @@ export function GymBadgesStreak() {
     setSelectedTierLevel(badge.currentLevel > 0 ? badge.currentLevel : 1);
   };
 
-  const filteredBadges = badges.filter((badge) => {
+  const currentRoleBadges = badges.filter((b) => b.role === activeRole);
+
+  const filteredBadges = currentRoleBadges.filter((badge) => {
     if (filterTab === "desbloqueadas") return badge.unlocked;
     if (filterTab === "progresso") return !badge.unlocked && !badge.isSecret;
     if (filterTab === "secretas") return badge.isSecret;
     return true;
   });
 
-  const unlockedCount = badges.filter((b) => b.unlocked).length;
-  const totalCount = badges.length;
+  const unlockedCount = currentRoleBadges.filter((b) => b.unlocked).length;
+  const totalCount = currentRoleBadges.length;
 
   return (
     <div className="flex flex-col gap-4 text-left w-full">
-      {/* Card Principal: Streak & Chamas 3D */}
+      {/* Card Principal: Streak & Chama 3D */}
       <div className="relative rounded-3xl p-5 bg-gradient-to-br from-amber-950/40 via-zinc-900 to-zinc-950 border border-amber-500/30 shadow-2xl overflow-hidden">
         <div className="absolute -top-12 -right-12 w-44 h-44 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3.5">
-            {/* Ícone 3D da Chama com Fundo Transparente & Brilho Volumétrico */}
+            {/* Ícone 3D da Chama com Fundo Transparente */}
             <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent border border-amber-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)] shrink-0 overflow-hidden group">
               <div className="absolute inset-0 rounded-full bg-amber-500/30 blur-xl pointer-events-none" />
               <motion.div
@@ -535,7 +770,7 @@ export function GymBadgesStreak() {
                 Medalhas & Insígnias 3D
               </h3>
               <p className="text-[11px] text-zinc-400">
-                Conquistas com leveis progressivos e medalhas secretas
+                Conquistas de {activeRole === "student" ? "Alunos" : "Professores & Personais"} com leveis progressivos
               </p>
             </div>
           </div>
@@ -545,6 +780,41 @@ export function GymBadgesStreak() {
               {unlockedCount} / {totalCount} Desbloqueadas
             </span>
           </div>
+        </div>
+
+        {/* Alternador de Modo de Papel: Aluno vs Professor */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-black/50 rounded-2xl border border-white/[0.08] mb-3">
+          <button
+            onClick={() => {
+              triggerHaptic("light");
+              setActiveRole("student");
+              setFilterTab("todas");
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+              activeRole === "student"
+                ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Aluno ({badges.filter((b) => b.role === "student").length})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic("light");
+              setActiveRole("coach");
+              setFilterTab("todas");
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+              activeRole === "coach"
+                ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>Professor ({badges.filter((b) => b.role === "coach").length})</span>
+          </button>
         </div>
 
         {/* Abas de Filtragem Rápida */}
@@ -577,19 +847,21 @@ export function GymBadgesStreak() {
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Em Progresso ({totalCount - unlockedCount - 2})
+            Em Progresso ({totalCount - unlockedCount - (activeRole === "student" ? 2 : 0)})
           </button>
-          <button
-            onClick={() => setFilterTab("secretas")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
-              filterTab === "secretas"
-                ? "bg-purple-500/20 text-purple-300 shadow-sm border border-purple-500/30"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Lock className="w-3 h-3 text-purple-400" />
-            Secretas (3)
-          </button>
+          {activeRole === "student" && (
+            <button
+              onClick={() => setFilterTab("secretas")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+                filterTab === "secretas"
+                  ? "bg-purple-500/20 text-purple-300 shadow-sm border border-purple-500/30"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Lock className="w-3 h-3 text-purple-400" />
+              Secretas (4)
+            </button>
+          )}
         </div>
 
         {/* Grade de Medalhas 3D */}

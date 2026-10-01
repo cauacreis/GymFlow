@@ -47,6 +47,7 @@ import { canAccessFeature } from "@/lib/subscription-features";
 import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
 import { NewBodyMetricModal } from "./NewBodyMetricModal";
 import { BodyMetricsHistoryModal } from "./BodyMetricsHistoryModal";
+import { CardioEvolutionDashboard } from "@/components/cardio/CardioEvolutionDashboard";
 
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -606,6 +607,9 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
           )}
         </div>
       </div>
+
+      {/* PAINEL DE EVOLUÇÃO CARDIOVASCULAR */}
+      <CardioEvolutionDashboard />
 
       {/* VITRINE DE RECORDES PESSOAIS (PRs) */}
       <div className="rounded-3xl p-5 bg-zinc-900/70 border border-white/[0.08] shadow-lg space-y-3">

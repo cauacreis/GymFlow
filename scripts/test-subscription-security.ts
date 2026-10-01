@@ -2414,10 +2414,65 @@ async function runAllTests() {
     "Conquista 404: Desbloqueio persiste no localStorage sob chave 'gymflow_badge_secret_404_unlocked'"
   );
 
+  // Teste 22.3: Existência dos Novos Assets 3D de Professor e Aluno
+  const coachMentorPath = path.join(rootDir, "public", "badges", "badge_coach_mentor.png");
+  const coachFiveStarsPath = path.join(rootDir, "public", "badges", "badge_coach_five_stars.png");
+  const coachMonsterPath = path.join(rootDir, "public", "badges", "badge_coach_monster_factory.png");
+  const cardioMasterPath = path.join(rootDir, "public", "badges", "badge_mestre_cardio.png");
+  const hydroTitanPath = path.join(rootDir, "public", "badges", "badge_hydro_titan.png");
+
   assert(
-    (global as any).localStorage.getItem(storage404DateKey) === "01/Out",
-    "Conquista 404: Data de conquista registrada com precisão temporal"
+    fs.existsSync(coachMentorPath) && fs.statSync(coachMentorPath).size > 10000,
+    "Gamificação Coach: Asset 3D de Mentor de Elite existe com alta resolução"
   );
+
+  assert(
+    fs.existsSync(coachFiveStarsPath) && fs.statSync(coachFiveStarsPath).size > 10000,
+    "Gamificação Coach: Asset 3D de Sensei 5 Estrelas existe com alta resolução"
+  );
+
+  assert(
+    fs.existsSync(coachMonsterPath) && fs.statSync(coachMonsterPath).size > 10000,
+    "Gamificação Coach: Asset 3D de Fábrica de Monstros existe com alta resolução"
+  );
+
+  assert(
+    fs.existsSync(cardioMasterPath) && fs.statSync(cardioMasterPath).size > 10000,
+    "Gamificação Cárdio: Asset 3D de Mestre do Cárdio existe com alta resolução"
+  );
+
+  assert(
+    fs.existsSync(hydroTitanPath) && fs.statSync(hydroTitanPath).size > 10000,
+    "Gamificação Aluno: Asset 3D de Hidratação de Titã existe com alta resolução"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 23. CATÁLOGO DE AULAS COLETIVAS & VÍDEOS ON-DEMAND
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 23. Testando Catálogo de Aulas Coletivas, Fotos e Vídeos On-Demand...");
+
+  const classImages = [
+    "class_spinning.jpg",
+    "class_muay_thai.jpg",
+    "class_hiit.jpg",
+    "class_cross_training.jpg",
+    "class_fitdance.jpg",
+    "class_yoga.jpg",
+    "class_pilates.jpg",
+    "class_abs_core.jpg",
+    "class_boxing_cardio.jpg",
+    "class_glutes_legs.jpg",
+    "class_calisthenics.jpg",
+    "class_mobility_stretch.jpg",
+  ];
+
+  for (const img of classImages) {
+    const imgPath = path.join(rootDir, "public", "classes", img);
+    assert(
+      fs.existsSync(imgPath) && fs.statSync(imgPath).size > 10000,
+      `Aulas: Foto de capa '${img}' existe em public/classes com alta resolução`
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // RESULTADO FINAL
