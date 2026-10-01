@@ -58,8 +58,8 @@ export interface PlanConfig {
   id: string;
   role: RoleType;
   tier: "basico" | "pro" | "vip";
-  badge: string;
-  badgeColor: string;
+  badge?: string;
+  badgeColor?: string;
   name: string;
   tagline: string;
   recurringPrice: number;
@@ -74,8 +74,6 @@ export const STUDENT_PLANS: PlanConfig[] = [
     id: "trial",
     role: "student",
     tier: "pro",
-    badge: "EXPERIMENTE GRÁTIS",
-    badgeColor: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     name: "7 Dias Grátis Aluno Pro",
     tagline: "Desbloqueia Biomecânica 3D, GymBot IA e periodização sem pagar nada hoje.",
     recurringPrice: 0,
@@ -92,8 +90,6 @@ export const STUDENT_PLANS: PlanConfig[] = [
     id: "basico",
     role: "student",
     tier: "basico",
-    badge: "ESSENCIAL",
-    badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30",
     name: "Aluno Básico",
     tagline: "A base sólida para registrar treinos e acompanhar sua evolução.",
     recurringPrice: 29.9,
@@ -114,8 +110,6 @@ export const STUDENT_PLANS: PlanConfig[] = [
     id: "pro",
     role: "student",
     tier: "pro",
-    badge: "MAIS ESCOLHIDO 🔥",
-    badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
     name: "Aluno Pro",
     tagline: "A experiência completa de treino inteligente e alta performance.",
     recurringPrice: 39.9,
@@ -133,8 +127,6 @@ export const STUDENT_PLANS: PlanConfig[] = [
     id: "vip",
     role: "student",
     tier: "vip",
-    badge: "MÁXIMA PERFORMANCE 👑",
-    badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/40",
     name: "Aluno VIP Black",
     tagline: "Acompanhamento de elite, bioimpedância e exclusividade total.",
     recurringPrice: 49.9,
@@ -154,8 +146,6 @@ export const COACH_PLANS: PlanConfig[] = [
     id: "trial",
     role: "coach",
     tier: "pro",
-    badge: "EXPERIMENTE GRÁTIS 🚀",
-    badgeColor: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     name: "7 Dias Grátis Personal Pro",
     tagline: "Atenda até 35 alunos, monte treinos 3D e teste sem nenhum custo hoje.",
     recurringPrice: 0,
@@ -172,8 +162,6 @@ export const COACH_PLANS: PlanConfig[] = [
     id: "coach_starter",
     role: "coach",
     tier: "basico",
-    badge: "START NA CARREIRA",
-    badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30",
     name: "Personal Starter",
     tagline: "Ideal para começar a gerenciar seus primeiros alunos com profissionalismo.",
     recurringPrice: 39.9,
@@ -195,8 +183,6 @@ export const COACH_PLANS: PlanConfig[] = [
     id: "coach_pro",
     role: "coach",
     tier: "pro",
-    badge: "MAIS ESCOLHIDO 🔥",
-    badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
     name: "Personal Pro",
     tagline: "A ferramenta definitiva para o Personal Trainer moderno de alta renda.",
     recurringPrice: 69.9,
@@ -215,8 +201,6 @@ export const COACH_PLANS: PlanConfig[] = [
     id: "coach_vip",
     role: "coach",
     tier: "vip",
-    badge: "ESCALA TOTAL 👑",
-    badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/40",
     name: "Personal Elite VIP",
     tagline: "Consultoria sem limites com máximo destaque regional e suporte VIP.",
     recurringPrice: 99.9,
@@ -608,11 +592,6 @@ export function SubscriptionOnboardingModal({
 
         {/* Header Elegante */}
         <div className="p-5 sm:p-7 border-b border-white/[0.07] bg-gradient-to-b from-white/[0.03] to-transparent text-center relative z-10 shrink-0">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold mb-2.5">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Passo Final • Ativação da Sua Conta</span>
-          </div>
-
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Escolha como deseja começar no GymFlow
           </h2>
@@ -864,37 +843,32 @@ export function SubscriptionOnboardingModal({
                     >
                       {/* Topo do Card */}
                       <div>
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <span
-                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                              isTrial && userHasActiveTrial
-                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                : plan.badgeColor
-                            }`}
-                          >
-                            {isTrial && userHasActiveTrial
-                              ? `TESTE ATIVO (${remainingDays} ${remainingDays === 1 ? "DIA" : "DIAS"})`
-                              : plan.badge}
-                          </span>
-
-                          <div
-                            className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
-                              isSelected
-                                ? plan.id === "vip"
-                                  ? "border-amber-500 bg-amber-500 text-zinc-950"
-                                  : "border-emerald-500 bg-emerald-500 text-zinc-950"
-                                : "border-white/20"
-                            }`}
-                          >
-                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="min-w-0">
+                            {isTrial && userHasActiveTrial && (
+                              <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 mb-1.5">
+                                {`TESTE ATIVO (${remainingDays} ${remainingDays === 1 ? "DIA" : "DIAS"})`}
+                              </span>
+                            )}
+                            <h4 className="text-base font-black text-white">{plan.name}</h4>
                           </div>
-                        </div>
 
-                        <div className="flex items-baseline justify-between gap-1">
-                          <h4 className="text-base font-black text-white">{plan.name}</h4>
-                          <div className="text-right">
-                            <span className="text-base font-black text-white">{priceDisplay}</span>
-                            <span className="text-[10px] text-zinc-400 ml-1">{periodDisplay}</span>
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <div className="text-right">
+                              <span className="text-base font-black text-white">{priceDisplay}</span>
+                              <span className="text-[10px] text-zinc-400 ml-1">{periodDisplay}</span>
+                            </div>
+                            <div
+                              className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                                isSelected
+                                  ? plan.id === "vip"
+                                    ? "border-amber-500 bg-amber-500 text-zinc-950"
+                                    : "border-emerald-500 bg-emerald-500 text-zinc-950"
+                                  : "border-white/20"
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
                           </div>
                         </div>
 

@@ -50,7 +50,6 @@ export const STUDENT_PLANS: PlanOption[] = [
   {
     id: "student_pro",
     name: "Aluno Pro",
-    tag: "MAIS ESCOLHIDO",
     popular: true,
     price: "45,00",
     billingPeriod: "/mês",
@@ -65,7 +64,6 @@ export const STUDENT_PLANS: PlanOption[] = [
   {
     id: "student_vip",
     name: "Aluno VIP Black",
-    tag: "COMPLETO",
     price: "55,00",
     billingPeriod: "/mês",
     features: [
@@ -95,7 +93,6 @@ export const COACH_PLANS: PlanOption[] = [
   {
     id: "coach_pro",
     name: "Personal Pro",
-    tag: "MAIS ESCOLHIDO",
     popular: true,
     price: "79,00",
     billingPeriod: "/mês",
@@ -111,7 +108,6 @@ export const COACH_PLANS: PlanOption[] = [
   {
     id: "coach_vip",
     name: "Personal Elite VIP",
-    tag: "ESCALA TOTAL",
     price: "119,00",
     billingPeriod: "/mês",
     features: [
@@ -533,12 +529,6 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                           : "bg-zinc-900/40 border-white/[0.06] hover:border-white/[0.15]"
                       }`}
                     >
-                      {plan.tag && (
-                        <span className="absolute -top-2.5 right-4 text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-400 text-zinc-950 px-2.5 py-0.5 rounded-full shadow-md">
-                          {plan.tag}
-                        </span>
-                      )}
-
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="text-sm font-black text-white">{plan.name}</h3>
