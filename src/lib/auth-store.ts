@@ -69,10 +69,11 @@ export interface UserProfile {
   termsAccepted?: boolean;
   termsAcceptedAt?: string;
   allowBookingMessages?: boolean; // Receber mensagens e dúvidas de alunos antes da contratação
+  autoBlockOverdueWorkouts?: boolean; // Bloquear ficha de treino automaticamente em caso de atraso na mensalidade
 }
 
 import type { CoachPlanOption } from "./workout-store";
-import { saveProfileToSupabase, fetchProfileFromSupabase } from "./supabase-service";
+import { saveProfileToSupabase, fetchProfileFromSupabase, invalidateSupabaseCache } from "./supabase-service";
 import { getSupabase } from "./supabase";
 import { registerDeviceAccount } from "./device-lockout";
 import { addNotification } from "./booking-store";
@@ -121,6 +122,7 @@ const DEFAULT_USER: UserProfile = {
   },
   defaultPaymentDueDay: 10,
   allowBookingMessages: true,
+  autoBlockOverdueWorkouts: false,
   termsAccepted: true,
   termsAcceptedAt: new Date().toISOString(),
 };
@@ -447,6 +449,7 @@ export function areProfilesEqual(a?: UserProfile | null, b?: UserProfile | null)
     a.latitude === b.latitude &&
     a.longitude === b.longitude &&
     a.allowBookingMessages === b.allowBookingMessages &&
+    a.autoBlockOverdueWorkouts === b.autoBlockOverdueWorkouts &&
     a.termsAccepted === b.termsAccepted &&
     a.subscriptionCanceledAt === b.subscriptionCanceledAt &&
     (a.enabledRoles?.join(",") === b.enabledRoles?.join(","))
@@ -470,7 +473,7 @@ export function saveUserProfile(updated: Partial<UserProfile>): UserProfile {
       localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(merged));
     }
     // Seta cookie para o middleware reconhecer sessões autenticadas
-    if (merged.email && merged.id !== "user_me") {
+    if (typeof document !== "undefined" && merged.email && merged.id !== "user_me") {
       document.cookie = "gymflow_session=active; path=/; max-age=2592000; SameSite=Lax";
     }
     if (hasChanged) {
@@ -617,7 +620,9 @@ export function registerNewUser(data: {
 
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(newUser));
-    document.cookie = "gymflow_session=active; path=/; max-age=2592000; SameSite=Lax";
+    if (typeof document !== "undefined") {
+      document.cookie = "gymflow_session=active; path=/; max-age=2592000; SameSite=Lax";
+    }
     window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: newUser }));
   }
 
@@ -633,8 +638,11 @@ export function logoutUser(): void {
   if (client) {
     client.auth.signOut().catch(() => {});
   }
+  invalidateSupabaseCache();
   localStorage.removeItem(STORAGE_KEY_AUTH);
-  document.cookie = "gymflow_session=; path=/; max-age=0; SameSite=Lax";
+  if (typeof document !== "undefined") {
+    document.cookie = "gymflow_session=; path=/; max-age=0; SameSite=Lax";
+  }
   window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: DEFAULT_USER }));
 }
 
@@ -890,8 +898,11 @@ export function initAuthSession(): () => void {
         await syncUserFromSession(session.user);
       }
     } else if (event === "SIGNED_OUT") {
+      invalidateSupabaseCache();
       localStorage.removeItem(STORAGE_KEY_AUTH);
-      document.cookie = "gymflow_session=; path=/; max-age=0; SameSite=Lax";
+      if (typeof document !== "undefined") {
+        document.cookie = "gymflow_session=; path=/; max-age=0; SameSite=Lax";
+      }
       window.dispatchEvent(new CustomEvent(EVENT_AUTH_CHANGED, { detail: DEFAULT_USER }));
     } else if (event === "PASSWORD_RECOVERY") {
       window.dispatchEvent(new CustomEvent("gymflow:password-recovery"));

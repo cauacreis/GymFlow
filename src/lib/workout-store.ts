@@ -18,6 +18,7 @@ import { getCurrentUser, saveUserProfile } from "./auth-store";
 
 export interface StudentProfile {
   id: string;
+  coachId?: string; // ID do treinador responsável (multi-tenant isolation)
   name: string;
   email: string;
   phone?: string;
@@ -48,6 +49,9 @@ export interface StudentProfile {
   paymentStatus?: "pago" | "atrasado" | "pendente" | "cancelado";
   paymentDueDate?: string;
   lastPaymentDate?: string;
+  isWorkoutLocked?: boolean;
+  workoutLockedReason?: "overdue_payment" | "manual_coach_block" | string;
+  workoutLockedAt?: string;
 }
 
 export interface CoachPlanOption {
@@ -69,13 +73,78 @@ export interface StudentWorkoutPackage {
   prescribedAt: string;
   coachNotes?: string;
   splits: WorkoutSplitTemplate[];
+  isLocked?: boolean;
+  lockedReason?: "overdue_payment" | "manual_coach_block" | string;
+  lockedAt?: string;
 }
 
-const STORAGE_KEY_STUDENTS = "gymflow_students_v3";
-const STORAGE_KEY_WORKOUTS = "gymflow_student_workouts_v2";
-const STORAGE_KEY_COACH_PLANS = "gymflow_coach_plans_v2";
-const STORAGE_KEY_DEFAULT_DUE_DAY = "gymflow_coach_default_due_day";
-const EVENT_NAME = "gymflow:workout-updated";
+export const STORAGE_KEY_STUDENTS = "gymflow_students_v3";
+export const STORAGE_KEY_WORKOUTS = "gymflow_student_workouts_v2";
+export const STORAGE_KEY_COACH_PLANS = "gymflow_coach_plans_v2";
+export const STORAGE_KEY_DEFAULT_DUE_DAY = "gymflow_coach_default_due_day";
+export const EVENT_NAME = "gymflow:workout-updated";
+
+// ============================================================================
+// PARTIÇÃO MULTI-TENANT DE CHAVES DE STORAGE POR TREINADOR
+// ============================================================================
+
+export function getCoachStudentsStorageKey(coachId?: string): string {
+  const resolved = coachId || (typeof window !== "undefined" ? getCurrentUser()?.id : null);
+  if (!resolved || resolved === "user_me") return STORAGE_KEY_STUDENTS;
+  return `gymflow_students_${resolved}`;
+}
+
+export function getCoachPlansStorageKey(coachId?: string): string {
+  const resolved = coachId || (typeof window !== "undefined" ? getCurrentUser()?.id : null);
+  if (!resolved || resolved === "user_me") return STORAGE_KEY_COACH_PLANS;
+  return `gymflow_coach_plans_${resolved}`;
+}
+
+export function getCoachDueDayStorageKey(coachId?: string): string {
+  const resolved = coachId || (typeof window !== "undefined" ? getCurrentUser()?.id : null);
+  if (!resolved || resolved === "user_me") return STORAGE_KEY_DEFAULT_DUE_DAY;
+  return `gymflow_coach_default_due_day_${resolved}`;
+}
+
+export const STORAGE_KEY_COACH_AUTOBLOCK = "gymflow_coach_autoblock";
+
+export function getCoachAutoBlockStorageKey(coachId?: string): string {
+  const resolved = coachId || (typeof window !== "undefined" ? getCurrentUser()?.id : null);
+  if (!resolved || resolved === "user_me") return STORAGE_KEY_COACH_AUTOBLOCK;
+  return `gymflow_coach_autoblock_${resolved}`;
+}
+
+export function isCoachAutoBlockEnabled(coachId?: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const user = getCurrentUser();
+    if (user && (!coachId || user.id === coachId)) {
+      if (typeof user.autoBlockOverdueWorkouts === "boolean") {
+        return user.autoBlockOverdueWorkouts;
+      }
+    }
+    const key = getCoachAutoBlockStorageKey(coachId);
+    const stored = localStorage.getItem(key);
+    if (stored !== null) {
+      return stored === "true";
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function setCoachAutoBlockPreference(enabled: boolean, coachId?: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const key = getCoachAutoBlockStorageKey(coachId);
+    localStorage.setItem(key, String(enabled));
+    const user = getCurrentUser();
+    if (user && (!coachId || user.id === coachId)) {
+      saveUserProfile({ autoBlockOverdueWorkouts: enabled });
+    }
+  } catch {}
+}
 
 export function parseDueDay(dueDateStr?: string, defaultDay: number = 10): number {
   if (!dueDateStr) return defaultDay;
@@ -108,10 +177,11 @@ export function parseDateSafe(dateStr?: string): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
-export function getCoachDefaultDueDay(): number {
+export function getCoachDefaultDueDay(coachId?: string): number {
   if (typeof window === "undefined") return 10;
   try {
-    const stored = localStorage.getItem(STORAGE_KEY_DEFAULT_DUE_DAY);
+    const key = getCoachDueDayStorageKey(coachId);
+    const stored = localStorage.getItem(key);
     if (stored) {
       const parsed = parseInt(stored, 10);
       if (parsed >= 1 && parsed <= 31) return parsed;
@@ -120,17 +190,24 @@ export function getCoachDefaultDueDay(): number {
     if (user?.defaultPaymentDueDay && user.defaultPaymentDueDay >= 1 && user.defaultPaymentDueDay <= 31) {
       return user.defaultPaymentDueDay;
     }
+    const legacy = localStorage.getItem(STORAGE_KEY_DEFAULT_DUE_DAY);
+    if (legacy) {
+      const parsed = parseInt(legacy, 10);
+      if (parsed >= 1 && parsed <= 31) return parsed;
+    }
   } catch {}
   return 10;
 }
 
 export function setCoachDefaultDueDay(
   day: number,
-  applyToAllExistingStudents: boolean = false
+  applyToAllExistingStudents: boolean = false,
+  coachId?: string
 ): { updatedCount: number; newDay: number } {
   const validDay = Math.min(31, Math.max(1, Math.round(day) || 10));
+  const key = getCoachDueDayStorageKey(coachId);
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY_DEFAULT_DUE_DAY, String(validDay));
+    localStorage.setItem(key, String(validDay));
   }
   
   saveUserProfile({ defaultPaymentDueDay: validDay });
@@ -138,7 +215,7 @@ export function setCoachDefaultDueDay(
   let updatedCount = 0;
   if (applyToAllExistingStudents) {
     const formatted = formatDueDayString(validDay);
-    const students = getStoredStudentsRaw();
+    const students = getStoredStudentsRaw(coachId);
     const updated = students.map((s) => {
       updatedCount++;
       return {
@@ -147,19 +224,25 @@ export function setCoachDefaultDueDay(
       };
     });
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+      const studentsKey = getCoachStudentsStorageKey(coachId);
+      localStorage.setItem(studentsKey, JSON.stringify(updated));
       window.dispatchEvent(new Event(EVENT_NAME));
     }
-    updated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+    const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+    updated.forEach((st) => upsertStudentToSupabase(st, targetCoachId).catch(() => {}));
   }
 
   return { updatedCount, newDay: validDay };
 }
 
-function getStoredStudentsRaw(): StudentProfile[] {
+function getStoredStudentsRaw(coachId?: string): StudentProfile[] {
   if (typeof window === "undefined") return INITIAL_STUDENTS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
+    const storageKey = getCoachStudentsStorageKey(coachId);
+    let raw = localStorage.getItem(storageKey);
+    if (!raw && storageKey !== STORAGE_KEY_STUDENTS) {
+      raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
+    }
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -182,17 +265,17 @@ function getStoredStudentsRaw(): StudentProfile[] {
 /**
  * Verifica e atualiza automaticamente o ciclo de faturamento e vencimento das mensalidades de cada aluno.
  */
-export function checkAndUpdatePaymentCycles(studentsList?: StudentProfile[]): {
+export function checkAndUpdatePaymentCycles(studentsList?: StudentProfile[], coachId?: string): {
   students: StudentProfile[];
   hasChanges: boolean;
   changedCount: number;
 } {
-  const students = studentsList || getStoredStudentsRaw();
+  const students = studentsList || getStoredStudentsRaw(coachId);
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
   const currentDay = now.getDate();
-  const defaultDueDay = getCoachDefaultDueDay();
+  const defaultDueDay = getCoachDefaultDueDay(coachId);
 
   let changedCount = 0;
 
@@ -230,11 +313,35 @@ export function checkAndUpdatePaymentCycles(studentsList?: StudentProfile[]): {
       }
     }
 
-    if (nextStatus !== student.paymentStatus) {
+    let isWorkoutLocked = student.isWorkoutLocked;
+    let workoutLockedReason = student.workoutLockedReason;
+    let workoutLockedAt = student.workoutLockedAt;
+    let lockChanged = false;
+
+    // Regra de Bloqueio Automático em caso de atraso
+    const autoBlock = isCoachAutoBlockEnabled(coachId);
+    if (autoBlock) {
+      if (nextStatus === "atrasado" && !isWorkoutLocked) {
+        isWorkoutLocked = true;
+        workoutLockedReason = "overdue_payment";
+        workoutLockedAt = new Date().toISOString();
+        lockChanged = true;
+      } else if (nextStatus === "pago" && isWorkoutLocked && workoutLockedReason === "overdue_payment") {
+        isWorkoutLocked = false;
+        workoutLockedReason = undefined;
+        workoutLockedAt = undefined;
+        lockChanged = true;
+      }
+    }
+
+    if (nextStatus !== student.paymentStatus || lockChanged) {
       changedCount++;
       return {
         ...student,
         paymentStatus: nextStatus,
+        isWorkoutLocked,
+        workoutLockedReason,
+        workoutLockedAt,
       };
     }
 
@@ -248,14 +355,35 @@ export function checkAndUpdatePaymentCycles(studentsList?: StudentProfile[]): {
   };
 }
 
-export function refreshStudentPaymentCycles(): { updatedCount: number } {
+export function refreshStudentPaymentCycles(coachId?: string): { updatedCount: number } {
   if (typeof window === "undefined") return { updatedCount: 0 };
-  const current = getStoredStudentsRaw();
-  const { students: updated, hasChanges, changedCount } = checkAndUpdatePaymentCycles(current);
+  const current = getStoredStudentsRaw(coachId);
+  const { students: updated, hasChanges, changedCount } = checkAndUpdatePaymentCycles(current, coachId);
   if (hasChanges) {
-    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+    const key = getCoachStudentsStorageKey(coachId);
+    localStorage.setItem(key, JSON.stringify(updated));
     window.dispatchEvent(new Event(EVENT_NAME));
-    updated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+    const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+    
+    // Atualiza também pacotes de treino salvos se o lock mudou
+    try {
+      const rawWorkouts = localStorage.getItem(STORAGE_KEY_WORKOUTS);
+      const workoutsMap: Record<string, StudentWorkoutPackage> = rawWorkouts ? JSON.parse(rawWorkouts) : {};
+      let workoutsChanged = false;
+      updated.forEach((st) => {
+        if (workoutsMap[st.id] && workoutsMap[st.id].isLocked !== st.isWorkoutLocked) {
+          workoutsMap[st.id].isLocked = st.isWorkoutLocked;
+          workoutsMap[st.id].lockedReason = st.workoutLockedReason;
+          workoutsMap[st.id].lockedAt = st.workoutLockedAt;
+          workoutsChanged = true;
+        }
+      });
+      if (workoutsChanged) {
+        localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
+      }
+    } catch {}
+
+    updated.forEach((st) => upsertStudentToSupabase(st, targetCoachId).catch(() => {}));
   }
   return { updatedCount: changedCount };
 }
@@ -301,12 +429,32 @@ export const DEFAULT_COACH_PLANS: CoachPlanOption[] = [
   },
 ];
 
-export function getStoredCoachPlans(): CoachPlanOption[] {
+const syncedCoachPlans = new Set<string>();
+
+export function getStoredCoachPlans(coachId?: string): CoachPlanOption[] {
   if (typeof window === "undefined") return DEFAULT_COACH_PLANS;
+  const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+  const key = getCoachPlansStorageKey(targetCoachId);
+
+  if (!syncedCoachPlans.has(targetCoachId)) {
+    syncedCoachPlans.add(targetCoachId);
+    fetchCoachPlansFromSupabase(targetCoachId).then((remotePlans) => {
+      if (remotePlans && remotePlans.length > 0) {
+        localStorage.setItem(key, JSON.stringify(remotePlans));
+        window.dispatchEvent(new Event(EVENT_NAME));
+      }
+    }).catch(() => {});
+  }
+
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_COACH_PLANS);
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY_COACH_PLANS, JSON.stringify(DEFAULT_COACH_PLANS));
+      const legacyRaw = localStorage.getItem(STORAGE_KEY_COACH_PLANS);
+      if (legacyRaw && (targetCoachId === "coach_default" || targetCoachId === "coach_rodrigo")) {
+        localStorage.setItem(key, legacyRaw);
+        return JSON.parse(legacyRaw);
+      }
+      localStorage.setItem(key, JSON.stringify(DEFAULT_COACH_PLANS));
       return DEFAULT_COACH_PLANS;
     }
     return JSON.parse(raw);
@@ -315,67 +463,97 @@ export function getStoredCoachPlans(): CoachPlanOption[] {
   }
 }
 
-export function saveCoachPlans(plans: CoachPlanOption[]): void {
+export function saveCoachPlans(plans: CoachPlanOption[], coachId?: string): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY_COACH_PLANS, JSON.stringify(plans));
+  const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+  const key = getCoachPlansStorageKey(targetCoachId);
+  localStorage.setItem(key, JSON.stringify(plans));
   window.dispatchEvent(new Event(EVENT_NAME));
 
-  plans.forEach((p) => saveCoachPlanToSupabase(p).catch(() => {}));
+  plans.forEach((p) => saveCoachPlanToSupabase(p, targetCoachId).catch(() => {}));
 }
 
-export function addCustomCoachPlan(plan: Omit<CoachPlanOption, "id">): CoachPlanOption {
-  const current = getStoredCoachPlans();
+export function addCustomCoachPlan(plan: Omit<CoachPlanOption, "id">, coachId?: string): CoachPlanOption {
+  const current = getStoredCoachPlans(coachId);
   const newPlan: CoachPlanOption = {
     ...plan,
     id: `plan_${Date.now()}`,
     isCustom: true,
   };
   const updated = [...current, newPlan];
-  saveCoachPlans(updated);
+  saveCoachPlans(updated, coachId);
   return newPlan;
 }
 
-export function updateCoachPlan(id: string, updates: Partial<CoachPlanOption>): void {
-  const current = getStoredCoachPlans();
+export function updateCoachPlan(id: string, updates: Partial<CoachPlanOption>, coachId?: string): void {
+  const current = getStoredCoachPlans(coachId);
   const updated = current.map((p) => (p.id === id ? { ...p, ...updates } : p));
-  saveCoachPlans(updated);
+  saveCoachPlans(updated, coachId);
 }
 
-export function deleteCoachPlan(id: string): void {
-  const current = getStoredCoachPlans();
+export function deleteCoachPlan(id: string, coachId?: string): void {
+  const current = getStoredCoachPlans(coachId);
   const updated = current.filter((p) => p.id !== id);
-  saveCoachPlans(updated);
+  saveCoachPlans(updated, coachId);
 }
 
 export const INITIAL_STUDENTS: StudentProfile[] = [];
 
-// Flag de sincronização inicial em memória
-let hasTriggeredInitialSupabaseSync = false;
+// Flag e registro de sincronização de treinadores em memória
+const syncedCoaches = new Set<string>();
 
-export function getStoredStudents(): StudentProfile[] {
+export function getStoredStudents(coachId?: string): StudentProfile[] {
   if (typeof window === "undefined") return INITIAL_STUDENTS;
 
-  // Sincronização assíncrona transparente com o Supabase (executada uma vez por sessão no client)
-  if (!hasTriggeredInitialSupabaseSync) {
-    hasTriggeredInitialSupabaseSync = true;
-    fetchStudentsFromSupabase().then((remoteStudents) => {
+  const currentUser = getCurrentUser();
+  const targetCoachId = coachId || (currentUser?.activeRole === "coach" ? currentUser.id : null);
+
+  // Se não houver coachId fornecido e o usuário logado for aluno, o aluno não tem acesso à lista de alunos de nenhum treinador
+  if (!targetCoachId) {
+    return [];
+  }
+
+  const storageKey = getCoachStudentsStorageKey(targetCoachId);
+
+  // Sincronização assíncrona transparente com o Supabase apenas para o treinador específico
+  if (!syncedCoaches.has(targetCoachId)) {
+    syncedCoaches.add(targetCoachId);
+    fetchStudentsFromSupabase(targetCoachId).then((remoteStudents) => {
       if (remoteStudents && remoteStudents.length > 0) {
-        const { students: cycleUpdated } = checkAndUpdatePaymentCycles(remoteStudents);
-        localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleUpdated));
+        const { students: cycleUpdated } = checkAndUpdatePaymentCycles(remoteStudents, targetCoachId);
+        localStorage.setItem(storageKey, JSON.stringify(cycleUpdated));
         window.dispatchEvent(new Event(EVENT_NAME));
       }
     }).catch(() => {});
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_STUDENTS);
-    if (!raw) {
-      return [];
+    let raw = localStorage.getItem(storageKey);
+    let list: StudentProfile[] = [];
+
+    if (raw) {
+      list = JSON.parse(raw);
+    } else {
+      // Migração seletiva: verifica se no legacy existem alunos vinculados a este coach
+      const legacyRaw = localStorage.getItem(STORAGE_KEY_STUDENTS);
+      if (legacyRaw) {
+        const legacyParsed = JSON.parse(legacyRaw);
+        if (Array.isArray(legacyParsed)) {
+          const matching = legacyParsed.filter(
+            (s: StudentProfile) =>
+              s.coachId === targetCoachId ||
+              (!s.coachId && (targetCoachId === "coach_rodrigo" || targetCoachId === "coach_default"))
+          );
+          if (matching.length > 0) {
+            list = matching.map((s) => ({ ...s, coachId: targetCoachId }));
+            localStorage.setItem(storageKey, JSON.stringify(list));
+          }
+        }
+      }
     }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
+
+    if (!Array.isArray(list)) return [];
+
     const legacyMockIds = new Set([
       "student_beatriz",
       "student_lucas",
@@ -386,12 +564,12 @@ export function getStoredStudents(): StudentProfile[] {
       "student_pedro",
       "student_carlos",
     ]);
-    const cleaned = parsed.filter((s) => !legacyMockIds.has(s.id));
-    const { students: cycleUpdated, hasChanges } = checkAndUpdatePaymentCycles(cleaned);
-    if (hasChanges || cleaned.length !== parsed.length) {
-      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(cycleUpdated));
+    const cleaned = list.filter((s) => !legacyMockIds.has(s.id));
+    const { students: cycleUpdated, hasChanges } = checkAndUpdatePaymentCycles(cleaned, targetCoachId);
+    if (hasChanges || cleaned.length !== list.length) {
+      localStorage.setItem(storageKey, JSON.stringify(cycleUpdated));
       if (hasChanges) {
-        cycleUpdated.forEach((st) => upsertStudentToSupabase(st).catch(() => {}));
+        cycleUpdated.forEach((st) => upsertStudentToSupabase(st, targetCoachId).catch(() => {}));
       }
     }
     return cycleUpdated;
@@ -400,20 +578,27 @@ export function getStoredStudents(): StudentProfile[] {
   }
 }
 
-export function saveNewStudent(studentData: {
-  id?: string;
-  name: string;
-  email?: string;
-  goal: StudentProfile["goal"];
-  phone?: string;
-  plan?: string;
-  age?: number;
-  emergencyContact?: string;
-  avatarUrl?: string;
-  isOfflineStudent?: boolean;
-  paymentDueDate?: string;
-}): StudentProfile {
-  const students = getStoredStudents();
+export function saveNewStudent(
+  studentData: {
+    id?: string;
+    coachId?: string;
+    name: string;
+    email?: string;
+    goal: StudentProfile["goal"];
+    phone?: string;
+    plan?: string;
+    age?: number;
+    emergencyContact?: string;
+    avatarUrl?: string;
+    isOfflineStudent?: boolean;
+    paymentDueDate?: string;
+  },
+  coachId?: string
+): StudentProfile {
+  const targetCoachId = coachId || studentData.coachId || (typeof window !== "undefined" ? getCurrentUser()?.id : "coach_default") || "coach_default";
+  const storageKey = getCoachStudentsStorageKey(targetCoachId);
+  const students = getStoredStudents(targetCoachId);
+
   const existingIndex = students.findIndex(
     (s) => (studentData.id && s.id === studentData.id) || (studentData.email && s.email === studentData.email)
   );
@@ -425,6 +610,7 @@ export function saveNewStudent(studentData: {
     targetStudent = {
       ...existing,
       id: studentData.id || existing.id,
+      coachId: targetCoachId,
       name: studentData.name || existing.name,
       email: studentData.email || existing.email,
       phone: studentData.phone !== undefined ? studentData.phone : existing.phone,
@@ -440,6 +626,7 @@ export function saveNewStudent(studentData: {
   } else {
     targetStudent = {
       id: studentData.id || `student_${Date.now()}`,
+      coachId: targetCoachId,
       name: studentData.name,
       email: studentData.email || "",
       phone: studentData.phone || "",
@@ -448,7 +635,7 @@ export function saveNewStudent(studentData: {
       plan: studentData.plan || "App GymFlow Pro",
       status: "ativo",
       paymentStatus: "pago",
-      paymentDueDate: studentData.paymentDueDate || formatDueDayString(getCoachDefaultDueDay()),
+      paymentDueDate: studentData.paymentDueDate || formatDueDayString(getCoachDefaultDueDay(targetCoachId)),
       monthlyPresence: 0,
       monthlyAbsences: 0,
       totalClasses: 0,
@@ -465,31 +652,34 @@ export function saveNewStudent(studentData: {
   }
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
+    localStorage.setItem(storageKey, JSON.stringify(students));
     window.dispatchEvent(new Event(EVENT_NAME));
   }
 
-  // Sincroniza em segundo plano com Supabase
-  upsertStudentToSupabase(targetStudent).catch(() => {});
+  // Sincroniza em segundo plano com Supabase associado ao treinador
+  upsertStudentToSupabase(targetStudent, targetCoachId).catch(() => {});
 
   return targetStudent;
 }
 
 export function updateStudentProfile(
   studentId: string,
-  updates: Partial<StudentProfile>
+  updates: Partial<StudentProfile>,
+  coachId?: string
 ): void {
   if (typeof window === "undefined") return;
-  const students = getStoredStudents();
+  const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+  const storageKey = getCoachStudentsStorageKey(targetCoachId);
+  const students = getStoredStudents(targetCoachId);
   let updatedStudent: StudentProfile | null = null;
   const updated = students.map((s) => {
     if (s.id === studentId) {
-      updatedStudent = { ...s, ...updates };
+      updatedStudent = { ...s, ...updates, coachId: s.coachId || targetCoachId };
       return updatedStudent;
     }
     return s;
   });
-  localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+  localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
 
   // Se nome ou telefone mudaram, sincroniza também na lista de agendamentos da agenda
@@ -517,42 +707,145 @@ export function updateStudentProfile(
   }
 
   if (updatedStudent) {
-    upsertStudentToSupabase(updatedStudent).catch(() => {});
+    upsertStudentToSupabase(updatedStudent, targetCoachId).catch(() => {});
   }
 }
 
-export function deleteStudent(studentId: string): void {
+export function deleteStudent(studentId: string, coachId?: string): void {
   if (typeof window === "undefined") return;
-  const students = getStoredStudents();
+  const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+  const storageKey = getCoachStudentsStorageKey(targetCoachId);
+  const students = getStoredStudents(targetCoachId);
   const updated = students.filter((s) => s.id !== studentId);
-  localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+  localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
 
   deleteStudentFromSupabase(studentId).catch(() => {});
 }
 
+export function setStudentWorkoutLock(
+  studentId: string,
+  locked: boolean,
+  reason?: "overdue_payment" | "manual_coach_block" | string,
+  coachId?: string
+): void {
+  const targetCoachId = coachId || (typeof window !== "undefined" ? getCurrentUser()?.id : null) || "coach_default";
+  const storageKey = getCoachStudentsStorageKey(targetCoachId);
+  const students = getStoredStudentsRaw(targetCoachId);
+  const nowIso = new Date().toISOString();
+  let updatedStudent: StudentProfile | null = null;
+
+  const updated = students.map((s) => {
+    if (s.id === studentId) {
+      updatedStudent = {
+        ...s,
+        isWorkoutLocked: locked,
+        workoutLockedReason: locked ? (reason || "manual_coach_block") : undefined,
+        workoutLockedAt: locked ? nowIso : undefined,
+      };
+      return updatedStudent;
+    }
+    return s;
+  });
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+
+    // Atualiza também no STORAGE_KEY_WORKOUTS
+    try {
+      const rawWorkouts = localStorage.getItem(STORAGE_KEY_WORKOUTS);
+      const workoutsMap: Record<string, StudentWorkoutPackage> = rawWorkouts ? JSON.parse(rawWorkouts) : {};
+      if (workoutsMap[studentId]) {
+        workoutsMap[studentId] = {
+          ...workoutsMap[studentId],
+          isLocked: locked,
+          lockedReason: locked ? (reason || "manual_coach_block") : undefined,
+          lockedAt: locked ? nowIso : undefined,
+        };
+      } else {
+        const defaultRoutine = PREFORMED_ROUTINES[0];
+        workoutsMap[studentId] = {
+          studentId,
+          routineTitle: defaultRoutine.name,
+          prescribedBy: "",
+          prescribedAt: "Ficha Inicial",
+          splits: defaultRoutine.splits,
+          isLocked: locked,
+          lockedReason: locked ? (reason || "manual_coach_block") : undefined,
+          lockedAt: locked ? nowIso : undefined,
+        };
+      }
+      localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
+      saveWorkoutToSupabase(workoutsMap[studentId]).catch(() => {});
+    } catch {}
+
+    window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { studentId, isLocked: locked } }));
+  }
+
+  if (updatedStudent) {
+    upsertStudentToSupabase(updatedStudent, targetCoachId).catch(() => {});
+  }
+}
+
+export function toggleStudentWorkoutLock(studentId: string, coachId?: string): boolean {
+  const students = getStoredStudentsRaw(coachId);
+  const student = students.find((s) => s.id === studentId);
+  const currentLocked = Boolean(student?.isWorkoutLocked);
+  const nextLocked = !currentLocked;
+  setStudentWorkoutLock(
+    studentId,
+    nextLocked,
+    nextLocked ? (student?.paymentStatus === "atrasado" ? "overdue_payment" : "manual_coach_block") : undefined,
+    coachId
+  );
+  return nextLocked;
+}
+
 export function updateStudentPaymentStatus(
   studentId: string,
-  paymentStatus: "pago" | "atrasado" | "pendente" | "cancelado"
+  paymentStatus: "pago" | "atrasado" | "pendente" | "cancelado",
+  coachId?: string
 ): void {
   const updates: Partial<StudentProfile> = { paymentStatus };
   if (paymentStatus === "pago") {
     const todayStr = new Date().toLocaleDateString("pt-BR");
     updates.lastPaymentDate = todayStr;
+
+    // Se estava pausado por atraso no pagamento, reativa automaticamente
+    const currentStudents = getStoredStudentsRaw(coachId);
+    const st = currentStudents.find((s) => s.id === studentId);
+    if (st && st.isWorkoutLocked && st.workoutLockedReason === "overdue_payment") {
+      updates.isWorkoutLocked = false;
+      updates.workoutLockedReason = undefined;
+      updates.workoutLockedAt = undefined;
+      setStudentWorkoutLock(studentId, false, undefined, coachId);
+    }
+  } else if (paymentStatus === "atrasado") {
+    if (isCoachAutoBlockEnabled(coachId)) {
+      updates.isWorkoutLocked = true;
+      updates.workoutLockedReason = "overdue_payment";
+      updates.workoutLockedAt = new Date().toISOString();
+      setStudentWorkoutLock(studentId, true, "overdue_payment", coachId);
+    }
   }
-  updateStudentProfile(studentId, updates);
+  updateStudentProfile(studentId, updates, coachId);
 }
 
 export function inactivateStudentAndReleaseAgenda(
   studentId: string,
-  releaseAgendaSlots: boolean = true
+  releaseAgendaSlots: boolean = true,
+  coachId?: string
 ): void {
-  updateStudentProfile(studentId, {
-    status: "inativo",
-    paymentStatus: "cancelado",
-    todayAttendanceStatus: undefined,
-    scheduledTimeToday: undefined,
-  });
+  updateStudentProfile(
+    studentId,
+    {
+      status: "inativo",
+      paymentStatus: "cancelado",
+      todayAttendanceStatus: undefined,
+      scheduledTimeToday: undefined,
+    },
+    coachId
+  );
 
   if (releaseAgendaSlots && typeof window !== "undefined") {
     try {
@@ -574,9 +867,11 @@ export function inactivateStudentAndReleaseAgenda(
  * Aluno desvincula o personal trainer por iniciativa própria
  * Atualiza o plano para Treino Livre, limpa agendamento do dia e grade semanal
  */
-export function studentUnlinkCoach(studentId: string): void {
+export function studentUnlinkCoach(studentId: string, coachId?: string): void {
   if (typeof window === "undefined") return;
-  const students = getStoredStudents();
+  const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+  const storageKey = getCoachStudentsStorageKey(targetCoachId);
+  const students = getStoredStudents(targetCoachId);
   const updated = students.map((s) => {
     if (s.id === studentId) {
       return {
@@ -590,17 +885,21 @@ export function studentUnlinkCoach(studentId: string): void {
     }
     return s;
   });
-  localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+  localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
 export function recordStudentAttendance(
   studentId: string,
   type: "presence" | "absence" | "delay",
-  delayMinutes: number = 15
+  delayMinutes: number = 15,
+  coachId?: string
 ): void {
   if (typeof window === "undefined") return;
-  const students = getStoredStudents();
+  const currentUser = getCurrentUser();
+  const targetCoachId = coachId || currentUser?.id || "coach_default";
+  const storageKey = getCoachStudentsStorageKey(targetCoachId);
+  const students = getStoredStudents(targetCoachId);
   const updated = students.map((s) => {
     if (s.id === studentId) {
       if (type === "presence") {
@@ -631,12 +930,12 @@ export function recordStudentAttendance(
     }
     return s;
   });
-  localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updated));
+  localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NAME));
 
   const updatedStudent = updated.find((st) => st.id === studentId);
   if (updatedStudent) {
-    upsertStudentToSupabase(updatedStudent).catch(() => {});
+    upsertStudentToSupabase(updatedStudent, targetCoachId).catch(() => {});
   }
 
   // 1. Sincroniza com o booking-store (gymflow_bookings_v3)
@@ -657,7 +956,7 @@ export function recordStudentAttendance(
       return b;
     });
 
-    // Se o aluno não tinha reserva criada para hoje na grade, cria uma automaticamente para aparecer na Agenda
+    // Se o aluno não tinha reserva criada para hoje na grade, cria uma automaticamente associada ao treinador real
     if (!changedBooking && updatedStudent) {
       const now = new Date();
       const shortDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -666,26 +965,30 @@ export function recordStudentAttendance(
       const monthNum = String(now.getMonth() + 1).padStart(2, "0");
       const timeNow = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+      const resolvedCoachName = currentUser?.name
+        ? `Prof. ${currentUser.name}`
+        : (updatedStudent.prescribedBy || "Personal Trainer");
+
       const newBooking = {
         id: `b_today_${updatedStudent.id}_${Date.now()}`,
         studentId: updatedStudent.id,
         studentName: updatedStudent.name,
         studentPhone: updatedStudent.phone || "",
-        coachId: "coach_rodrigo",
-        coachName: "Prof. Rodrigo",
-        coachPhone: "11999990000",
+        coachId: targetCoachId,
+        coachName: resolvedCoachName,
+        coachPhone: currentUser?.phone || "",
         slotDay: `${dayShort} (${dayNum}/${monthNum})`,
         slotTime: updatedStudent.scheduledTimeToday || "08:00",
         planType: updatedStudent.plan?.toLowerCase().includes("vip")
-          ? "vip"
+          ? ("vip" as const)
           : updatedStudent.plan?.toLowerCase().includes("pro")
-          ? "pro"
-          : "basico",
+          ? ("pro" as const)
+          : ("basico" as const),
         basePrice: 45,
         extraOfferedAmount: 0,
         totalPrice: 45,
-        status: "accepted",
-        paymentStatus: "paid",
+        status: "accepted" as const,
+        paymentStatus: "paid" as const,
         attendanceStatus: targetStatus,
         createdAt: `Hoje às ${timeNow}`,
       };
@@ -701,17 +1004,16 @@ export function recordStudentAttendance(
     console.error("Erro ao sincronizar reserva:", err);
   }
 
-  // 2. Envia notificação instantânea para o aluno no aplicativo (gymflow_notifications_v2)
+  // 2. Envia notificação instantânea para o aluno no aplicativo (gymflow_notifications_v3)
   try {
     const targetStudent = updated.find((st) => st.id === studentId);
-    const studentName = targetStudent?.name || "Aluno";
-    const rawNotifs = localStorage.getItem("gymflow_notifications_v2");
+    const rawNotifs = localStorage.getItem("gymflow_notifications_v3");
     const notifsList: any[] = rawNotifs ? JSON.parse(rawNotifs) : [];
     const timeNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     let notifTitle = "Presença Confirmada! 🔥";
     let notifMsg = `Seu treinador confirmou sua presença no treino de hoje às ${timeNow}. Bom treino!`;
-    let notifType = "training_reminder";
+    let notifType: any = "training_reminder";
 
     if (type === "absence") {
       notifTitle = "Falta Registrada ❌";
@@ -727,6 +1029,7 @@ export function recordStudentAttendance(
       id: `notif_${Date.now()}`,
       targetRole: "student",
       studentId,
+      coachId: targetCoachId,
       type: notifType,
       title: notifTitle,
       message: notifMsg,
@@ -734,7 +1037,7 @@ export function recordStudentAttendance(
       read: false,
     });
 
-    localStorage.setItem("gymflow_notifications_v2", JSON.stringify(notifsList.slice(0, 40)));
+    localStorage.setItem("gymflow_notifications_v3", JSON.stringify(notifsList.slice(0, 40)));
     window.dispatchEvent(new Event("gymflow:notifications-updated"));
   } catch (err) {
     console.error("Erro ao enviar notificação de presença:", err);
@@ -760,45 +1063,62 @@ export function getStudentWorkout(studentId: string): StudentWorkoutPackage {
     const raw = localStorage.getItem(STORAGE_KEY_WORKOUTS);
     const workoutsMap: Record<string, StudentWorkoutPackage> = raw ? JSON.parse(raw) : {};
 
-    if (workoutsMap[studentId]) {
-      return workoutsMap[studentId];
-    }
-
-    // Se o aluno ainda não tiver ficha salva com este ID (por exemplo, após login ou sincronização de usuário),
-    // mas houver uma rotina configurada em "student_me" ou "user_me", preserva os dados personalizados do usuário
-    if (studentId !== "student_me" && studentId !== "user_me") {
-      const fallbackPkg = workoutsMap["student_me"] || workoutsMap["user_me"];
-      if (fallbackPkg && fallbackPkg.splits && fallbackPkg.splits.length > 0) {
-        const migratedPackage: StudentWorkoutPackage = {
-          ...fallbackPkg,
-          studentId,
-        };
-        workoutsMap[studentId] = migratedPackage;
-        localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
-        return migratedPackage;
+    let matchedStudent: StudentProfile | undefined;
+    if (typeof window !== "undefined") {
+      const rawStudents = getStoredStudentsRaw();
+      matchedStudent = rawStudents.find((s) => s.id === studentId);
+      if (!matchedStudent) {
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key === STORAGE_KEY_STUDENTS || key.startsWith("gymflow_students_"))) {
+              const val = localStorage.getItem(key);
+              if (val) {
+                const list = JSON.parse(val);
+                if (Array.isArray(list)) {
+                  const found = list.find((s: StudentProfile) => s.id === studentId);
+                  if (found) {
+                    matchedStudent = found;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch {}
       }
     }
 
-    // Se ainda não tiver ficha salva para esse aluno, associa de acordo com seu objetivo real
-    const student = getStoredStudents().find((s) => s.id === studentId);
-    const userGoal = student?.goal || (currentUser?.id === studentId ? currentUser.goal : "Hipertrofia");
+    if (workoutsMap[studentId]) {
+      const pkg = workoutsMap[studentId];
+      if (matchedStudent?.isWorkoutLocked !== undefined) {
+        pkg.isLocked = matchedStudent.isWorkoutLocked;
+        pkg.lockedReason = matchedStudent.workoutLockedReason;
+        pkg.lockedAt = matchedStudent.workoutLockedAt;
+      }
+      return pkg;
+    }
+
+    // Se ainda não tiver ficha salva para esse aluno, associa de acordo com seu objetivo individual
+    const userGoal = currentUser?.id === studentId ? currentUser.goal : "Hipertrofia";
 
     let matchedRoutine = PREFORMED_ROUTINES[0];
-    if (userGoal === "Emagrecimento" || student?.currentRoutineTitle?.includes("Glúteos")) {
+    if (userGoal === "Emagrecimento") {
       matchedRoutine = PREFORMED_ROUTINES[1] || PREFORMED_ROUTINES[0];
-    } else if (userGoal === "Força & Performance" || student?.currentRoutineTitle?.includes("Força")) {
+    } else if (userGoal === "Força & Performance") {
       matchedRoutine = PREFORMED_ROUTINES[2] || PREFORMED_ROUTINES[0];
     }
 
     const initialPackage: StudentWorkoutPackage = {
       studentId,
-      routineTitle: student?.currentRoutineTitle && student.currentRoutineTitle !== "Acompanhamento Presencial Livre"
-        ? student.currentRoutineTitle
-        : matchedRoutine.name,
-      prescribedBy: student?.prescribedBy || "",
-      prescribedAt: student?.prescribedAt || "Ficha Inicial",
-      coachNotes: student?.notesFromCoach || "Foco na postura, cadência controlada e respiração correta.",
+      routineTitle: matchedRoutine.name,
+      prescribedBy: "",
+      prescribedAt: "Ficha Inicial",
+      coachNotes: "Foco na postura, cadência controlada e respiração correta.",
       splits: matchedRoutine.splits,
+      isLocked: matchedStudent?.isWorkoutLocked,
+      lockedReason: matchedStudent?.workoutLockedReason,
+      lockedAt: matchedStudent?.workoutLockedAt,
     };
 
     workoutsMap[studentId] = initialPackage;
@@ -822,18 +1142,24 @@ export function assignWorkoutToStudent(
     coachNotes?: string;
     splits: WorkoutSplitTemplate[];
     prescribedBy?: string;
-  }
+  },
+  coachId?: string
 ): void {
   if (typeof window === "undefined") return;
 
   try {
+    const currentUser = getCurrentUser();
+    const defaultCoachName = currentUser?.name
+      ? `Prof. ${currentUser.name}${currentUser.cref ? ` (CREF ${currentUser.cref})` : ""}`
+      : "Personal Trainer";
+
     const rawWorkouts = localStorage.getItem(STORAGE_KEY_WORKOUTS);
     const workoutsMap: Record<string, StudentWorkoutPackage> = rawWorkouts ? JSON.parse(rawWorkouts) : {};
 
     const workoutPackage: StudentWorkoutPackage = {
       studentId,
       routineTitle: data.routineTitle,
-      prescribedBy: data.prescribedBy || "Prof. Rodrigo Costa (CREF 08412-SP)",
+      prescribedBy: data.prescribedBy || defaultCoachName,
       prescribedAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       coachNotes: data.coachNotes || "Prescrição individualizada com foco em resultados progressivos.",
       splits: data.splits,
@@ -845,8 +1171,10 @@ export function assignWorkoutToStudent(
     // Sincroniza ficha com Supabase
     saveWorkoutToSupabase(workoutPackage).catch(() => {});
 
-    // Atualiza também o status na lista de alunos
-    const students = getStoredStudents();
+    // Atualiza também o status na lista de alunos do treinador
+    const targetCoachId = coachId || currentUser?.id || "coach_default";
+    const storageKey = getCoachStudentsStorageKey(targetCoachId);
+    const students = getStoredStudents(targetCoachId);
     const updatedStudents = students.map((st) => {
       if (st.id === studentId) {
         return {
@@ -860,23 +1188,24 @@ export function assignWorkoutToStudent(
       }
       return st;
     });
-    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updatedStudents));
+    localStorage.setItem(storageKey, JSON.stringify(updatedStudents));
 
-    // Notifica o aluno instantaneamente no aplicativo (gymflow_notifications_v2)
+    // Notifica o aluno instantaneamente no aplicativo (gymflow_notifications_v3)
     try {
-      const rawNotifs = localStorage.getItem("gymflow_notifications_v2");
+      const rawNotifs = localStorage.getItem("gymflow_notifications_v3");
       const notifsList: any[] = rawNotifs ? JSON.parse(rawNotifs) : [];
       notifsList.unshift({
         id: `notif_${Date.now()}`,
         targetRole: "student",
         studentId,
+        coachId: targetCoachId,
         type: "workout_updated",
         title: "Ficha de Treino Atualizada! 📋",
         message: `${workoutPackage.prescribedBy} atualizou sua ficha de treino: "${data.routineTitle}". Abra a aba Treino para conferir!`,
         timestamp: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
         read: false,
       });
-      localStorage.setItem("gymflow_notifications_v2", JSON.stringify(notifsList.slice(0, 40)));
+      localStorage.setItem("gymflow_notifications_v3", JSON.stringify(notifsList.slice(0, 40)));
       window.dispatchEvent(new Event("gymflow:notifications-updated"));
     } catch (notifErr) {
       console.error("Erro ao enviar notificação de treino:", notifErr);
@@ -889,15 +1218,18 @@ export function assignWorkoutToStudent(
   }
 }
 
-export function detachWorkoutFromStudent(studentId: string): void {
+export function detachWorkoutFromStudent(studentId: string, coachId?: string): void {
   if (typeof window === "undefined") return;
   try {
+    const targetCoachId = coachId || getCurrentUser()?.id || "coach_default";
+    const storageKey = getCoachStudentsStorageKey(targetCoachId);
+
     const rawWorkouts = localStorage.getItem(STORAGE_KEY_WORKOUTS);
     const workoutsMap: Record<string, StudentWorkoutPackage> = rawWorkouts ? JSON.parse(rawWorkouts) : {};
     delete workoutsMap[studentId];
     localStorage.setItem(STORAGE_KEY_WORKOUTS, JSON.stringify(workoutsMap));
 
-    const students = getStoredStudents();
+    const students = getStoredStudents(targetCoachId);
     const updatedStudents = students.map((st) => {
       if (st.id === studentId) {
         return {
@@ -910,7 +1242,7 @@ export function detachWorkoutFromStudent(studentId: string): void {
       }
       return st;
     });
-    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(updatedStudents));
+    localStorage.setItem(storageKey, JSON.stringify(updatedStudents));
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { studentId } }));
   } catch (e) {
     console.error("Erro ao desvincular ficha:", e);

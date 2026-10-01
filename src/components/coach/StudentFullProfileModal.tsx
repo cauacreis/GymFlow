@@ -29,6 +29,8 @@ import {
   UserCheck,
   Ban,
   RotateCcw,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -40,6 +42,8 @@ import {
   CoachPlanOption,
   parseDueDay,
   formatDueDayString,
+  setStudentWorkoutLock,
+  toggleStudentWorkoutLock,
 } from "@/lib/workout-store";
 import {
   BookingRequest,
@@ -199,6 +203,29 @@ export function StudentFullProfileModal({
     setLocalStudent(updated);
     if (onStudentUpdated) onStudentUpdated(updated);
     showToast(`${localStudent.name} reativado com sucesso!`);
+  };
+
+  const handleToggleWorkoutLock = () => {
+    if (!localStudent) return;
+    triggerHaptic("medium");
+    const nextLocked = toggleStudentWorkoutLock(localStudent.id, localStudent.coachId);
+    const updated: StudentProfile = {
+      ...localStudent,
+      isWorkoutLocked: nextLocked,
+      workoutLockedReason: nextLocked
+        ? (localStudent.paymentStatus === "atrasado" ? "overdue_payment" : "manual_coach_block")
+        : undefined,
+      workoutLockedAt: nextLocked ? new Date().toISOString() : undefined,
+    };
+    setLocalStudent(updated);
+    if (onStudentUpdated) {
+      onStudentUpdated(updated);
+    }
+    showToast(
+      nextLocked
+        ? "Ficha de treino pausada temporariamente!"
+        : "Ficha de treino liberada e reativada com sucesso!"
+    );
   };
 
   // Link para cobrança educada no WhatsApp
@@ -994,6 +1021,61 @@ export function StudentFullProfileModal({
                       </button>
                     )}
                   </div>
+                </div>
+
+                {/* Controle de Pausa / Liberação da Ficha de Treino */}
+                <div className="pt-3 border-t border-white/[0.06] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Dumbbell className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-bold text-white">Ficha de Treino</span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                        localStudent.isWorkoutLocked
+                          ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                          : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                      }`}
+                    >
+                      {localStudent.isWorkoutLocked ? (
+                        <>
+                          <Lock className="w-2.5 h-2.5" /> Ficha Pausada
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-2.5 h-2.5" /> Ficha Liberada
+                        </>
+                      )}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    {localStudent.isWorkoutLocked
+                      ? "A ficha de treino deste aluno está temporariamente bloqueada. Ele verá as orientações para quitação da pendência."
+                      : "O aluno tem acesso completo à ficha e aos exercícios prescritos."}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleWorkoutLock}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm border ${
+                      localStudent.isWorkoutLocked
+                        ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/40"
+                        : "bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border-rose-500/30"
+                    }`}
+                  >
+                    {localStudent.isWorkoutLocked ? (
+                      <>
+                        <Unlock className="w-3.5 h-3.5" />
+                        <span>Reativar e Liberar Ficha de Treino</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Pausar / Desativar Ficha de Treino</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 

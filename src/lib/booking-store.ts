@@ -580,22 +580,23 @@ export function saveStoredCoaches(coaches: CoachTrainer[]): void {
   }
 }
 
+// Helper interno para obter o usuário autenticado sem dependência circular
+function getLocalAuthUser(): { id?: string; activeRole?: "student" | "coach"; name?: string; phone?: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("gymflow_current_user_v4");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 // Flag de sincronização de agendamentos em memória
 let hasTriggeredBookingsSupabaseSync = false;
 
-export function getStoredBookings(): BookingRequest[] {
+export function getAllRawBookings(): BookingRequest[] {
   if (typeof window === "undefined") return INITIAL_BOOKINGS;
-
-  if (!hasTriggeredBookingsSupabaseSync) {
-    hasTriggeredBookingsSupabaseSync = true;
-    fetchBookingsFromSupabase().then((remoteBookings) => {
-      if (remoteBookings && remoteBookings.length > 0) {
-        localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(remoteBookings));
-        window.dispatchEvent(new Event(EVENT_BOOKING));
-      }
-    }).catch(() => {});
-  }
-
   try {
     const raw = localStorage.getItem(STORAGE_BOOKINGS);
     if (!raw) {
@@ -621,6 +622,58 @@ export function getStoredBookings(): BookingRequest[] {
   }
 }
 
+export function getCoachBookings(coachId: string): BookingRequest[] {
+  const all = getAllRawBookings();
+  if (!coachId) return [];
+  return all.filter((b) => b.coachId === coachId);
+}
+
+export function getStudentBookings(studentId: string): BookingRequest[] {
+  const all = getAllRawBookings();
+  if (!studentId) return [];
+  return all.filter((b) => b.studentId === studentId);
+}
+
+export function getStoredBookings(userId?: string, role?: "student" | "coach"): BookingRequest[] {
+  if (typeof window === "undefined") return INITIAL_BOOKINGS;
+
+  const authUser = getLocalAuthUser();
+  const targetId = userId || authUser?.id;
+  const targetRole = role || authUser?.activeRole;
+
+  if (!hasTriggeredBookingsSupabaseSync) {
+    hasTriggeredBookingsSupabaseSync = true;
+    const coachIdParam = targetRole === "coach" ? targetId : undefined;
+    const studentIdParam = targetRole === "student" ? targetId : undefined;
+    fetchBookingsFromSupabase(coachIdParam, studentIdParam).then((remoteBookings) => {
+      if (remoteBookings && remoteBookings.length > 0) {
+        const current = getAllRawBookings();
+        const remoteMap = new Map(remoteBookings.map((b) => [b.id, b]));
+        const merged = [
+          ...remoteBookings,
+          ...current.filter((b) => !remoteMap.has(b.id)),
+        ];
+        localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(merged));
+        window.dispatchEvent(new Event(EVENT_BOOKING));
+      }
+    }).catch(() => {});
+  }
+
+  const all = getAllRawBookings();
+
+  if (!targetId || targetId === "user_me") {
+    return all;
+  }
+
+  if (targetRole === "coach") {
+    return all.filter((b) => b.coachId === targetId);
+  } else if (targetRole === "student") {
+    return all.filter((b) => b.studentId === targetId);
+  }
+
+  return all.filter((b) => b.coachId === targetId || b.studentId === targetId);
+}
+
 export function saveStoredBookings(bookings: BookingRequest[]): void {
   if (typeof window === "undefined") return;
   try {
@@ -631,7 +684,7 @@ export function saveStoredBookings(bookings: BookingRequest[]): void {
   }
 }
 
-export function getStoredNotifications(): AppNotification[] {
+export function getAllRawNotifications(): AppNotification[] {
   if (typeof window === "undefined") return INITIAL_NOTIFICATIONS;
   try {
     const raw = localStorage.getItem(STORAGE_NOTIFICATIONS);
@@ -645,16 +698,43 @@ export function getStoredNotifications(): AppNotification[] {
   }
 }
 
+export function getStoredNotifications(userId?: string, role?: "student" | "coach"): AppNotification[] {
+  if (typeof window === "undefined") return INITIAL_NOTIFICATIONS;
+  const raw = getAllRawNotifications();
+  const authUser = getLocalAuthUser();
+  const targetId = userId || authUser?.id;
+  const targetRole = role || authUser?.activeRole;
+
+  if (!targetId || targetId === "user_me") {
+    return targetRole ? raw.filter((n) => n.targetRole === targetRole) : raw;
+  }
+
+  return raw.filter((n) => {
+    if (targetRole && n.targetRole !== targetRole) return false;
+    if (n.targetRole === "coach") {
+      if (n.coachId) {
+        return n.coachId === targetId;
+      }
+      return targetId === "coach_rodrigo" || targetId === "coach_default";
+    } else {
+      if (n.studentId) {
+        return n.studentId === targetId;
+      }
+      return targetId === "student_carlos" || targetId === "student_user";
+    }
+  });
+}
+
 // ----------------------------------------------------------------------
 // NOTIFICAÇÕES ENGINE
 // ----------------------------------------------------------------------
 
 export function addNotification(notif: Omit<AppNotification, "id" | "timestamp" | "read">): void {
   if (typeof window === "undefined") return;
-  const list = getStoredNotifications();
+  const list = getAllRawNotifications();
   const newItem: AppNotification = {
     ...notif,
-    id: `notif_${Date.now()}`,
+    id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     timestamp: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
     read: false,
   };
@@ -665,7 +745,7 @@ export function addNotification(notif: Omit<AppNotification, "id" | "timestamp" 
 
 export function markNotificationAsRead(id: string): void {
   if (typeof window === "undefined") return;
-  const list = getStoredNotifications();
+  const list = getAllRawNotifications();
   const updated = list.map((n) => (n.id === id ? { ...n, read: true } : n));
   localStorage.setItem(STORAGE_NOTIFICATIONS, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
@@ -673,7 +753,7 @@ export function markNotificationAsRead(id: string): void {
 
 export function markAllNotificationsAsRead(): void {
   if (typeof window === "undefined") return;
-  const list = getStoredNotifications();
+  const list = getAllRawNotifications();
   const updated = list.map((n) => ({ ...n, read: true }));
   localStorage.setItem(STORAGE_NOTIFICATIONS, JSON.stringify(updated));
   window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
@@ -695,14 +775,18 @@ export function requestTrainerBooking(params: {
   notes?: string;
 }): BookingRequest {
   const coaches = getStoredCoaches();
-  const coach = coaches.find((c) => c.id === params.coachId) || coaches[0];
+  const coach = coaches.find((c) => c.id === params.coachId);
+  const resolvedCoachId = coach ? coach.id : params.coachId;
+  const resolvedCoachName = coach ? coach.name : "Personal Trainer";
+  const resolvedCoachPhone = coach ? coach.phone : "";
 
-  const basePrice =
-    params.planType === "basico" || params.planType === "diario"
+  const basePrice = coach
+    ? params.planType === "basico" || params.planType === "diario"
       ? (coach.pricing.basicMonthly ?? coach.pricing.dailySession ?? 35)
       : params.planType === "pro" || params.planType === "semanal"
       ? (coach.pricing.proMonthly ?? coach.pricing.weeklyPlan ?? 45)
-      : (coach.pricing.vipMonthly ?? coach.pricing.monthlyPlan ?? 55);
+      : (coach.pricing.vipMonthly ?? coach.pricing.monthlyPlan ?? 55)
+    : 45;
 
   const totalPrice = basePrice + Math.max(0, params.extraOfferedAmount);
 
@@ -711,9 +795,9 @@ export function requestTrainerBooking(params: {
     studentId: params.studentId,
     studentName: params.studentName,
     studentPhone: params.studentPhone,
-    coachId: coach.id,
-    coachName: coach.name,
-    coachPhone: coach.phone,
+    coachId: resolvedCoachId,
+    coachName: resolvedCoachName,
+    coachPhone: resolvedCoachPhone,
     slotDay: params.slotDay,
     slotTime: params.slotTime,
     planType: params.planType,
@@ -727,7 +811,7 @@ export function requestTrainerBooking(params: {
     createdAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
   };
 
-  const bookings = getStoredBookings();
+  const bookings = getAllRawBookings();
   const updatedBookings = [newBooking, ...bookings];
 
   if (typeof window !== "undefined") {
@@ -736,7 +820,7 @@ export function requestTrainerBooking(params: {
     // Notifica o treinador sobre a nova solicitação
     addNotification({
       targetRole: "coach",
-      coachId: coach.id,
+      coachId: resolvedCoachId,
       type: "training_reminder",
       title: "Nova Solicitação de Treino! 📅",
       message: `${params.studentName} solicitou o horário de ${params.slotDay} às ${params.slotTime} (Plano ${params.planType.toUpperCase()}${params.extraOfferedAmount > 0 ? ` com +R$ ${params.extraOfferedAmount} extra` : ""}).`,

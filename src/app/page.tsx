@@ -255,13 +255,13 @@ export default function GymFlowApp() {
   // Sincronização de Notificações
   useEffect(() => {
     const refreshNotifications = () => {
-      const all = getStoredNotifications();
-      setNotifications(all.filter((n) => n.targetRole === (viewMode === "coach" ? "coach" : "student")));
+      const userNotifs = getStoredNotifications(userProfile.id, viewMode === "coach" ? "coach" : "student");
+      setNotifications(userNotifs);
     };
     refreshNotifications();
     const unsub = subscribeToNotifications(refreshNotifications);
     return () => unsub();
-  }, [viewMode]);
+  }, [viewMode, userProfile.id]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

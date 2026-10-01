@@ -181,20 +181,20 @@ export function CoachDashboard({
 
   // Carrega alunos, perfil do treinador e rotinas salvas
   useEffect(() => {
-    setStudents(getStoredStudents());
+    setStudents(getStoredStudents(currentUser.id));
     setCoachUser(getCurrentUser());
-    setCoachRoutines(getStoredCoachRoutines());
+    setCoachRoutines(getStoredCoachRoutines(currentUser.id));
 
     const unsubscribeAuth = subscribeToAuthChanges((u) => setCoachUser(u));
     const unsubscribeRoutines = subscribeToCoachRoutines(() => {
-      setCoachRoutines(getStoredCoachRoutines());
+      setCoachRoutines(getStoredCoachRoutines(currentUser.id));
     });
 
     return () => {
       unsubscribeAuth();
       unsubscribeRoutines();
     };
-  }, []);
+  }, [currentUser.id]);
 
   // Atualiza busca ExerciseDB
   useEffect(() => {
@@ -452,7 +452,7 @@ export function CoachDashboard({
       prescribedBy: coachUser.name ? `Prof. ${coachUser.name}` : "Prof. Rodrigo Costa (CREF 08412-SP)",
     });
 
-    setStudents(getStoredStudents());
+    setStudents(getStoredStudents(currentUser.id));
     showNotification(`Ficha personalizada prescrita para ${currentStudent.name}!`);
   };
 
@@ -465,9 +465,9 @@ export function CoachDashboard({
       name: newStudentName.trim(),
       email: newStudentEmail.trim(),
       goal: newStudentGoal,
-    });
+    }, currentUser.id);
 
-    setStudents(getStoredStudents());
+    setStudents(getStoredStudents(currentUser.id));
     setSelectedStudentId(created.id);
     setIsNewStudentModalOpen(false);
     setNewStudentName("");
@@ -1542,7 +1542,7 @@ export function CoachDashboard({
         defaultStudentId={selectedStudentId}
         onSuccess={(studentName, routineName) => {
           showNotification(`Ficha "${routineName}" prescrita para ${studentName} com sucesso!`);
-          setStudents(getStoredStudents());
+          setStudents(getStoredStudents(currentUser.id));
         }}
       />
     </div>

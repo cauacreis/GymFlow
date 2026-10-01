@@ -31,6 +31,8 @@ import {
   Play,
   Flame,
   Bell,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -54,6 +56,10 @@ import {
   refreshStudentPaymentCycles,
   parseDueDay,
   formatDueDayString,
+  isCoachAutoBlockEnabled,
+  setCoachAutoBlockPreference,
+  setStudentWorkoutLock,
+  toggleStudentWorkoutLock,
 } from "@/lib/workout-store";
 import {
   getStoredBookings,
@@ -78,6 +84,9 @@ interface CoachStudentsManagerProps {
 export function CoachStudentsManager({
   onPrescribeWorkoutForStudent,
 }: CoachStudentsManagerProps) {
+  const currentUser = getCurrentUser();
+  const currentCoachId = currentUser?.id || "coach_rodrigo";
+
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"todos" | "ativo" | "atrasado" | "inativo">("todos");
@@ -127,12 +136,13 @@ export function CoachStudentsManager({
 
   // Modal Central de Lembretes Inteligentes
   const [isRemindersCenterOpen, setIsRemindersCenterOpen] = useState(false);
-  const [remindersSummary, setRemindersSummary] = useState(() => getRemindersSummary());
+  const [remindersSummary, setRemindersSummary] = useState(() => getRemindersSummary(currentCoachId));
 
-  // Configuração Global de Vencimento de Mensalidades
+  // Configuração Global de Vencimento de Mensalidades & Bloqueio Automático
   const [isDueDayModalOpen, setIsDueDayModalOpen] = useState(false);
-  const [coachDefaultDueDay, setCoachDefaultDueDayState] = useState<number>(() => getCoachDefaultDueDay());
+  const [coachDefaultDueDay, setCoachDefaultDueDayState] = useState<number>(() => getCoachDefaultDueDay(currentCoachId));
   const [dueDayModalSelection, setDueDayModalSelection] = useState<number>(10);
+  const [autoBlockOverdue, setAutoBlockOverdue] = useState<boolean>(() => isCoachAutoBlockEnabled(currentCoachId));
   const [applyDueDayToAll, setApplyDueDayToAll] = useState(false);
   const [isCheckingCycles, setIsCheckingCycles] = useState(false);
 
@@ -141,10 +151,11 @@ export function CoachStudentsManager({
 
   useEffect(() => {
     const load = () => {
-      setStudents(getStoredStudents());
-      setRemindersSummary(getRemindersSummary());
-      setCoachDefaultDueDayState(getCoachDefaultDueDay());
-      const loadedPlans = getStoredCoachPlans();
+      setStudents(getStoredStudents(currentCoachId));
+      setRemindersSummary(getRemindersSummary(currentCoachId));
+      setCoachDefaultDueDayState(getCoachDefaultDueDay(currentCoachId));
+      setAutoBlockOverdue(isCoachAutoBlockEnabled(currentCoachId));
+      const loadedPlans = getStoredCoachPlans(currentCoachId);
       setCoachPlans(loadedPlans);
       if (loadedPlans.length > 0) {
         setNewStudentPlan((prev) => {
@@ -159,32 +170,47 @@ export function CoachStudentsManager({
     load();
     const unsubWorkouts = subscribeToWorkoutChanges(load);
     const unsubBookings = subscribeToBookings(load);
-    const unsubReminders = subscribeToReminders(() => setRemindersSummary(getRemindersSummary()));
+    const unsubReminders = subscribeToReminders(() => setRemindersSummary(getRemindersSummary(currentCoachId)));
     return () => {
       unsubWorkouts();
       unsubBookings();
       unsubReminders();
     };
-  }, []);
+  }, [currentCoachId]);
 
   const handleSaveDefaultDueDay = () => {
     triggerHaptic("success");
-    const { updatedCount, newDay } = setCoachDefaultDueDay(dueDayModalSelection, applyDueDayToAll);
+    const { updatedCount, newDay } = setCoachDefaultDueDay(dueDayModalSelection, applyDueDayToAll, currentCoachId);
     setCoachDefaultDueDayState(newDay);
-    setStudents(getStoredStudents());
+    setCoachAutoBlockPreference(autoBlockOverdue, currentCoachId);
+    if (autoBlockOverdue) {
+      refreshStudentPaymentCycles(currentCoachId);
+    }
+    setStudents(getStoredStudents(currentCoachId));
     setIsDueDayModalOpen(false);
     if (applyDueDayToAll && updatedCount > 0) {
       showToast(`Vencimento atualizado para ${formatDueDayString(newDay)} em todos os ${updatedCount} alunos!`);
     } else {
-      showToast(`Dia ${newDay} configurado como vencimento padrão da consultoria!`);
+      showToast(`Configurações de vencimento e bloqueio salvas com sucesso!`);
     }
+  };
+
+  const handleToggleWorkoutLock = (studentId: string) => {
+    triggerHaptic("medium");
+    const newLocked = toggleStudentWorkoutLock(studentId, currentCoachId);
+    setStudents(getStoredStudents(currentCoachId));
+    showToast(
+      newLocked
+        ? "Ficha de treino pausada temporariamente!"
+        : "Ficha de treino reativada e liberada para o aluno!"
+    );
   };
 
   const handleForceCheckCycles = () => {
     setIsCheckingCycles(true);
     triggerHaptic("medium");
-    const { updatedCount } = refreshStudentPaymentCycles();
-    setStudents(getStoredStudents());
+    const { updatedCount } = refreshStudentPaymentCycles(currentCoachId);
+    setStudents(getStoredStudents(currentCoachId));
     setTimeout(() => {
       setIsCheckingCycles(false);
       showToast(
@@ -246,9 +272,9 @@ export function CoachStudentsManager({
       age: safeAge,
       emergencyContact: cleanEmergency,
       isOfflineStudent: newStudentIsOffline,
-    });
+    }, currentCoachId);
 
-    setStudents(getStoredStudents());
+    setStudents(getStoredStudents(currentCoachId));
     setIsNewStudentModalOpen(false);
     setNewStudentName("");
     setNewStudentPhone("");
@@ -315,7 +341,7 @@ export function CoachStudentsManager({
   // Salvar tabela de planos
   const handleSaveAllPlans = () => {
     triggerHaptic("success");
-    saveCoachPlans(editingPlans);
+    saveCoachPlans(editingPlans, currentCoachId);
     setCoachPlans(editingPlans);
 
     // Sincronizar preços no booking-store e auth-store
@@ -324,8 +350,9 @@ export function CoachStudentsManager({
     const vip = editingPlans.find((p) => p.id === "plan_vip")?.price ?? 55;
 
     const coaches = getStoredCoaches();
-    if (coaches.length > 0) {
-      updateCoachPricing(coaches[0].id, {
+    const myCoachEntry = coaches.find((c) => c.id === currentCoachId) || coaches[0];
+    if (myCoachEntry) {
+      updateCoachPricing(myCoachEntry.id, {
         basicMonthly: basic,
         proMonthly: pro,
         vipMonthly: vip,
@@ -335,7 +362,6 @@ export function CoachStudentsManager({
       });
     }
 
-    const currentUser = getCurrentUser();
     saveUserProfile({
       pricing: {
         basicMonthly: basic,
@@ -356,9 +382,9 @@ export function CoachStudentsManager({
     e.preventDefault();
     if (!selectedStudent || !selectedStudentNewPlan.trim()) return;
     triggerHaptic("success");
-    updateStudentProfile(selectedStudent.id, { plan: selectedStudentNewPlan.trim() });
+    updateStudentProfile(selectedStudent.id, { plan: selectedStudentNewPlan.trim() }, currentCoachId);
     setSelectedStudent((prev) => (prev ? { ...prev, plan: selectedStudentNewPlan.trim() } : null));
-    setStudents(getStoredStudents());
+    setStudents(getStoredStudents(currentCoachId));
     setIsEditStudentPlanModalOpen(false);
     showToast(`Plano do aluno atualizado para "${selectedStudentNewPlan}"!`);
   };
@@ -370,8 +396,8 @@ export function CoachStudentsManager({
     delayMinutes: number = 15
   ) => {
     triggerHaptic(type === "presence" ? "success" : type === "delay" ? "medium" : "warning");
-    recordStudentAttendance(studentId, type, delayMinutes);
-    const updated = getStoredStudents();
+    recordStudentAttendance(studentId, type, delayMinutes, currentCoachId);
+    const updated = getStoredStudents(currentCoachId);
     setStudents(updated);
     if (selectedStudent && selectedStudent.id === studentId) {
       const match = updated.find((s) => s.id === studentId);
@@ -400,11 +426,11 @@ export function CoachStudentsManager({
     updateStudentProfile(studentId, {
       scheduledTimeToday: time,
       todayAttendanceStatus: "agendado",
-    });
-    setStudents(getStoredStudents());
+    }, currentCoachId);
+    setStudents(getStoredStudents(currentCoachId));
 
     // Garante que o card apareça instantaneamente na grade da Agenda
-    const targetStudent = getStoredStudents().find((s) => s.id === studentId);
+    const targetStudent = getStoredStudents(currentCoachId).find((s) => s.id === studentId);
     if (targetStudent && typeof window !== "undefined") {
       try {
         const raw = localStorage.getItem("gymflow_bookings_v3");
@@ -423,9 +449,9 @@ export function CoachStudentsManager({
             studentId,
             studentName: targetStudent.name,
             studentPhone: targetStudent.phone || "",
-            coachId: "coach_rodrigo",
-            coachName: "Prof. Rodrigo",
-            coachPhone: "11999990000",
+            coachId: currentCoachId,
+            coachName: currentUser.name || "Professor",
+            coachPhone: currentUser.phone || "",
             slotDay: `${dayShort} (${dayNum}/${monthNum})`,
             slotTime: time,
             planType: targetStudent.plan?.toLowerCase().includes("vip")
@@ -472,7 +498,7 @@ export function CoachStudentsManager({
       splits: editingWorkoutData.splits,
       prescribedBy: editingWorkoutData.prescribedBy,
     });
-    const updated = getStoredStudents();
+    const updated = getStoredStudents(currentCoachId);
     setStudents(updated);
     if (selectedStudent && selectedStudent.id === editingWorkoutStudent.id) {
       const match = updated.find((s) => s.id === editingWorkoutStudent.id);
@@ -619,8 +645,8 @@ export function CoachStudentsManager({
   // Desvincular ficha
   const handleDetachWorkout = (studentId: string) => {
     triggerHaptic("light");
-    detachWorkoutFromStudent(studentId);
-    setStudents(getStoredStudents());
+    detachWorkoutFromStudent(studentId, currentCoachId);
+    setStudents(getStoredStudents(currentCoachId));
     if (selectedStudent && selectedStudent.id === studentId) {
       setSelectedStudent((prev) =>
         prev
@@ -639,9 +665,9 @@ export function CoachStudentsManager({
   const handleDeleteStudent = (studentId: string) => {
     if (!confirm("Tem certeza que deseja remover este aluno da sua lista?")) return;
     triggerHaptic("warning");
-    deleteStudent(studentId);
+    deleteStudent(studentId, currentCoachId);
     setSelectedStudent(null);
-    setStudents(getStoredStudents());
+    setStudents(getStoredStudents(currentCoachId));
     showToast("Aluno removido da lista.");
   };
 
@@ -1251,6 +1277,14 @@ export function CoachStudentsManager({
                             Presencial
                           </span>
                         )}
+                        {student.isWorkoutLocked && (
+                          <span
+                            className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1"
+                            title="Ficha de treino deste aluno pausada"
+                          >
+                            <Lock className="w-2.5 h-2.5 text-rose-400" /> Ficha Pausada
+                          </span>
+                        )}
                       </div>
 
                       <p className="text-[10px] text-zinc-400 truncate mt-0.5">
@@ -1374,6 +1408,41 @@ export function CoachStudentsManager({
                       <span>Treino</span>
                     </button>
 
+                    {/* Botão de Pausar / Reativar Ficha de Treino */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleWorkoutLock(student.id);
+                      }}
+                      className={`px-2 py-1 rounded-xl border text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all ${
+                        student.isWorkoutLocked
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
+                          : student.paymentStatus === "atrasado"
+                          ? "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30 animate-pulse"
+                          : "bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border-white/[0.08]"
+                      }`}
+                      title={
+                        student.isWorkoutLocked
+                          ? "Reativar e liberar ficha de treino do aluno"
+                          : student.paymentStatus === "atrasado"
+                          ? "Pagamento em atraso: pausar ficha de treino do aluno"
+                          : "Pausar ficha de treino do aluno"
+                      }
+                    >
+                      {student.isWorkoutLocked ? (
+                        <>
+                          <Unlock className="w-3 h-3 text-emerald-400" />
+                          <span>Liberar</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3 h-3 text-amber-400" />
+                          <span>{student.paymentStatus === "atrasado" ? "Bloquear" : "Pausar"}</span>
+                        </>
+                      )}
+                    </button>
+
                     {student.phone && (
                       <button
                         type="button"
@@ -1406,7 +1475,7 @@ export function CoachStudentsManager({
           handleOpenEditWorkout(st);
         }}
         onStudentUpdated={(updated) => {
-          setStudents(getStoredStudents());
+          setStudents(getStoredStudents(currentCoachId));
           setSelectedStudent(updated);
           showToast(`Perfil de ${updated.name} atualizado!`);
         }}
@@ -2432,6 +2501,73 @@ export function CoachStudentsManager({
                     </span>
                   </div>
                 </label>
+              </div>
+
+              {/* Opção de Bloqueio de Ficha em Caso de Atraso */}
+              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.08] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-black text-white">Bloqueio de Ficha em Caso de Atraso</span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      autoBlockOverdue
+                        ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                        : "bg-zinc-800 text-zinc-400 border-white/10"
+                    }`}
+                  >
+                    {autoBlockOverdue ? "Automático" : "Escolha do Professor"}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  Defina como o GymFlow deve agir quando o pagamento do aluno estiver atrasado:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("selection");
+                      setAutoBlockOverdue(false);
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      !autoBlockOverdue
+                        ? "bg-amber-500/10 border-amber-500/50 text-white shadow-md shadow-amber-500/10"
+                        : "bg-zinc-900/40 border-white/[0.06] text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-white">Escolha do Professor</span>
+                      {!autoBlockOverdue && <Check className="w-3.5 h-3.5 text-amber-400 stroke-[3]" />}
+                    </div>
+                    <p className="text-[10px] text-zinc-400 leading-tight">
+                      Você decide manualmente para cada aluno quando pausar ou liberar o acesso à ficha de treino.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic("selection");
+                      setAutoBlockOverdue(true);
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      autoBlockOverdue
+                        ? "bg-amber-500/10 border-amber-500/50 text-white shadow-md shadow-amber-500/10"
+                        : "bg-zinc-900/40 border-white/[0.06] text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-amber-300">Bloqueio Automático</span>
+                      {autoBlockOverdue && <Check className="w-3.5 h-3.5 text-amber-400 stroke-[3]" />}
+                    </div>
+                    <p className="text-[10px] text-zinc-400 leading-tight">
+                      A ficha é pausada automaticamente assim que o pagamento atrasa e liberada instantaneamente após quitação.
+                    </p>
+                  </button>
+                </div>
               </div>
 
               {/* Card Explicativo: Renovação e Atualização Automática do Ciclo */}

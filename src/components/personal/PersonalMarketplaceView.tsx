@@ -39,6 +39,7 @@ import { getUserPlanTier, isSubscriptionExpired } from "@/lib/subscription-featu
 import {
   getStoredCoaches,
   getStoredBookings,
+  getStudentBookings,
   requestTrainerBooking,
   subscribeToBookings,
   CoachTrainer,
@@ -105,6 +106,10 @@ export function PersonalMarketplaceView({
   const [isLocatingUser, setIsLocatingUser] = useState(false);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
 
+  const effectiveStudentId = studentId && studentId !== "student_carlos" ? studentId : (currentUserProfile?.id || "student_carlos");
+  const effectiveStudentName = studentName && studentName !== "Aluno" ? studentName : (currentUserProfile?.name || "Aluno");
+  const effectiveStudentPhone = studentPhone || currentUserProfile?.phone || "";
+
   // Filtros de busca avançada & proximidade
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState<string>("ALL");
@@ -118,21 +123,23 @@ export function PersonalMarketplaceView({
   useEffect(() => {
     const refreshData = () => {
       setCoaches(getStoredCoaches());
-      setMyBookings(getStoredBookings());
+      setMyBookings(getStudentBookings(effectiveStudentId));
     };
     refreshData();
     const unsub = subscribeToBookings(refreshData);
     return () => unsub();
-  }, []);
+  }, [effectiveStudentId]);
 
   // Ouve mudanças de autenticação/perfil do usuário
   useEffect(() => {
     const handleAuthChange = () => {
-      setCurrentUserProfile(getCurrentUser());
+      const updated = getCurrentUser();
+      setCurrentUserProfile(updated);
+      setMyBookings(getStudentBookings(updated.id || effectiveStudentId));
     };
     window.addEventListener("gymflow:auth-changed", handleAuthChange);
     return () => window.removeEventListener("gymflow:auth-changed", handleAuthChange);
-  }, []);
+  }, [effectiveStudentId]);
 
   // Solicitar ativação de geolocalização pelo aluno diretamente do marketplace
   const handleRequestUserLocation = () => {
@@ -547,9 +554,9 @@ export function PersonalMarketplaceView({
 
     triggerHaptic("heavy");
     requestTrainerBooking({
-      studentId: studentId || "student_carlos",
-      studentName,
-      studentPhone,
+      studentId: effectiveStudentId,
+      studentName: effectiveStudentName,
+      studentPhone: effectiveStudentPhone,
       coachId: currentCoach.id,
       slotDay: slotDayString,
       slotTime: selectedTimeSlot,
@@ -1490,10 +1497,10 @@ export function PersonalMarketplaceView({
           coachId={selectedBookingToLeave.coachId}
           coachPhone={selectedBookingToLeave.coachPhone}
           currentPlan={selectedBookingToLeave.planType}
-          studentId={studentId}
-          studentName={studentName}
+          studentId={effectiveStudentId}
+          studentName={effectiveStudentName}
           onSuccessLeave={() => {
-            setMyBookings(getStoredBookings());
+            setMyBookings(getStudentBookings(effectiveStudentId));
           }}
         />
       )}

@@ -42,7 +42,7 @@ import {
 } from "@/lib/body-metrics-store";
 import { getCurrentUser, subscribeToAuth, UserProfile } from "@/lib/auth-store";
 import { getStudentWorkout, subscribeToWorkoutChanges, StudentWorkoutPackage } from "@/lib/workout-store";
-import { getStoredBookings, subscribeToBookings, BookingRequest } from "@/lib/booking-store";
+import { getStoredBookings, getStudentBookings, subscribeToBookings, BookingRequest } from "@/lib/booking-store";
 import { canAccessFeature } from "@/lib/subscription-features";
 import { FeatureGateModal } from "@/components/subscription/FeatureGateModal";
 import { NewBodyMetricModal } from "./NewBodyMetricModal";
@@ -67,13 +67,14 @@ interface StudentAnalyticsDashboardProps {
 }
 
 export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashboardProps = {}) {
+  const initialUser = getCurrentUser();
   // Estado dinâmico de medições corporais, usuário, ficha de treino e agendamentos
-  const [metrics, setMetrics] = useState<BodyMetricEntry[]>(() => getStoredBodyMetrics());
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<UserProfile>(initialUser);
+  const [metrics, setMetrics] = useState<BodyMetricEntry[]>(() => getStoredBodyMetrics(initialUser.id));
   const [workoutPackage, setWorkoutPackage] = useState<StudentWorkoutPackage | null>(() =>
-    getStudentWorkout(getCurrentUser().id)
+    getStudentWorkout(initialUser.id)
   );
-  const [bookings, setBookings] = useState<BookingRequest[]>(() => getStoredBookings());
+  const [bookings, setBookings] = useState<BookingRequest[]>(() => getStudentBookings(initialUser.id));
   const [isMounted, setIsMounted] = useState(false);
 
   // Modais de medição, histórico e gating
@@ -86,10 +87,10 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
     setIsMounted(true);
     const refresh = () => {
       const user = getCurrentUser();
-      setMetrics(getStoredBodyMetrics());
+      setMetrics(getStoredBodyMetrics(user.id));
       setCurrentUser(user);
       setWorkoutPackage(getStudentWorkout(user.id));
-      setBookings(getStoredBookings());
+      setBookings(getStudentBookings(user.id));
     };
 
     refresh();
@@ -655,6 +656,7 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
       <NewBodyMetricModal
         isOpen={isNewMetricModalOpen}
         onClose={() => setIsNewMetricModalOpen(false)}
+        userId={currentUser.id}
         initialWeight={latestMetric.weight}
         initialBodyFat={latestMetric.bodyFat}
         onSuccess={() => showToast("Nova medição registrada com sucesso! 📊")}
@@ -663,6 +665,7 @@ export function StudentAnalyticsDashboard({ onOpenPlans }: StudentAnalyticsDashb
       <BodyMetricsHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
+        userId={currentUser.id}
         metrics={metrics}
         onOpenNewMetric={() => {
           setIsHistoryModalOpen(false);

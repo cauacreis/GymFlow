@@ -47,7 +47,40 @@ import {
   areProfilesEqual,
   UserProfile,
 } from "../src/lib/auth-store";
-import { CoachTrainer, getStoredNotifications } from "../src/lib/booking-store";
+import {
+  CoachTrainer,
+  getStoredNotifications,
+  getStoredBookings,
+  getCoachBookings,
+  getStudentBookings,
+  requestTrainerBooking,
+  addNotification,
+} from "../src/lib/booking-store";
+import {
+  getCoachStudentsStorageKey,
+  getCoachPlansStorageKey,
+  getStoredStudents,
+  saveNewStudent,
+  getStoredCoachPlans,
+  saveCoachPlans,
+  isCoachAutoBlockEnabled,
+  setCoachAutoBlockPreference,
+  setStudentWorkoutLock,
+  toggleStudentWorkoutLock,
+  checkAndUpdatePaymentCycles,
+  updateStudentPaymentStatus,
+  getStudentWorkout,
+} from "../src/lib/workout-store";
+import {
+  getBodyMetricsStorageKey,
+  getStoredBodyMetrics,
+  addBodyMetric,
+} from "../src/lib/body-metrics-store";
+import {
+  getCoachRoutinesStorageKey,
+  getStoredCoachRoutines,
+  saveCoachRoutine,
+} from "../src/lib/coach-routines-store";
 import { FAQ_ITEMS } from "../src/components/subscription/SubscriptionFAQ";
 
 import {
@@ -1388,6 +1421,473 @@ async function runAllTests() {
   assert(
     Boolean(dualProfileFaq && dualProfileFaq.answer.includes("duplo papel")),
     "FAQ: Contém pergunta e resposta esclarecendo o suporte nativo a duplo papel (Aluno e Personal)"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 17. TESTANDO ISOLAMENTO ESTRITO MULTI-TENANT ENTRE USUÁRIOS
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 17. Testando Isolamento Estrito Multi-Tenant entre Usuários...");
+
+  // Mock de ambiente de storage para emulação de navegador em Node
+  const storageMock: Record<string, string> = {};
+  (global as any).window = {
+    dispatchEvent: () => true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  (global as any).localStorage = {
+    getItem: (key: string) => storageMock[key] ?? null,
+    setItem: (key: string, val: string) => { storageMock[key] = String(val); },
+    removeItem: (key: string) => { delete storageMock[key]; },
+    clear: () => { Object.keys(storageMock).forEach((k) => delete storageMock[k]); },
+  };
+
+  // Teste 17.1: Particionamento Criptográfico de Chaves de Armazenamento
+  const coachKey1 = getCoachStudentsStorageKey("coach_111");
+  const coachKey2 = getCoachStudentsStorageKey("coach_222");
+  assert(
+    coachKey1 !== coachKey2 && coachKey1 === "gymflow_students_coach_111",
+    "Particionamento de Alunos: Chave de storage isolada por coachId ('gymflow_students_coach_111')"
+  );
+
+  const plansKey1 = getCoachPlansStorageKey("coach_111");
+  const plansKey2 = getCoachPlansStorageKey("coach_222");
+  assert(
+    plansKey1 !== plansKey2 && plansKey1 === "gymflow_coach_plans_coach_111",
+    "Particionamento de Planos: Chave de planos isolada por coachId ('gymflow_coach_plans_coach_111')"
+  );
+
+  const metricsKey1 = getBodyMetricsStorageKey("user_aaa");
+  const metricsKey2 = getBodyMetricsStorageKey("user_bbb");
+  assert(
+    metricsKey1 !== metricsKey2 && metricsKey1 === "gymflow_body_metrics_user_aaa",
+    "Particionamento de Bioimpedância: Chave de medições corporais isolada por userId ('gymflow_body_metrics_user_aaa')"
+  );
+
+  const routinesKey1 = getCoachRoutinesStorageKey("coach_111");
+  const routinesKey2 = getCoachRoutinesStorageKey("coach_222");
+  assert(
+    routinesKey1 !== routinesKey2 && routinesKey1 === "gymflow_coach_custom_routines_coach_111",
+    "Particionamento de Fichas/Rotinas: Chave de rotinas isolada por coachId ('gymflow_coach_custom_routines_coach_111')"
+  );
+
+  // Teste 17.2: Isolamento de Alunos entre Treinadores (Coach A vs Coach B)
+  saveNewStudent({
+    name: "Aluno Exclusivo do Coach Alpha",
+    email: "alpha_student@gymflow.test",
+    goal: "Hipertrofia",
+    plan: "Mensal Pro",
+  }, "coach_alpha");
+
+  saveNewStudent({
+    name: "Aluno Exclusivo do Coach Beta",
+    email: "beta_student@gymflow.test",
+    goal: "Emagrecimento",
+    plan: "Mensal VIP",
+  }, "coach_beta");
+
+  const studentsAlpha = getStoredStudents("coach_alpha");
+  const studentsBeta = getStoredStudents("coach_beta");
+
+  assert(
+    studentsAlpha.some((s) => s.name === "Aluno Exclusivo do Coach Alpha") &&
+    !studentsAlpha.some((s) => s.name === "Aluno Exclusivo do Coach Beta"),
+    "Isolamento de Alunos: Coach Alpha vê apenas seus próprios alunos e NENHUM aluno do Coach Beta"
+  );
+
+  assert(
+    studentsBeta.some((s) => s.name === "Aluno Exclusivo do Coach Beta") &&
+    !studentsBeta.some((s) => s.name === "Aluno Exclusivo do Coach Alpha"),
+    "Isolamento de Alunos: Coach Beta vê apenas seus próprios alunos e NENHUM aluno do Coach Alpha"
+  );
+
+  // Teste 17.3: Bloqueio de Vazamento de Alunos para Contas de Aluno
+  // Simula usuário logado como aluno
+  storageMock["gymflow_current_user_v4"] = JSON.stringify({
+    id: "student_999",
+    name: "Aluno Comum",
+    email: "comum@test.com",
+    activeRole: "student",
+  });
+  const studentsViewedByStudent = getStoredStudents();
+  assert(
+    studentsViewedByStudent.length === 0,
+    "Segurança Anti-Vazamento: Aluno logado que chama getStoredStudents() recebe array vazio (sem vazamento de outros alunos)"
+  );
+
+  // Teste 17.4: Isolamento de Planos Customizados entre Coaches
+  saveCoachPlans([
+    {
+      id: "plan_custom_alpha",
+      name: "Consultoria Premium Alpha",
+      price: 180,
+      period: "mensal",
+      frequency: "5x por semana",
+      isCustom: true,
+    },
+  ], "coach_alpha");
+
+  saveCoachPlans([
+    {
+      id: "plan_custom_beta",
+      name: "Consultoria Personalizada Beta",
+      price: 250,
+      period: "mensal",
+      frequency: "Livre",
+      isCustom: true,
+    },
+  ], "coach_beta");
+
+  const plansAlpha = getStoredCoachPlans("coach_alpha");
+  const plansBeta = getStoredCoachPlans("coach_beta");
+
+  assert(
+    plansAlpha.some((p) => p.id === "plan_custom_alpha") &&
+    !plansAlpha.some((p) => p.id === "plan_custom_beta"),
+    "Isolamento de Planos: Coach Alpha possui seu catálogo exclusivo sem planos do Coach Beta"
+  );
+
+  assert(
+    plansBeta.some((p) => p.id === "plan_custom_beta") &&
+    !plansBeta.some((p) => p.id === "plan_custom_alpha"),
+    "Isolamento de Planos: Coach Beta possui seu catálogo exclusivo sem planos do Coach Alpha"
+  );
+
+  // Teste 17.5: Isolamento de Rotinas/Fichas Salvas entre Coaches
+  saveCoachRoutine({
+    id: "rot_alpha_1",
+    name: "Periodização Força Alpha",
+    description: "Notas restritas Alpha",
+    category: "Hipertrofia",
+    difficulty: "Intermediário",
+    frequency: "3x/sem",
+    splits: [],
+  }, "coach_alpha");
+
+  saveCoachRoutine({
+    id: "rot_beta_1",
+    name: "Periodização Funcional Beta",
+    description: "Notas restritas Beta",
+    category: "Hipertrofia",
+    difficulty: "Intermediário",
+    frequency: "3x/sem",
+    splits: [],
+  }, "coach_beta");
+
+  const routinesAlpha = getStoredCoachRoutines("coach_alpha");
+  const routinesBeta = getStoredCoachRoutines("coach_beta");
+
+  assert(
+    routinesAlpha.some((r) => r.id === "rot_alpha_1") &&
+    !routinesAlpha.some((r) => r.id === "rot_beta_1"),
+    "Isolamento de Rotinas: Fichas do Coach Alpha não vazam para o Coach Beta"
+  );
+
+  assert(
+    routinesBeta.some((r) => r.id === "rot_beta_1") &&
+    !routinesBeta.some((r) => r.id === "rot_alpha_1"),
+    "Isolamento de Rotinas: Fichas do Coach Beta não vazam para o Coach Alpha"
+  );
+
+  // Teste 17.6: Isolamento de Agendamentos (Bookings) entre Alunos e Coaches
+  requestTrainerBooking({
+    studentId: "student_lucas",
+    studentName: "Lucas Aluno",
+    studentPhone: "11988880001",
+    coachId: "coach_alpha",
+    slotDay: "Segunda",
+    slotTime: "08:00",
+    planType: "pro",
+    extraOfferedAmount: 0,
+  });
+
+  requestTrainerBooking({
+    studentId: "student_marina",
+    studentName: "Marina Aluna",
+    studentPhone: "11988880002",
+    coachId: "coach_beta",
+    slotDay: "Quarta",
+    slotTime: "17:00",
+    planType: "vip",
+    extraOfferedAmount: 0,
+  });
+
+  const lucasBookings = getStudentBookings("student_lucas");
+  const marinaBookings = getStudentBookings("student_marina");
+  const alphaBookings = getCoachBookings("coach_alpha");
+  const betaBookings = getCoachBookings("coach_beta");
+
+  assert(
+    lucasBookings.some((b) => b.studentId === "student_lucas") &&
+    !lucasBookings.some((b) => b.studentId === "student_marina"),
+    "Isolamento de Agendamentos: Lucas vê apenas seus próprios treinos agendados"
+  );
+
+  assert(
+    marinaBookings.some((b) => b.studentId === "student_marina") &&
+    !marinaBookings.some((b) => b.studentId === "student_lucas"),
+    "Isolamento de Agendamentos: Marina vê apenas seus próprios treinos agendados"
+  );
+
+  assert(
+    alphaBookings.some((b) => b.coachId === "coach_alpha") &&
+    !alphaBookings.some((b) => b.coachId === "coach_beta"),
+    "Isolamento de Agenda: Coach Alpha gerencia apenas treinos marcados com ele"
+  );
+
+  assert(
+    betaBookings.some((b) => b.coachId === "coach_beta") &&
+    !betaBookings.some((b) => b.coachId === "coach_alpha"),
+    "Isolamento de Agenda: Coach Beta gerencia apenas treinos marcados com ele"
+  );
+
+  // Teste 17.7: Isolamento de Bioimpedância entre Alunos
+  addBodyMetric({
+    date: "2026-09-30",
+    weight: 72.5,
+    bodyFat: 11.2,
+    muscleMass: 64.0,
+    fatMass: 8.5,
+  }, "student_lucas");
+
+  addBodyMetric({
+    date: "2026-09-30",
+    weight: 58.0,
+    bodyFat: 19.5,
+    muscleMass: 46.0,
+    fatMass: 12.0,
+  }, "student_marina");
+
+  const lucasMetrics = getStoredBodyMetrics("student_lucas");
+  const marinaMetrics = getStoredBodyMetrics("student_marina");
+
+  assert(
+    lucasMetrics.some((m) => m.weight === 72.5) &&
+    !lucasMetrics.some((m) => m.weight === 58.0),
+    "Isolamento de Bioimpedância: Dados corporais de Lucas (72.5kg) isolados de Marina"
+  );
+
+  assert(
+    marinaMetrics.some((m) => m.weight === 58.0) &&
+    !marinaMetrics.some((m) => m.weight === 72.5),
+    "Isolamento de Bioimpedância: Dados corporais de Marina (58.0kg) isolados de Lucas"
+  );
+
+  // Teste 17.8: Isolamento de Notificações Internas por Usuário e Papel
+  addNotification({
+    targetRole: "coach",
+    coachId: "coach_alpha",
+    type: "booking_message",
+    title: "Novo Agendamento para Alpha",
+    message: "Lucas agendou treino presencial",
+  });
+
+  addNotification({
+    targetRole: "coach",
+    coachId: "coach_beta",
+    type: "booking_message",
+    title: "Novo Agendamento para Beta",
+    message: "Marina agendou treino presencial",
+  });
+
+  addNotification({
+    targetRole: "student",
+    studentId: "student_lucas",
+    type: "training_reminder",
+    title: "Lembrete de Treino do Lucas",
+    message: "Treino hoje às 08:00",
+  });
+
+  const alphaNotifs = getStoredNotifications("coach_alpha", "coach");
+  const betaNotifs = getStoredNotifications("coach_beta", "coach");
+  const lucasNotifs = getStoredNotifications("student_lucas", "student");
+
+  assert(
+    alphaNotifs.some((n) => n.title === "Novo Agendamento para Alpha") &&
+    !alphaNotifs.some((n) => n.title === "Novo Agendamento para Beta") &&
+    !alphaNotifs.some((n) => n.title === "Lembrete de Treino do Lucas"),
+    "Isolamento de Notificações: Coach Alpha recebe apenas alertas destinados a ele"
+  );
+
+  assert(
+    betaNotifs.some((n) => n.title === "Novo Agendamento para Beta") &&
+    !betaNotifs.some((n) => n.title === "Novo Agendamento para Alpha"),
+    "Isolamento de Notificações: Coach Beta recebe apenas alertas destinados a ele"
+  );
+
+  assert(
+    lucasNotifs.some((n) => n.title === "Lembrete de Treino do Lucas") &&
+    !lucasNotifs.some((n) => n.targetRole === "coach"),
+    "Isolamento de Notificações: Aluno Lucas recebe apenas seus próprios avisos e nada de professores"
+  );
+
+  // ---------------------------------------------------------------------------
+  // 18. TESTANDO BLOQUEIO DE FICHA EM ATRASO (AUTOMÁTICO VS MANUAL DO PROFESSOR)
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 18. Testando Bloqueio de Ficha em Caso de Atraso (Automático vs Manual)...");
+
+  const coachAutoId = "coach_auto_lock_1";
+  const coachManualId = "coach_manual_lock_2";
+
+  // Teste 18.1: Configuração padrão inicial (Manual por escolha do professor)
+  assert(
+    isCoachAutoBlockEnabled(coachManualId) === false,
+    "Configuração Padrão: Modo de bloqueio inicia como escolha manual do professor"
+  );
+
+  // Teste 18.2: Professor ativa o bloqueio automático nas configurações
+  setCoachAutoBlockPreference(true, coachAutoId);
+  assert(
+    isCoachAutoBlockEnabled(coachAutoId) === true,
+    "setCoachAutoBlockPreference: Ativação com sucesso do bloqueio automático para o treinador"
+  );
+  assert(
+    isCoachAutoBlockEnabled(coachManualId) === false,
+    "Isolamento de Preferências: Ativar automático no Coach 1 não afeta Coach 2"
+  );
+
+  // Teste 18.3: areProfilesEqual detecta alteração de autoBlockOverdueWorkouts
+  const baseCoachProf: UserProfile = {
+    id: "coach_prof_test",
+    name: "Prof. Rodrigo",
+    email: "rodrigo@gymflow.com",
+    activeRole: "coach",
+    enabledRoles: ["coach"],
+    autoBlockOverdueWorkouts: false,
+  };
+  const updatedCoachProf: UserProfile = {
+    ...baseCoachProf,
+    autoBlockOverdueWorkouts: true,
+  };
+  assert(
+    !areProfilesEqual(baseCoachProf, updatedCoachProf),
+    "areProfilesEqual: Detecta alteração na preferência de autoBlockOverdueWorkouts"
+  );
+
+  // Teste 18.4: Bloqueio Automático ativado — aluno em atraso tem ficha pausada
+  saveNewStudent(
+    {
+      id: "student_overdue_auto",
+      name: "Renan Silva",
+      email: "renan@gmail.com",
+      goal: "Hipertrofia",
+    },
+    coachAutoId
+  );
+  updateStudentPaymentStatus("student_overdue_auto", "atrasado", coachAutoId);
+
+  const studentsAuto = getStoredStudents(coachAutoId);
+  const renanStudent = studentsAuto.find((s) => s.id === "student_overdue_auto");
+
+  assert(
+    renanStudent?.paymentStatus === "atrasado",
+    "Status de Pagamento: Aluno registrado como 'atrasado'"
+  );
+  assert(
+    renanStudent?.isWorkoutLocked === true,
+    "Bloqueio Automático: Ficha do aluno atrasado é pausada automaticamente (isWorkoutLocked: true)"
+  );
+  assert(
+    renanStudent?.workoutLockedReason === "overdue_payment",
+    "Motivo do Bloqueio: Registrado como 'overdue_payment'"
+  );
+
+  const renanWorkout = getStudentWorkout("student_overdue_auto");
+  assert(
+    renanWorkout.isLocked === true,
+    "Pacote de Treino: getStudentWorkout reflete isLocked: true para o aluno atrasado"
+  );
+
+  // Teste 18.5: Reativação Automática após quitação do pagamento
+  updateStudentPaymentStatus("student_overdue_auto", "pago", coachAutoId);
+  const studentsAutoPaid = getStoredStudents(coachAutoId);
+  const renanPaid = studentsAutoPaid.find((s) => s.id === "student_overdue_auto");
+
+  assert(
+    renanPaid?.paymentStatus === "pago",
+    "Status de Pagamento: Aluno atualizado para 'pago'"
+  );
+  assert(
+    renanPaid?.isWorkoutLocked === false,
+    "Desbloqueio Automático: Ficha é reativada instantaneamente após quitação (isWorkoutLocked: false)"
+  );
+  assert(
+    renanPaid?.workoutLockedReason === undefined,
+    "Limpeza de Motivo: workoutLockedReason é limpo após quitação"
+  );
+
+  const renanWorkoutRestored = getStudentWorkout("student_overdue_auto");
+  assert(
+    renanWorkoutRestored.isLocked === false || !renanWorkoutRestored.isLocked,
+    "Pacote de Treino: getStudentWorkout restaura ficha liberada (isLocked: false)"
+  );
+
+  // Teste 18.6: Modo Manual (Escolha do Professor) — atraso NÃO bloqueia automaticamente
+  saveNewStudent(
+    {
+      id: "student_overdue_manual",
+      name: "Juliana Mendes",
+      email: "juliana@gmail.com",
+      goal: "Emagrecimento",
+    },
+    coachManualId
+  );
+  updateStudentPaymentStatus("student_overdue_manual", "atrasado", coachManualId);
+
+  const studentsManual = getStoredStudents(coachManualId);
+  const julianaStudent = studentsManual.find((s) => s.id === "student_overdue_manual");
+
+  assert(
+    julianaStudent?.paymentStatus === "atrasado",
+    "Modo Manual: Aluno registrado como 'atrasado'"
+  );
+  assert(
+    !julianaStudent?.isWorkoutLocked,
+    "Modo Manual: Aluno atrasado NÃO é bloqueado automaticamente (escolha do professor preservada)"
+  );
+
+  // Teste 18.7: Professor bloqueia/pausa manualmente sob sua escolha
+  const lockResult = toggleStudentWorkoutLock("student_overdue_manual", coachManualId);
+  assert(
+    lockResult === true,
+    "toggleStudentWorkoutLock: Retorna true ao pausar a ficha manualmente"
+  );
+
+  const studentsManualLocked = getStoredStudents(coachManualId);
+  const julianaLocked = studentsManualLocked.find((s) => s.id === "student_overdue_manual");
+  assert(
+    julianaLocked?.isWorkoutLocked === true,
+    "Pausa Manual: isWorkoutLocked definido como true pelo professor"
+  );
+
+  const julianaWorkout = getStudentWorkout("student_overdue_manual");
+  assert(
+    julianaWorkout.isLocked === true,
+    "Pausa Manual: Pacote de treino do aluno bloqueado com sucesso"
+  );
+
+  // Teste 18.8: Professor reativa manualmente sob sua escolha
+  const unlockResult = toggleStudentWorkoutLock("student_overdue_manual", coachManualId);
+  assert(
+    unlockResult === false,
+    "toggleStudentWorkoutLock: Retorna false ao reativar a ficha manualmente"
+  );
+
+  const studentsManualUnlocked = getStoredStudents(coachManualId);
+  const julianaUnlocked = studentsManualUnlocked.find((s) => s.id === "student_overdue_manual");
+  assert(
+    julianaUnlocked?.isWorkoutLocked === false,
+    "Reativação Manual: isWorkoutLocked restaurado para false pelo professor"
+  );
+
+  // Teste 18.9: Isolamento Multi-Tenant do Estado de Bloqueio
+  updateStudentPaymentStatus("student_overdue_auto", "atrasado", coachAutoId);
+  const renanCheck = getStoredStudents(coachAutoId).find((s) => s.id === "student_overdue_auto");
+  const julianaCheck = getStoredStudents(coachManualId).find((s) => s.id === "student_overdue_manual");
+
+  assert(
+    renanCheck?.isWorkoutLocked === true && julianaCheck?.isWorkoutLocked === false,
+    "Isolamento Multi-Tenant: Bloqueio do aluno de Coach 1 não afeta aluno de Coach 2"
   );
 
   // ---------------------------------------------------------------------------

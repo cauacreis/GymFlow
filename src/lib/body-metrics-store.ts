@@ -22,18 +22,32 @@ export interface BodyMetricEntry {
   createdAt: string;
 }
 
-const STORAGE_KEY_METRICS = "gymflow_body_metrics_v1";
-const EVENT_BODY_METRICS = "gymflow:body-metrics-updated";
+export const STORAGE_KEY_METRICS = "gymflow_body_metrics_v1";
+export const EVENT_BODY_METRICS = "gymflow:body-metrics-updated";
 
 export const INITIAL_BODY_METRICS: BodyMetricEntry[] = [];
 
+export function getBodyMetricsStorageKey(userId?: string): string {
+  const resolved = userId || (typeof window !== "undefined" ? getCurrentUser()?.id : null);
+  if (!resolved || resolved === "user_me") return STORAGE_KEY_METRICS;
+  return `gymflow_body_metrics_${resolved}`;
+}
+
 /**
- * Retorna as medições cadastradas, ordenadas por data cronológica (da mais antiga para a mais recente)
+ * Retorna as medições cadastradas do usuário, ordenadas por data cronológica (da mais antiga para a mais recente)
  */
-export function getStoredBodyMetrics(): BodyMetricEntry[] {
+export function getStoredBodyMetrics(userId?: string): BodyMetricEntry[] {
   if (typeof window === "undefined") return INITIAL_BODY_METRICS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_METRICS);
+    const storageKey = getBodyMetricsStorageKey(userId);
+    let raw = localStorage.getItem(storageKey);
+    if (!raw && storageKey !== STORAGE_KEY_METRICS) {
+      // Verifica migração caso o usuário tenha dados no storage padrão
+      const legacyRaw = localStorage.getItem(STORAGE_KEY_METRICS);
+      if (legacyRaw) {
+        raw = legacyRaw;
+      }
+    }
     if (!raw) {
       return [];
     }
@@ -43,7 +57,7 @@ export function getStoredBodyMetrics(): BodyMetricEntry[] {
     }
     const cleaned = parsed.filter((m) => !/^metric_[1-5]$/.test(m.id));
     if (cleaned.length !== parsed.length) {
-      localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(cleaned));
+      localStorage.setItem(storageKey, JSON.stringify(cleaned));
     }
     // Ordena da mais antiga para a mais recente (cronológico para gráficos)
     return cleaned.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -56,9 +70,11 @@ export function getStoredBodyMetrics(): BodyMetricEntry[] {
  * Adiciona uma nova medição periódica de peso e bioimpedância
  */
 export function addBodyMetric(
-  data: Omit<BodyMetricEntry, "id" | "createdAt" | "dateFormatted"> & { dateFormatted?: string }
+  data: Omit<BodyMetricEntry, "id" | "createdAt" | "dateFormatted"> & { dateFormatted?: string },
+  userId?: string
 ): BodyMetricEntry {
-  const current = getStoredBodyMetrics();
+  const current = getStoredBodyMetrics(userId);
+  const storageKey = getBodyMetricsStorageKey(userId);
   const dateObj = new Date(data.date + "T12:00:00");
   const monthName = dateObj.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
   const dayNum = String(dateObj.getDate()).padStart(2, "0");
@@ -91,7 +107,7 @@ export function addBodyMetric(
   );
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
 
     // Sincroniza o peso e gordura mais recentes no perfil geral do usuário
     const latest = updated[updated.length - 1];
@@ -111,12 +127,13 @@ export function addBodyMetric(
 /**
  * Atualiza uma medição existente
  */
-export function updateBodyMetric(id: string, updates: Partial<BodyMetricEntry>): void {
-  const current = getStoredBodyMetrics();
+export function updateBodyMetric(id: string, updates: Partial<BodyMetricEntry>, userId?: string): void {
+  const current = getStoredBodyMetrics(userId);
+  const storageKey = getBodyMetricsStorageKey(userId);
   const updated = current.map((item) => (item.id === id ? { ...item, ...updates } : item));
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
 
     const latest = updated[updated.length - 1];
     if (latest) {
@@ -133,12 +150,13 @@ export function updateBodyMetric(id: string, updates: Partial<BodyMetricEntry>):
 /**
  * Remove uma medição
  */
-export function deleteBodyMetric(id: string): void {
-  const current = getStoredBodyMetrics();
+export function deleteBodyMetric(id: string, userId?: string): void {
+  const current = getStoredBodyMetrics(userId);
+  const storageKey = getBodyMetricsStorageKey(userId);
   const updated = current.filter((item) => item.id !== id);
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY_METRICS, JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
 
     const latest = updated[updated.length - 1];
     if (latest) {

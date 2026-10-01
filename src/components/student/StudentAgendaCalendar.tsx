@@ -23,6 +23,7 @@ import {
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getStoredBookings,
+  getStudentBookings,
   requestReschedule,
   respondToReschedule,
   subscribeToBookings,
@@ -55,10 +56,12 @@ interface CalendarDayEvent {
 const DEFAULT_DAYS_CALENDAR: CalendarDayEvent[] = [];
 
 export function StudentAgendaCalendar({
-  studentId = "student_carlos",
+  studentId: propStudentId,
   onNavigateToWorkout,
   onNavigateToPersonal,
 }: StudentAgendaCalendarProps) {
+  const currentUser = getCurrentUser();
+  const effectiveStudentId = propStudentId && propStudentId !== "student_carlos" ? propStudentId : (currentUser.id || "student_user");
   const rescheduleDayOptions = getRescheduleDayOptions();
 
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
@@ -81,22 +84,21 @@ export function StudentAgendaCalendar({
 
   useEffect(() => {
     const load = () => {
-      const allBookings = getStoredBookings();
+      const allBookings = getStudentBookings(effectiveStudentId);
       setBookings(allBookings);
 
       const allStudents = getStoredStudents();
-      const currentUser = getCurrentUser();
-      const targetId = studentId || currentUser.id;
-      let st = allStudents.find((s) => s.id === targetId || (currentUser.email && s.email === currentUser.email));
+      const user = getCurrentUser();
+      let st = allStudents.find((s) => s.id === effectiveStudentId || (user.email && s.email === user.email));
       if (!st) {
-        const safeMatricula = currentUser.matricula || (targetId ? `GF-${targetId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 5)}` : "GF-10001");
+        const safeMatricula = user.matricula || (effectiveStudentId ? `GF-${effectiveStudentId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 5)}` : "GF-10001");
         st = {
-          id: targetId || "student_user",
-          name: currentUser.name || "Aluno",
-          email: currentUser.email || "",
-          phone: currentUser.phone || "",
+          id: effectiveStudentId || "student_user",
+          name: user.name || "Aluno",
+          email: user.email || "",
+          phone: user.phone || "",
           matricula: safeMatricula,
-          goal: currentUser.goal || "Hipertrofia",
+          goal: user.goal || "Hipertrofia",
           currentRoutineTitle: "Treino Personalizado",
           prescribedBy: "Prof. Rodrigo",
           prescribedAt: "Hoje",
@@ -111,7 +113,7 @@ export function StudentAgendaCalendar({
 
       // Sincroniza eventos da agenda com os agendamentos reais do aluno
       const myStudentBookings = allBookings.filter(
-        (b) => b.studentId === targetId || (currentUser.name && b.studentName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+        (b) => b.studentId === effectiveStudentId || (user.name && b.studentName.trim().toLowerCase() === user.name.trim().toLowerCase())
       );
       if (myStudentBookings.length > 0) {
         const dynamicEvents: CalendarDayEvent[] = myStudentBookings.map((b) => {
@@ -149,7 +151,7 @@ export function StudentAgendaCalendar({
       unsubBookings();
       unsubWorkouts();
     };
-  }, [studentId]);
+  }, [effectiveStudentId]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -166,9 +168,8 @@ export function StudentAgendaCalendar({
 
   // Dados do Personal Trainer Atual do Aluno
   const activeUser = getCurrentUser();
-  const currentTargetId = studentId || activeUser.id;
   const myBookings = bookings.filter(
-    (b) => b.studentId === currentTargetId || (activeUser.name && b.studentName.trim().toLowerCase() === activeUser.name.trim().toLowerCase())
+    (b) => b.studentId === effectiveStudentId || (activeUser.name && b.studentName.trim().toLowerCase() === activeUser.name.trim().toLowerCase())
   );
   const activeCoachBooking =
     myBookings.find((b) => b.status === "accepted" || b.status === "pending") || null;
@@ -270,7 +271,7 @@ export function StudentAgendaCalendar({
       {/* CARD: PROPOSTA DE REMANEJAMENTO DO PROFESSOR (CASO HAJA UMA PENDENTE) */}
       {bookings.some(
         (b) =>
-          b.studentId === studentId &&
+          b.studentId === effectiveStudentId &&
           b.rescheduleRequest?.requestedBy === "coach" &&
           b.rescheduleRequest?.status === "pending"
       ) && (
@@ -278,7 +279,7 @@ export function StudentAgendaCalendar({
           {bookings
             .filter(
               (b) =>
-                b.studentId === studentId &&
+                b.studentId === effectiveStudentId &&
                 b.rescheduleRequest?.requestedBy === "coach" &&
                 b.rescheduleRequest?.status === "pending"
             )
@@ -718,8 +719,8 @@ export function StudentAgendaCalendar({
         coachId={currentCoachId}
         coachPhone={currentCoachPhone}
         currentPlan={student?.plan || "Mensal VIP (R$ 55/mês)"}
-        studentId={student?.id || studentId}
-        studentName={student?.name || "Aluno"}
+        studentId={student?.id || effectiveStudentId}
+        studentName={student?.name || currentUser.name || "Aluno"}
         onSuccessLeave={() => {
           showToast(`Acompanhamento com ${currentCoachName} encerrado. Horários liberados!`);
         }}

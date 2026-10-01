@@ -86,16 +86,28 @@ export async function fetchStudentsFromSupabase(coachId?: string, limit: number 
   const client = getSupabase();
   if (!client) return null;
 
-  const cacheKey = `students_${coachId || "all"}_${limit}`;
+  let targetCoachId = coachId;
+  if (!targetCoachId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) targetCoachId = session.user.id;
+    } catch {}
+  }
+
+  // Se não houver coachId identificado, não executa query aberta para evitar vazamento multi-tenant
+  if (!targetCoachId) {
+    return [];
+  }
+
+  const cacheKey = `students_${targetCoachId}_${limit}`;
 
   return deduplicatedFetch(cacheKey, async () => {
     try {
-      let query = client.from("students").select("*");
-      if (coachId) {
-        query = query.eq("coach_id", coachId);
-      }
       const safeLimit = Math.min(Math.max(1, limit), 250);
-      const { data, error } = await query
+      const { data, error } = await client
+        .from("students")
+        .select("*")
+        .eq("coach_id", targetCoachId)
         .order("created_at", { ascending: false })
         .limit(safeLimit);
 
@@ -108,6 +120,7 @@ export async function fetchStudentsFromSupabase(coachId?: string, limit: number 
 
       return data.map((row: any): StudentProfile => ({
         id: row.id,
+        coachId: row.coach_id,
         name: row.name,
         email: row.email || "",
         phone: row.phone || undefined,
@@ -140,14 +153,16 @@ export async function fetchStudentsFromSupabase(coachId?: string, limit: number 
   }, 20000); // 20s TTL
 }
 
-export async function upsertStudentToSupabase(student: StudentProfile, coachId: string = "coach_default"): Promise<boolean> {
+export async function upsertStudentToSupabase(student: StudentProfile, coachId?: string): Promise<boolean> {
   const client = getSupabase();
   if (!client) return false;
+
+  const targetCoachId = coachId || student.coachId || "coach_default";
 
   try {
     const payload = {
       id: student.id,
-      coach_id: coachId,
+      coach_id: targetCoachId,
       name: student.name,
       email: student.email || null,
       phone: student.phone || null,
@@ -270,13 +285,35 @@ export async function fetchBookingsFromSupabase(coachId?: string, studentId?: st
   const client = getSupabase();
   if (!client) return null;
 
-  const cacheKey = `bookings_${coachId || "all"}_${studentId || "all"}_${limit}`;
+  let targetCoachId = coachId;
+  let targetStudentId = studentId;
+
+  if (!targetCoachId && !targetStudentId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) {
+        targetStudentId = session.user.id;
+      }
+    } catch {}
+  }
+
+  // Previne queries globais sem isolamento de inquilino
+  if (!targetCoachId && !targetStudentId) {
+    return [];
+  }
+
+  const cacheKey = `bookings_${targetCoachId || "none"}_${targetStudentId || "none"}_${limit}`;
 
   return deduplicatedFetch(cacheKey, async () => {
     try {
       let query = client.from("bookings").select("*");
-      if (coachId) query = query.eq("coach_id", coachId);
-      if (studentId) query = query.eq("student_id", studentId);
+      if (targetCoachId && targetStudentId) {
+        query = query.or(`coach_id.eq.${targetCoachId},student_id.eq.${targetStudentId}`);
+      } else if (targetCoachId) {
+        query = query.eq("coach_id", targetCoachId);
+      } else if (targetStudentId) {
+        query = query.eq("student_id", targetStudentId);
+      }
 
       const safeLimit = Math.min(Math.max(1, limit), 250);
       const { data, error } = await query
@@ -352,18 +389,27 @@ export async function saveBookingToSupabase(booking: BookingRequest): Promise<bo
 // PLANOS DO PROFESSOR (COACH PLANS)
 // ============================================================================
 
-export async function fetchCoachPlansFromSupabase(coachId: string = "coach_default"): Promise<CoachPlanOption[] | null> {
+export async function fetchCoachPlansFromSupabase(coachId?: string): Promise<CoachPlanOption[] | null> {
   const client = getSupabase();
   if (!client) return null;
 
-  const cacheKey = `coach_plans_${coachId}`;
+  let targetCoachId = coachId;
+  if (!targetCoachId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) targetCoachId = session.user.id;
+    } catch {}
+  }
+  if (!targetCoachId) targetCoachId = "coach_default";
+
+  const cacheKey = `coach_plans_${targetCoachId}`;
 
   return deduplicatedFetch(cacheKey, async () => {
     try {
       const { data, error } = await client
         .from("coach_plans")
         .select("*")
-        .eq("coach_id", coachId)
+        .eq("coach_id", targetCoachId)
         .order("created_at", { ascending: true });
 
       if (error || !data) return null;
@@ -389,14 +435,23 @@ export async function fetchCoachPlansFromSupabase(coachId: string = "coach_defau
   }, 60000); // 60s TTL
 }
 
-export async function saveCoachPlanToSupabase(plan: CoachPlanOption, coachId: string = "coach_default"): Promise<boolean> {
+export async function saveCoachPlanToSupabase(plan: CoachPlanOption, coachId?: string): Promise<boolean> {
   const client = getSupabase();
   if (!client) return false;
+
+  let targetCoachId = coachId;
+  if (!targetCoachId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) targetCoachId = session.user.id;
+    } catch {}
+  }
+  if (!targetCoachId) targetCoachId = "coach_default";
 
   try {
     const payload = {
       id: plan.id,
-      coach_id: coachId,
+      coach_id: targetCoachId,
       name: plan.name,
       price: plan.price,
       period: plan.period || "mensal",

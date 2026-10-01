@@ -18,11 +18,13 @@ import {
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getStoredBookings,
+  getStudentBookings,
   isSlotToday,
   getStoredCoaches,
   BookingRequest,
   CoachTrainer,
 } from "@/lib/booking-store";
+import { getCurrentUser } from "@/lib/auth-store";
 import {
   getStoredStudents,
   StudentProfile,
@@ -52,8 +54,10 @@ export function StudentReminderBanner({
 
   useEffect(() => {
     const loadData = () => {
+      const currentUser = getCurrentUser();
+      const effectiveStudentId = studentId || currentUser?.id;
       const students = getStoredStudents();
-      const currentStudent = studentId ? students.find((s) => s.id === studentId) : null;
+      const currentStudent = effectiveStudentId ? students.find((s) => s.id === effectiveStudentId || (currentUser.email && s.email === currentUser.email)) : null;
 
       setStudent(currentStudent || null);
 
@@ -69,11 +73,11 @@ export function StudentReminderBanner({
       }
       setCoach(matchedCoach || null);
 
-      const bookings = getStoredBookings();
-      const activeBookingToday = currentStudent
+      const bookings = effectiveStudentId ? getStudentBookings(effectiveStudentId) : getStoredBookings();
+      const activeBookingToday = effectiveStudentId
         ? bookings.find(
             (b) =>
-              b.studentId === currentStudent.id &&
+              (b.studentId === effectiveStudentId || (currentStudent && b.studentId === currentStudent.id)) &&
               isSlotToday(b.slotDay) &&
               b.status === "accepted" &&
               b.attendanceStatus !== "attended"

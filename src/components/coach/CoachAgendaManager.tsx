@@ -23,9 +23,11 @@ import {
   Bell,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getCurrentUser } from "@/lib/auth-store";
 import {
   getStoredCoaches,
   getStoredBookings,
+  getCoachBookings,
   updateBookingStatus,
   updateAttendanceStatus,
   updateBookingNotes,
@@ -54,9 +56,11 @@ interface CoachAgendaManagerProps {
 }
 
 export function CoachAgendaManager({
-  coachId = "coach_rodrigo",
+  coachId: propCoachId,
   onOpenWorkoutSheet,
 }: CoachAgendaManagerProps) {
+  const currentUser = getCurrentUser();
+  const effectiveCoachId = propCoachId || currentUser?.id || "coach_rodrigo";
   const rescheduleDayOptions = getRescheduleDayOptions();
 
   // Estados principais
@@ -152,26 +156,26 @@ export function CoachAgendaManager({
 
   // Central de Lembretes Inteligentes
   const [isRemindersCenterOpen, setIsRemindersCenterOpen] = useState(false);
-  const [remindersSummary, setRemindersSummary] = useState(() => getRemindersSummary());
+  const [remindersSummary, setRemindersSummary] = useState(() => getRemindersSummary(effectiveCoachId));
 
   // Carregamento e sincronização reativa com os stores
   useEffect(() => {
     const refresh = () => {
       setCoaches(getStoredCoaches());
-      setBookings(getStoredBookings());
-      setStudents(getStoredStudents());
-      setRemindersSummary(getRemindersSummary());
+      setBookings(getCoachBookings(effectiveCoachId));
+      setStudents(getStoredStudents(effectiveCoachId));
+      setRemindersSummary(getRemindersSummary(effectiveCoachId));
     };
     refresh();
     const unsubBookings = subscribeToBookings(refresh);
     const unsubWorkouts = subscribeToWorkoutChanges(refresh);
-    const unsubReminders = subscribeToReminders(() => setRemindersSummary(getRemindersSummary()));
+    const unsubReminders = subscribeToReminders(() => setRemindersSummary(getRemindersSummary(effectiveCoachId)));
     return () => {
       unsubBookings();
       unsubWorkouts();
       unsubReminders();
     };
-  }, [coachId]);
+  }, [effectiveCoachId]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -229,9 +233,8 @@ export function CoachAgendaManager({
 
   // Filtra agendamentos pertencentes ao treinador atual para garantir isolamento multi-tenant
   const coachBookings = bookings.filter((b) => {
-    if (!coachId) return true;
-    if (b.coachId === coachId) return true;
-    if ((coachId === "coach_rodrigo" || coachId === "user_me") && (!b.coachId || b.coachId === "coach_rodrigo")) {
+    if (b.coachId === effectiveCoachId) return true;
+    if (effectiveCoachId === "coach_rodrigo" && (!b.coachId || b.coachId === "coach_rodrigo")) {
       return true;
     }
     return false;
@@ -344,9 +347,9 @@ export function CoachAgendaManager({
       studentId: st.id,
       studentName: st.name,
       studentPhone: st.phone || "",
-      coachId,
-      coachName: "Prof. Rodrigo",
-      coachPhone: "11999990000",
+      coachId: effectiveCoachId,
+      coachName: currentUser.name || "Professor",
+      coachPhone: currentUser.phone || "",
       slotDay: quickScheduleCell.dayName,
       slotTime: quickScheduleCell.time,
       planType: "pro",
@@ -1186,8 +1189,8 @@ export function CoachAgendaManager({
           }
         }}
         onStudentUpdated={(updated) => {
-          setStudents(getStoredStudents());
-          setBookings(getStoredBookings());
+          setStudents(getStoredStudents(effectiveCoachId));
+          setBookings(getCoachBookings(effectiveCoachId));
           showToast(`Perfil de ${updated.name} atualizado!`);
         }}
       />

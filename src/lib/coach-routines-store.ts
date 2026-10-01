@@ -202,12 +202,32 @@ const INITIAL_COACH_ROUTINES: CoachWorkoutRoutine[] = [
   },
 ];
 
-export function getStoredCoachRoutines(): CoachWorkoutRoutine[] {
+export function getCoachRoutinesStorageKey(coachId?: string): string {
+  if (typeof window === "undefined") return STORAGE_KEY_COACH_ROUTINES;
+  try {
+    const raw = localStorage.getItem("gymflow_current_user_v4");
+    const u = raw ? JSON.parse(raw) : null;
+    const resolved = coachId || u?.id;
+    if (!resolved || resolved === "user_me") return STORAGE_KEY_COACH_ROUTINES;
+    return `gymflow_coach_custom_routines_${resolved}`;
+  } catch {
+    return STORAGE_KEY_COACH_ROUTINES;
+  }
+}
+
+export function getStoredCoachRoutines(coachId?: string): CoachWorkoutRoutine[] {
   if (typeof window === "undefined") return INITIAL_COACH_ROUTINES;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_COACH_ROUTINES);
+    const storageKey = getCoachRoutinesStorageKey(coachId);
+    let raw = localStorage.getItem(storageKey);
+    if (!raw && storageKey !== STORAGE_KEY_COACH_ROUTINES) {
+      const legacyRaw = localStorage.getItem(STORAGE_KEY_COACH_ROUTINES);
+      if (legacyRaw) {
+        raw = legacyRaw;
+      }
+    }
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY_COACH_ROUTINES, JSON.stringify(INITIAL_COACH_ROUTINES));
+      localStorage.setItem(storageKey, JSON.stringify(INITIAL_COACH_ROUTINES));
       return INITIAL_COACH_ROUTINES;
     }
     return JSON.parse(raw);
@@ -217,10 +237,11 @@ export function getStoredCoachRoutines(): CoachWorkoutRoutine[] {
   }
 }
 
-export function saveCoachRoutine(routine: CoachWorkoutRoutine): CoachWorkoutRoutine {
+export function saveCoachRoutine(routine: CoachWorkoutRoutine, coachId?: string): CoachWorkoutRoutine {
   if (typeof window === "undefined") return routine;
 
-  const current = getStoredCoachRoutines();
+  const storageKey = getCoachRoutinesStorageKey(coachId);
+  const current = getStoredCoachRoutines(coachId);
   const exists = current.some((r) => r.id === routine.id);
 
   let updated: CoachWorkoutRoutine[];
@@ -236,18 +257,19 @@ export function saveCoachRoutine(routine: CoachWorkoutRoutine): CoachWorkoutRout
     updated = [newRoutine, ...current];
   }
 
-  localStorage.setItem(STORAGE_KEY_COACH_ROUTINES, JSON.stringify(updated));
+  localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent(EVENT_COACH_ROUTINES_CHANGED, { detail: updated }));
   return routine;
 }
 
-export function deleteCoachRoutine(routineId: string): void {
+export function deleteCoachRoutine(routineId: string, coachId?: string): void {
   if (typeof window === "undefined") return;
 
-  const current = getStoredCoachRoutines();
+  const storageKey = getCoachRoutinesStorageKey(coachId);
+  const current = getStoredCoachRoutines(coachId);
   const updated = current.filter((r) => r.id !== routineId);
 
-  localStorage.setItem(STORAGE_KEY_COACH_ROUTINES, JSON.stringify(updated));
+  localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent(EVENT_COACH_ROUTINES_CHANGED, { detail: updated }));
 }
 

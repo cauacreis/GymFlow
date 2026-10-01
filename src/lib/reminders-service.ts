@@ -9,6 +9,7 @@
 
 import {
   getStoredBookings,
+  getCoachBookings,
   isSlotToday,
   addNotification,
   BookingRequest,
@@ -77,19 +78,20 @@ export function unmarkReminderAsSent(reminderId: string): void {
 }
 
 // Calcula todos os lembretes inteligentes com base no estado real da aplicação
-export function computeDailyReminders(): SmartReminderItem[] {
+export function computeDailyReminders(coachId?: string): SmartReminderItem[] {
   if (typeof window === "undefined") return [];
 
-  const students = getStoredStudents();
-  const bookings = getStoredBookings();
-  const coachPlans = getStoredCoachPlans();
-  const coaches = getStoredCoaches();
   const currentUser = getCurrentUser();
+  const targetCoachId = coachId || currentUser?.id;
+  const students = getStoredStudents(targetCoachId);
+  const bookings = targetCoachId ? getCoachBookings(targetCoachId) : getStoredBookings();
+  const coachPlans = getStoredCoachPlans(targetCoachId);
+  const coaches = getStoredCoaches();
   const sentLog = getSentRemindersLog();
 
-  const activeCoach = coaches.find((c) => c.id === currentUser.id) || coaches[0] || {
-    name: "Prof. Rodrigo Costa",
-    phone: "11999990000",
+  const activeCoach = coaches.find((c) => c.id === targetCoachId) || coaches[0] || {
+    name: currentUser.name || "Prof. Rodrigo Costa",
+    phone: currentUser.phone || "11999990000",
   };
 
   const coachFirstName = (currentUser.name || activeCoach.name || "Seu Treinador").split(" ")[0];
@@ -444,8 +446,8 @@ export function sendBrowserNotification(title: string, options?: NotificationOpt
 }
 
 // Retorna contadores resumidos para badges no cabeçalho
-export function getRemindersSummary() {
-  const all = computeDailyReminders();
+export function getRemindersSummary(coachId?: string) {
+  const all = computeDailyReminders(coachId);
   const pending = all.filter((r) => !r.isSent);
   const classesToday = all.filter((r) => r.category === "aula" && !r.isSent);
   const paymentsDue = all.filter((r) => r.category === "pagamento" && !r.isSent);

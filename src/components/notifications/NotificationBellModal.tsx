@@ -14,6 +14,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getCurrentUser } from "@/lib/auth-store";
 import {
   getStoredNotifications,
   markNotificationAsRead,
@@ -37,8 +38,9 @@ export function NotificationBellModal({
 
   useEffect(() => {
     const refresh = () => {
-      const all = getStoredNotifications();
-      setNotifications(all.filter((n) => n.targetRole === targetRole));
+      const currentUser = getCurrentUser();
+      const userNotifs = getStoredNotifications(currentUser.id, targetRole);
+      setNotifications(userNotifs);
     };
     refresh();
     const unsub = subscribeToNotifications(refresh);

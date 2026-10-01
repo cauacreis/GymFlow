@@ -20,6 +20,7 @@ interface BodyMetricsHistoryModalProps {
   onClose: () => void;
   metrics: BodyMetricEntry[];
   onOpenNewMetric: () => void;
+  userId?: string;
 }
 
 export function BodyMetricsHistoryModal({
@@ -27,6 +28,7 @@ export function BodyMetricsHistoryModal({
   onClose,
   metrics,
   onOpenNewMetric,
+  userId,
 }: BodyMetricsHistoryModalProps) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -39,7 +41,7 @@ export function BodyMetricsHistoryModal({
 
   const handleDelete = (id: string) => {
     triggerHaptic("warning");
-    deleteBodyMetric(id);
+    deleteBodyMetric(id, userId);
     setDeleteConfirmId(null);
   };
 

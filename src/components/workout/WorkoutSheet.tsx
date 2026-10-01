@@ -22,8 +22,13 @@ import {
   HelpCircle,
   Edit3,
   Check,
+  Lock,
+  Copy,
+  MessageCircle,
+  RefreshCw,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getStoredCoaches } from "@/lib/booking-store";
 import {
   getStudentWorkout,
   subscribeToWorkoutChanges,
@@ -139,6 +144,7 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
   // Inline editing para reps e peso
   const [editingRepsKey, setEditingRepsKey] = useState<string | null>(null);
   const [editingWeightKey, setEditingWeightKey] = useState<string | null>(null);
+  const [copiedPix, setCopiedPix] = useState(false);
 
   // Inputs para criação de exercício personalizado pelo aluno
   const [customName, setCustomName] = useState("");
@@ -341,6 +347,130 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
     const unsubscribe = subscribeToWorkoutChanges(loadWorkout);
     return () => unsubscribe();
   }, [studentId]);
+
+  if (workoutPackage?.isLocked) {
+    const coaches = getStoredCoaches();
+    const assignedCoach =
+      coaches.find((c) => workoutPackage.prescribedBy && workoutPackage.prescribedBy.includes(c.name)) ||
+      coaches[0] || {
+        name: workoutPackage.prescribedBy || "Seu Personal Trainer",
+        phone: "11999990000",
+        pixKey: "11999990000",
+      };
+
+    const coachName = assignedCoach.name || workoutPackage.prescribedBy || "Seu Personal Trainer";
+    const coachPhone = assignedCoach.phone ? assignedCoach.phone.replace(/\D/g, "") : "";
+    const coachPix = assignedCoach.pixKey || (coachPhone || "consultoria@gymflow.com");
+
+    const handleCopyPix = () => {
+      triggerHaptic("success");
+      navigator.clipboard.writeText(coachPix);
+      setCopiedPix(true);
+      setTimeout(() => setCopiedPix(false), 2500);
+    };
+
+    const whatsappUrl = coachPhone
+      ? `https://wa.me/55${coachPhone}?text=${encodeURIComponent(
+          `Olá, ${coachName.split(" ")[0]}! Tudo bem? Gostaria de regularizar a mensalidade da minha consultoria para reativar minha ficha de treino.`
+        )}`
+      : "#";
+
+    return (
+      <div className="flex flex-col gap-5 p-4 sm:p-6 max-w-lg mx-auto animate-in fade-in duration-300">
+        {/* Card de Ficha Pausada */}
+        <div className="relative overflow-hidden rounded-3xl bg-zinc-950 border border-amber-500/30 p-6 shadow-2xl text-center flex flex-col items-center space-y-4">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Ícone de Cadeado */}
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-inner">
+            <Lock className="w-7 h-7" />
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+              Acesso Temporariamente Pausado
+            </span>
+            <h2 className="text-lg font-black text-white">
+              Ficha de Treino Pausada
+            </h2>
+            <p className="text-xs text-zinc-400 leading-relaxed max-w-xs mx-auto">
+              Identificamos uma pendência na mensalidade da sua consultoria com o professor. Assim que o pagamento for regularizado, sua rotina de treino será reativada instantaneamente.
+            </p>
+          </div>
+
+          {/* Dados do Professor & PIX */}
+          <div className="w-full p-4 rounded-2xl bg-zinc-900/70 border border-white/[0.08] text-left space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                Personal Trainer
+              </span>
+              <span className="text-xs font-bold text-white">
+                {coachName}
+              </span>
+            </div>
+
+            {coachPix && (
+              <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-400">Chave PIX:</span>
+                  <span className="font-mono text-zinc-200 font-bold truncate max-w-[180px]">
+                    {coachPix}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyPix}
+                  className="w-full py-2 px-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 text-xs font-bold text-zinc-200 hover:text-white flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                >
+                  {copiedPix ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                      <span className="text-emerald-400">Chave PIX Copiada!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Copiar Chave PIX</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="w-full space-y-2 pt-1">
+            {coachPhone && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerHaptic("medium")}
+                className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+              >
+                <MessageCircle className="w-4 h-4 fill-white/20" />
+                <span>Enviar Comprovante no WhatsApp</span>
+              </a>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("selection");
+                const refreshed = getStudentWorkout(studentId);
+                setWorkoutPackage(refreshed);
+              }}
+              className="w-full py-2.5 px-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Já realizei o pagamento (Atualizar)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const currentSplit = splits.find((s) => s.id === selectedSplitId) || splits[0];
 

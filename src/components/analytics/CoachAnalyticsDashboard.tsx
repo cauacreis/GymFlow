@@ -30,7 +30,7 @@ import { calculateCoachAnalytics } from "@/lib/analytics-data";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser } from "@/lib/auth-store";
 import { getStoredStudents, getStoredCoachPlans, subscribeToWorkoutChanges } from "@/lib/workout-store";
-import { getStoredBookings, getStoredNotifications, subscribeToBookings } from "@/lib/booking-store";
+import { getStoredBookings, getCoachBookings, getStoredNotifications, subscribeToBookings } from "@/lib/booking-store";
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const HOURS = ["06:00", "07:00", "08:00", "09:00", "17:00", "18:00", "19:00", "20:00"];
@@ -57,27 +57,30 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function CoachAnalyticsDashboard() {
-  const [students, setStudents] = useState(() => getStoredStudents());
-  const [bookings, setBookings] = useState(() => getStoredBookings());
-  const [plans, setPlans] = useState(() => getStoredCoachPlans());
-  const [notifications, setNotifications] = useState(() => getStoredNotifications());
+  const currentUser = getCurrentUser();
+  const coachId = currentUser?.id || "coach_rodrigo";
+
+  const [students, setStudents] = useState(() => getStoredStudents(coachId));
+  const [bookings, setBookings] = useState(() => getCoachBookings(coachId));
+  const [plans, setPlans] = useState(() => getStoredCoachPlans(coachId));
+  const [notifications, setNotifications] = useState(() => getStoredNotifications(coachId, "coach"));
   const [isMounted, setIsMounted] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<"mes" | "ano">("mes");
 
   useEffect(() => {
     setIsMounted(true);
     const refreshData = () => {
-      setStudents(getStoredStudents());
-      setBookings(getStoredBookings());
-      setPlans(getStoredCoachPlans());
-      setNotifications(getStoredNotifications());
+      setStudents(getStoredStudents(coachId));
+      setBookings(getCoachBookings(coachId));
+      setPlans(getStoredCoachPlans(coachId));
+      setNotifications(getStoredNotifications(coachId, "coach"));
     };
 
     refreshData();
     const unsubStudents = subscribeToWorkoutChanges(refreshData);
     const unsubBookings = subscribeToBookings(refreshData);
 
-    const onNotifs = () => setNotifications(getStoredNotifications());
+    const onNotifs = () => setNotifications(getStoredNotifications(coachId, "coach"));
     window.addEventListener("gymflow:notifications-updated", onNotifs);
 
     return () => {
@@ -85,7 +88,7 @@ export function CoachAnalyticsDashboard() {
       unsubBookings();
       window.removeEventListener("gymflow:notifications-updated", onNotifs);
     };
-  }, []);
+  }, [coachId]);
 
   // Métricas 100% dinâmicas calculadas a partir de dados reais cadastrados
   const dynamicAnalytics = calculateCoachAnalytics(students, bookings, plans, notifications);
@@ -98,8 +101,6 @@ export function CoachAnalyticsDashboard() {
     topStudents,
     recentCoachActivity,
   } = dynamicAnalytics;
-
-  const currentUser = getCurrentUser();
   const hasRevenueData = monthlyRevenueHistory.some((m) => (m.value ?? 0) > 0);
   const hasAttendanceData = weeklyAttendance.some((w) => (w.value ?? 0) > 0 || (w.secondary ?? 0) > 0);
   const hasBusiestData = busiestHours.some((h) => (h.value ?? 0) > 0);

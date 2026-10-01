@@ -26,6 +26,7 @@ interface NewBodyMetricModalProps {
   onSuccess?: () => void;
   initialWeight?: number;
   initialBodyFat?: number;
+  userId?: string;
 }
 
 export function NewBodyMetricModal({
@@ -34,6 +35,7 @@ export function NewBodyMetricModal({
   onSuccess,
   initialWeight = 78.4,
   initialBodyFat = 13.8,
+  userId,
 }: NewBodyMetricModalProps) {
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -84,7 +86,7 @@ export function NewBodyMetricModal({
       chestCm: chestCm ? Number(chestCm) : undefined,
       thighCm: thighCm ? Number(thighCm) : undefined,
       notes: notes.trim() || undefined,
-    });
+    }, userId);
 
     if (onSuccess) onSuccess();
     onClose();
