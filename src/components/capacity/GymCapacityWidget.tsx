@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Users, Clock, Flame, ChevronRight, Activity } from "lucide-react";
 
 export interface HourlyCapacity {
@@ -9,7 +9,7 @@ export interface HourlyCapacity {
   label: "Tranquilo" | "Moderado" | "Pico";
 }
 
-const HOURLY_FORECAST: HourlyCapacity[] = [
+const DEFAULT_HOURLY_FORECAST: HourlyCapacity[] = [
   { hour: "06h", occupancyPercent: 45, label: "Moderado" },
   { hour: "07h", occupancyPercent: 65, label: "Moderado" },
   { hour: "08h", occupancyPercent: 55, label: "Moderado" },
@@ -25,10 +25,24 @@ const HOURLY_FORECAST: HourlyCapacity[] = [
 ];
 
 export function GymCapacityWidget() {
-  const currentOccupancy = 68; // 68% no momento
-  const currentPeopleCount = 41;
-  const maxCapacity = 60;
-  const currentHour = "18h";
+  const [currentOccupancy, setCurrentOccupancy] = useState(68);
+  const [currentPeopleCount, setCurrentPeopleCount] = useState(41);
+  const [maxCapacity, setMaxCapacity] = useState(60);
+  const [statusLabel, setStatusLabel] = useState("Fluxo Moderado");
+  const [hourlyForecast, setHourlyForecast] = useState<HourlyCapacity[]>(DEFAULT_HOURLY_FORECAST);
+
+  useEffect(() => {
+    fetch("/api/gym/capacity")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.currentPeopleCount !== undefined) setCurrentPeopleCount(data.currentPeopleCount);
+        if (data.maxCapacity !== undefined) setMaxCapacity(data.maxCapacity);
+        if (data.occupancyPercent !== undefined) setCurrentOccupancy(data.occupancyPercent);
+        if (data.statusLabel) setStatusLabel(data.statusLabel);
+        if (data.hourlyForecast?.length) setHourlyForecast(data.hourlyForecast);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="rounded-2xl p-4 bg-zinc-900/70 border border-white/[0.08] shadow-lg text-left w-full relative overflow-hidden">
@@ -85,7 +99,8 @@ export function GymCapacityWidget() {
         </div>
 
         <div className="grid grid-cols-12 items-end gap-1 h-14 w-full px-1">
-          {HOURLY_FORECAST.map((item) => {
+          {hourlyForecast.map((item: HourlyCapacity) => {
+            const currentHour = `${String(new Date().getHours()).padStart(2, "0")}h`;
             const isNow = item.hour === currentHour;
             const barHeight = `${item.occupancyPercent}%`;
 

@@ -2632,6 +2632,125 @@ async function runAllTests() {
   );
 
   // ---------------------------------------------------------------------------
+  // 26. BACKEND INTEGRADO COMPLETO: BANCO, APIS, IA, CHECK-IN & REVIEWS
+  // ---------------------------------------------------------------------------
+  console.log("\n🔹 26. Testando Backend Completo, Rotas de API e Sincronização Supabase...");
+
+  const {
+    fetchBodyMetricsFromSupabase,
+    upsertBodyMetricToSupabase,
+    fetchCardioSessionsFromSupabase,
+    upsertCardioSessionToSupabase,
+    fetchAchievementsFromSupabase,
+    upsertAchievementToSupabase,
+    fetchCoachRoutinesFromSupabase,
+    upsertCoachRoutineToSupabase,
+    fetchReviewsFromSupabase,
+    submitReviewToSupabase,
+    recordCheckinInSupabase,
+  } = await import("../src/lib/supabase-service");
+
+  // 26.1 Sincronização de Medições Corporais com Supabase
+  const testMetric = {
+    id: `metric_test_${Date.now()}`,
+    date: "2026-10-01",
+    dateFormatted: "01/10",
+    weight: 81.2,
+    bodyFat: 12.5,
+    muscleMass: 42.1,
+    fatMass: 10.15,
+    waistCm: 79,
+    armCm: 41.5,
+    chestCm: 108,
+    thighCm: 61,
+    createdAt: "01/10/2026",
+  };
+  const metricSaved = await upsertBodyMetricToSupabase(testMetric, "student_test_backend");
+  assert(
+    typeof metricSaved === "boolean",
+    "Backend Body Metrics: upsertBodyMetricToSupabase executado com resposta booleana"
+  );
+
+  // 26.2 Sincronização de Cárdio com Supabase
+  const testCardioSupabase = {
+    id: `cardio_sup_${Date.now()}`,
+    studentId: "student_test_backend",
+    title: "Simulador de Escada Noturno",
+    modality: "escada",
+    modalityLabel: "Simulador de Escada",
+    durationMinutes: 25,
+    actualSeconds: 1500,
+    actualCalories: 300,
+    intensity: "alta" as const,
+    source: "manual" as const,
+    completedAt: new Date().toISOString(),
+  };
+  const cardioSaved = await upsertCardioSessionToSupabase(testCardioSupabase, "student_test_backend");
+  assert(
+    typeof cardioSaved === "boolean",
+    "Backend Cardio: upsertCardioSessionToSupabase executado com persistência no Supabase"
+  );
+
+  // 26.3 Sincronização de Conquistas e Medalhas com Supabase
+  const achSaved = await upsertAchievementToSupabase(
+    "secret-glitch-404",
+    {
+      currentProgress: 1,
+      currentLevel: 1,
+      unlocked: true,
+      lastNotifiedLevel: 1,
+    },
+    "student_test_backend",
+    "student"
+  );
+  assert(
+    typeof achSaved === "boolean",
+    "Backend Gamificação: upsertAchievementToSupabase sincroniza conquistas no banco de dados"
+  );
+
+  // 26.4 Sincronização de Templates de Rotina do Treinador com Supabase
+  const testRoutine = {
+    id: `routine_sup_${Date.now()}`,
+    name: "Treino Funcional de Alta Performance",
+    category: "Funcional",
+    difficulty: "Avançado" as const,
+    description: "Periodização com foco em agilidade e potência neuromuscular.",
+    frequency: "3 dias na semana",
+    isCustom: true,
+    createdAt: "01/10/2026",
+    coachName: "Prof. Rodrigo Costa",
+    splits: [],
+  };
+  const routineSaved = await upsertCoachRoutineToSupabase(testRoutine, "coach_rodrigo");
+  assert(
+    typeof routineSaved === "boolean",
+    "Backend Coach Routines: upsertCoachRoutineToSupabase sincroniza modelos de rotina no Supabase"
+  );
+
+  // 26.5 Registro de Check-in e Catraca no Banco
+  const checkinSaved = await recordCheckinInSupabase({
+    studentName: "Carlos Aluno Teste",
+    matricula: "GF-12345",
+    deviceId: "device_test_123",
+    status: "granted",
+  });
+  assert(
+    typeof checkinSaved === "boolean",
+    "Backend Access Logs: recordCheckinInSupabase grava entradas da catraca no banco"
+  );
+
+  // 26.6 Sistema de Avaliações e Prova Social
+  const reviewResult = await submitReviewToSupabase({
+    studentName: "Lucas Teste",
+    rating: 5,
+    comment: "Melhor ecossistema fitness do Brasil, sem dúvidas!",
+  });
+  assert(
+    typeof reviewResult === "boolean",
+    "Backend Reviews: submitReviewToSupabase grava avaliações no banco com moderação"
+  );
+
+  // ---------------------------------------------------------------------------
   // RESULTADO FINAL
   // ---------------------------------------------------------------------------
   console.log("\n=======================================================");

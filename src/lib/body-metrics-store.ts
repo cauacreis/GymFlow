@@ -5,6 +5,11 @@
  */
 
 import { getCurrentUser, saveUserProfile } from "./auth-store";
+import {
+  fetchBodyMetricsFromSupabase,
+  upsertBodyMetricToSupabase,
+  deleteBodyMetricFromSupabase,
+} from "./supabase-service";
 
 export interface BodyMetricEntry {
   id: string;
@@ -119,6 +124,9 @@ export function addBodyMetric(
     }
 
     window.dispatchEvent(new Event(EVENT_BODY_METRICS));
+
+    // Sincronização remota em background com o Supabase
+    upsertBodyMetricToSupabase(newEntry, userId).catch(() => {});
   }
 
   return newEntry;
@@ -131,6 +139,7 @@ export function updateBodyMetric(id: string, updates: Partial<BodyMetricEntry>, 
   const current = getStoredBodyMetrics(userId);
   const storageKey = getBodyMetricsStorageKey(userId);
   const updated = current.map((item) => (item.id === id ? { ...item, ...updates } : item));
+  const updatedItem = updated.find((it) => it.id === id);
 
   if (typeof window !== "undefined") {
     localStorage.setItem(storageKey, JSON.stringify(updated));
@@ -144,6 +153,10 @@ export function updateBodyMetric(id: string, updates: Partial<BodyMetricEntry>, 
     }
 
     window.dispatchEvent(new Event(EVENT_BODY_METRICS));
+
+    if (updatedItem) {
+      upsertBodyMetricToSupabase(updatedItem, userId).catch(() => {});
+    }
   }
 }
 
@@ -167,6 +180,8 @@ export function deleteBodyMetric(id: string, userId?: string): void {
     }
 
     window.dispatchEvent(new Event(EVENT_BODY_METRICS));
+
+    deleteBodyMetricFromSupabase(id).catch(() => {});
   }
 }
 

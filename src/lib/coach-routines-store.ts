@@ -5,6 +5,11 @@
  */
 
 import { WorkoutSplitTemplate, PreFormedWorkoutRoutine, PREFORMED_ROUTINES } from "./exercisedb";
+import {
+  fetchCoachRoutinesFromSupabase,
+  upsertCoachRoutineToSupabase,
+  deleteCoachRoutineFromSupabase,
+} from "./supabase-service";
 
 export type CoachWorkoutRoutine = PreFormedWorkoutRoutine;
 
@@ -259,6 +264,13 @@ export function saveCoachRoutine(routine: CoachWorkoutRoutine, coachId?: string)
 
   localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent(EVENT_COACH_ROUTINES_CHANGED, { detail: updated }));
+
+  // Sincronização remota em background com Supabase
+  const savedItem = updated.find((r) => r.id === routine.id) || updated[0];
+  if (savedItem) {
+    upsertCoachRoutineToSupabase(savedItem, coachId).catch(() => {});
+  }
+
   return routine;
 }
 
@@ -271,6 +283,8 @@ export function deleteCoachRoutine(routineId: string, coachId?: string): void {
 
   localStorage.setItem(storageKey, JSON.stringify(updated));
   window.dispatchEvent(new CustomEvent(EVENT_COACH_ROUTINES_CHANGED, { detail: updated }));
+
+  deleteCoachRoutineFromSupabase(routineId).catch(() => {});
 }
 
 export function subscribeToCoachRoutines(callback: () => void): () => void {

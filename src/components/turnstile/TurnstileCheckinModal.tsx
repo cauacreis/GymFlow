@@ -76,10 +76,23 @@ export function TurnstileCheckinModal({
     return () => clearInterval(interval);
   }, [isOpen, isScanned]);
 
-  // Simulação de Leitura na Catraca
-  const handleSimulateScan = () => {
+  // Validação real e registro de log no backend
+  const handleSimulateScan = async () => {
     triggerHaptic("heavy");
     setIsScanned(true);
+
+    try {
+      await fetch("/api/checkin/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentName: memberName,
+          matricula,
+          deviceId: currentUser.deviceFingerprint || "web_client",
+        }),
+      });
+    } catch {}
+
     setTimeout(() => {
       triggerHaptic("medium");
     }, 300);

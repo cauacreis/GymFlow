@@ -110,6 +110,29 @@ export function GymBotAIModal({ isOpen, onClose, onOpenPlans }: GymBotAIModalPro
     if (!textToSend) setInputText("");
     setIsTyping(true);
 
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: query }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const botMsg: ChatMessage = {
+          id: `bot-${Date.now()}`,
+          sender: "bot",
+          text: data.response || "Entendido! Siga com foco e consistência nos treinos.",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        };
+        setMessages((prev) => [...prev, botMsg]);
+        setIsTyping(false);
+        triggerHaptic("light");
+        return;
+      }
+    } catch {}
+
+    // Fallback defensivo se offline
     let botReplyText = "";
     const lower = query.toLowerCase();
 
@@ -122,20 +145,18 @@ export function GymBotAIModal({ isOpen, onClose, onOpenPlans }: GymBotAIModalPro
     } else if (lower.includes("descanso") || lower.includes("tempo") || lower.includes("serie")) {
       botReplyText = DETERMINISTIC_KNOWLEDGE.descanso;
     } else {
-      botReplyText = `Excelente dúvida! Para o objetivo de **${query.slice(0, 30)}...**, a chave é manter regularidade nos treinos, garantir progressão gradual de volume semanal e consumir proteínas adequadas com descanso de qualidade. Seu treinador também pode ajustar sua rotina diretamente na aba de Fichas!`;
+      botReplyText = `Excelente dúvida! Para o objetivo de **${query.slice(0, 30)}...**, a chave é manter regularidade nos treinos, garantir progressão gradual de volume semanal e consumir proteínas adequadas com descanso de qualidade.`;
     }
 
-    setTimeout(() => {
-      const botMsg: ChatMessage = {
-        id: `bot-${Date.now()}`,
-        sender: "bot",
-        text: botReplyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, botMsg]);
-      setIsTyping(false);
-      triggerHaptic("light");
-    }, 600);
+    const botMsg: ChatMessage = {
+      id: `bot-${Date.now()}`,
+      sender: "bot",
+      text: botReplyText,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    setMessages((prev) => [...prev, botMsg]);
+    setIsTyping(false);
+    triggerHaptic("light");
   };
 
   return (

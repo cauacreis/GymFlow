@@ -7,6 +7,11 @@
 import { getCurrentUser } from "./auth-store";
 import { CardioType, CARDIO_TYPES_METADATA } from "./exercisedb";
 import { awardBadgeProgress, getAllGamificationBadges } from "./gamification-service";
+import {
+  fetchCardioSessionsFromSupabase,
+  upsertCardioSessionToSupabase,
+  deleteCardioSessionFromSupabase,
+} from "./supabase-service";
 
 export interface CardioSessionLog {
   id: string;
@@ -170,6 +175,9 @@ export function saveCardioSession(
 
       // Dispara evento reativo para todos os componentes ouvintes
       window.dispatchEvent(new CustomEvent(EVENT_CARDIO_UPDATED, { detail: newLog }));
+
+      // Sincronização remota em background no Supabase
+      upsertCardioSessionToSupabase(newLog, currentUserId).catch(() => {});
     } catch {}
 
     // Sincroniza com a insígnia Mestre do Cárdio
@@ -195,6 +203,8 @@ export function deleteCardioSession(sessionId: string, userId?: string): boolean
     const updated = existing.filter((s) => s.id !== sessionId);
     localStorage.setItem(key, JSON.stringify(updated));
     window.dispatchEvent(new Event(EVENT_CARDIO_UPDATED));
+
+    deleteCardioSessionFromSupabase(sessionId).catch(() => {});
     return true;
   } catch {
     return false;

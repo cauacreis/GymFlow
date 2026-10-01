@@ -8,6 +8,10 @@ import { StudentProfile, CoachPlanOption, StudentWorkoutPackage } from "./workou
 import { BookingRequest, CoachTrainer, AppNotification } from "./booking-store";
 import { UserProfile } from "./auth-store";
 import { isValidCoordinate } from "./geo";
+import type { BodyMetricEntry } from "./body-metrics-store";
+import type { CardioSessionLog } from "./cardio-store";
+import type { StoredBadgeProgress } from "./gamification-service";
+import type { CoachWorkoutRoutine } from "./coach-routines-store";
 
 // ============================================================================
 // ALTA PERFORMANCE: CACHE EM MEMÓRIA & DEDUPLICAÇÃO DE REQUISIÇÕES IN-FLIGHT
@@ -642,5 +646,668 @@ export async function fetchProfileFromSupabase(userId: string): Promise<UserProf
       return null;
     }
   }, 30000); // 30s TTL
+}
+
+// ============================================================================
+// MEDIÇÕES CORPORAIS (BODY METRICS & BIOIMPEDÂNCIA)
+// ============================================================================
+
+export async function fetchBodyMetricsFromSupabase(userId?: string): Promise<BodyMetricEntry[] | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  let targetId = userId;
+  if (!targetId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) targetId = session.user.id;
+    } catch {}
+  }
+  if (!targetId) return [];
+
+  const cacheKey = `body_metrics_${targetId}`;
+
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+      let query = client.from("body_metrics").select("*");
+      if (isUUID) {
+        query = query.or(`user_id.eq.${targetId},student_id.eq.${targetId}`);
+      } else {
+        query = query.eq("student_id", targetId);
+      }
+
+      const { data, error } = await query.order("date", { ascending: true });
+      if (error || !data) return null;
+
+      return data.map((row: any): BodyMetricEntry => ({
+        id: row.id,
+        date: row.date,
+        dateFormatted: row.date_formatted || row.date,
+        weight: Number(row.weight),
+        bodyFat: Number(row.body_fat),
+        muscleMass: Number(row.muscle_mass),
+        fatMass: row.fat_mass !== null ? Number(row.fat_mass) : undefined,
+        waistCm: row.waist_cm !== null ? Number(row.waist_cm) : undefined,
+        armCm: row.arm_cm !== null ? Number(row.arm_cm) : undefined,
+        chestCm: row.chest_cm !== null ? Number(row.chest_cm) : undefined,
+        thighCm: row.thigh_cm !== null ? Number(row.thigh_cm) : undefined,
+        notes: row.notes || undefined,
+        createdAt: row.created_at,
+      }));
+    } catch {
+      return null;
+    }
+  }, 20000);
+}
+
+export async function upsertBodyMetricToSupabase(metric: BodyMetricEntry, userId?: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+
+  try {
+    let resolvedUserId: string | null = null;
+    if (userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      resolvedUserId = userId;
+    } else {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) resolvedUserId = session.user.id;
+    }
+
+    const payload = {
+      id: metric.id,
+      user_id: resolvedUserId,
+      student_id: userId || resolvedUserId || "student_me",
+      date: metric.date,
+      date_formatted: metric.dateFormatted,
+      weight: metric.weight,
+      body_fat: metric.bodyFat,
+      muscle_mass: metric.muscleMass,
+      fat_mass: metric.fatMass ?? null,
+      waist_cm: metric.waistCm ?? null,
+      arm_cm: metric.armCm ?? null,
+      chest_cm: metric.chestCm ?? null,
+      thigh_cm: metric.thighCm ?? null,
+      notes: metric.notes ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await client.from("body_metrics").upsert(payload, { onConflict: "id" });
+    if (!error) {
+      invalidateSupabaseCache("body_metrics_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteBodyMetricFromSupabase(metricId: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+  try {
+    const { error } = await client.from("body_metrics").delete().eq("id", metricId);
+    if (!error) {
+      invalidateSupabaseCache("body_metrics_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// HISTÓRICO DE CÁRDIO (CARDIO SESSIONS)
+// ============================================================================
+
+export async function fetchCardioSessionsFromSupabase(studentId?: string): Promise<CardioSessionLog[] | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  let targetStudentId = studentId;
+  if (!targetStudentId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) targetStudentId = session.user.id;
+    } catch {}
+  }
+  if (!targetStudentId) return [];
+
+  const cacheKey = `cardio_sessions_${targetStudentId}`;
+
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetStudentId);
+      let query = client.from("cardio_sessions").select("*");
+      if (isUUID) {
+        query = query.or(`user_id.eq.${targetStudentId},student_id.eq.${targetStudentId}`);
+      } else {
+        query = query.eq("student_id", targetStudentId);
+      }
+
+      const { data, error } = await query.order("completed_at", { ascending: false });
+      if (error || !data) return null;
+
+      return data.map((row: any): CardioSessionLog => ({
+        id: row.id,
+        studentId: row.student_id,
+        title: row.title,
+        modality: row.modality,
+        modalityLabel: row.modality_label,
+        durationMinutes: row.duration_minutes,
+        actualSeconds: row.actual_seconds,
+        actualCalories: row.actual_calories,
+        intensity: row.intensity || "moderada",
+        source: row.source || "manual",
+        speedKmh: row.speed_kmh !== null ? Number(row.speed_kmh) : undefined,
+        inclinePercent: row.incline_percent !== null ? Number(row.incline_percent) : undefined,
+        notes: row.notes || undefined,
+        completedAt: row.completed_at,
+      }));
+    } catch {
+      return null;
+    }
+  }, 20000);
+}
+
+export async function upsertCardioSessionToSupabase(session: CardioSessionLog, userId?: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+
+  try {
+    let resolvedUserId: string | null = null;
+    if (userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      resolvedUserId = userId;
+    } else {
+      const { data: { session: authSess } } = await client.auth.getSession();
+      if (authSess?.user?.id) resolvedUserId = authSess.user.id;
+    }
+
+    const payload = {
+      id: session.id,
+      user_id: resolvedUserId,
+      student_id: session.studentId || resolvedUserId || "student_carlos",
+      title: session.title,
+      modality: session.modality,
+      modality_label: session.modalityLabel,
+      duration_minutes: session.durationMinutes,
+      actual_seconds: session.actualSeconds || session.durationMinutes * 60,
+      actual_calories: session.actualCalories,
+      intensity: session.intensity || "moderada",
+      source: session.source || "manual",
+      speed_kmh: session.speedKmh ?? null,
+      incline_percent: session.inclinePercent ?? null,
+      notes: session.notes ?? null,
+      completed_at: session.completedAt,
+    };
+
+    const { error } = await client.from("cardio_sessions").upsert(payload, { onConflict: "id" });
+    if (!error) {
+      invalidateSupabaseCache("cardio_sessions_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteCardioSessionFromSupabase(sessionId: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+  try {
+    const { error } = await client.from("cardio_sessions").delete().eq("id", sessionId);
+    if (!error) {
+      invalidateSupabaseCache("cardio_sessions_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// GAMIFICAÇÃO & CONQUISTAS (USER ACHIEVEMENTS)
+// ============================================================================
+
+export async function fetchAchievementsFromSupabase(userId?: string): Promise<Record<string, StoredBadgeProgress> | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  let targetId = userId;
+  if (!targetId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) targetId = session.user.id;
+    } catch {}
+  }
+  if (!targetId) return null;
+
+  const cacheKey = `user_achievements_${targetId}`;
+
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+      let query = client.from("user_achievements").select("*");
+      if (isUUID) {
+        query = query.or(`user_id.eq.${targetId},student_id.eq.${targetId}`);
+      } else {
+        query = query.eq("student_id", targetId);
+      }
+
+      const { data, error } = await query;
+      if (error || !data) return null;
+
+      const progressMap: Record<string, StoredBadgeProgress> = {};
+      data.forEach((row: any) => {
+        progressMap[row.badge_id] = {
+          currentProgress: row.current_progress,
+          currentLevel: row.current_level,
+          unlocked: row.unlocked,
+          unlockedAt: row.unlocked_at || undefined,
+          lastNotifiedLevel: row.last_notified_level,
+        };
+      });
+      return progressMap;
+    } catch {
+      return null;
+    }
+  }, 20000);
+}
+
+export async function upsertAchievementToSupabase(
+  badgeId: string,
+  progress: StoredBadgeProgress,
+  userId?: string,
+  role: "student" | "coach" = "student"
+): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+
+  try {
+    let resolvedUserId: string | null = null;
+    if (userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      resolvedUserId = userId;
+    } else {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) resolvedUserId = session.user.id;
+    }
+
+    const recId = `ach_${resolvedUserId || userId || "me"}_${badgeId}`;
+    const payload = {
+      id: recId,
+      user_id: resolvedUserId,
+      student_id: userId || resolvedUserId || "student_me",
+      badge_id: badgeId,
+      role,
+      current_progress: progress.currentProgress,
+      current_level: progress.currentLevel,
+      unlocked: progress.unlocked,
+      unlocked_at: progress.unlockedAt || null,
+      last_notified_level: progress.lastNotifiedLevel,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await client.from("user_achievements").upsert(payload, { onConflict: "id" });
+    if (!error) {
+      invalidateSupabaseCache("user_achievements_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// MODELOS DE ROTINA DO TREINADOR (COACH ROUTINE TEMPLATES)
+// ============================================================================
+
+export async function fetchCoachRoutinesFromSupabase(coachId?: string): Promise<CoachWorkoutRoutine[] | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  const targetCoachId = coachId || "coach_rodrigo";
+  const cacheKey = `coach_routines_${targetCoachId}`;
+
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const { data, error } = await client
+        .from("coach_routine_templates")
+        .select("*")
+        .eq("coach_id", targetCoachId)
+        .order("created_at", { ascending: false });
+
+      if (error || !data) return null;
+
+      return data.map((r: any): CoachWorkoutRoutine => ({
+        id: r.id,
+        name: r.name,
+        category: r.category,
+        difficulty: r.difficulty || "Intermediário",
+        description: r.description || "",
+        frequency: r.frequency || "4 dias na semana",
+        isCustom: true,
+        coachName: "Personal Trainer",
+        splits: r.splits || [],
+      }));
+    } catch {
+      return null;
+    }
+  }, 30000);
+}
+
+export async function upsertCoachRoutineToSupabase(routine: CoachWorkoutRoutine, coachId?: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+
+  try {
+    const targetCoachId = coachId || "coach_rodrigo";
+    const payload = {
+      id: routine.id,
+      coach_id: targetCoachId,
+      name: routine.name,
+      category: routine.category || "Geral",
+      difficulty: routine.difficulty || "Intermediário",
+      description: routine.description || null,
+      frequency: routine.frequency || null,
+      splits: routine.splits || [],
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await client.from("coach_routine_templates").upsert(payload, { onConflict: "id" });
+    if (!error) {
+      invalidateSupabaseCache("coach_routines_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteCoachRoutineFromSupabase(routineId: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+  try {
+    const { error } = await client.from("coach_routine_templates").delete().eq("id", routineId);
+    if (!error) {
+      invalidateSupabaseCache("coach_routines_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// LOTAÇÃO DA ACADEMIA (GYM OCCUPANCY)
+// ============================================================================
+
+export async function fetchOccupancyFromSupabase(): Promise<{
+  currentCount: number;
+  maxCapacity: number;
+  occupancyPercent: number;
+  statusLabel: string;
+  hourlyDistribution: any[];
+} | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  return deduplicatedFetch("gym_occupancy_main", async () => {
+    try {
+      const { data, error } = await client
+        .from("gym_occupancy")
+        .select("*")
+        .eq("id", "main_facility")
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      return {
+        currentCount: data.current_count,
+        maxCapacity: data.max_capacity,
+        occupancyPercent: data.occupancy_percent,
+        statusLabel: data.status_label,
+        hourlyDistribution: data.hourly_distribution || [],
+      };
+    } catch {
+      return null;
+    }
+  }, 10000); // 10s TTL
+}
+
+// ============================================================================
+// CATRACA E LOGS DE ACESSO (CHECK-IN)
+// ============================================================================
+
+export async function recordCheckinInSupabase(entry: {
+  studentName: string;
+  matricula?: string;
+  deviceId?: string;
+  turnstileToken?: string;
+  status?: "granted" | "denied" | "expired";
+}): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+
+  try {
+    let resolvedUserId: string | null = null;
+    const { data: { session } } = await client.auth.getSession();
+    if (session?.user?.id) resolvedUserId = session.user.id;
+
+    const payload = {
+      id: `checkin_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      user_id: resolvedUserId,
+      student_name: entry.studentName,
+      matricula: entry.matricula || null,
+      device_id: entry.deviceId || null,
+      turnstile_token: entry.turnstileToken || null,
+      status: entry.status || "granted",
+      created_at: new Date().toISOString(),
+    };
+
+    const { error } = await client.from("access_logs").insert(payload);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// AVALIAÇÕES E PROVA SOCIAL (REVIEWS)
+// ============================================================================
+
+export interface ReviewItem {
+  id: string;
+  name: string;
+  avatar: string;
+  role: string;
+  rating: number;
+  date: string;
+  comment: string;
+  verified: boolean;
+  coachId?: string;
+}
+
+export async function fetchReviewsFromSupabase(coachId?: string): Promise<ReviewItem[] | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  const cacheKey = `reviews_${coachId || "all"}`;
+
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      let query = client.from("reviews").select("*");
+      if (coachId) query = query.eq("coach_id", coachId);
+
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(20);
+      if (error || !data) return null;
+
+      return data.map((r: any): ReviewItem => ({
+        id: r.id,
+        name: r.student_name,
+        avatar: r.student_avatar || "/avatars/default.png",
+        role: "Aluno Verificado",
+        rating: r.rating,
+        date: new Date(r.created_at).toLocaleDateString("pt-BR"),
+        comment: r.comment,
+        verified: r.verified_member ?? true,
+        coachId: r.coach_id || undefined,
+      }));
+    } catch {
+      return null;
+    }
+  }, 30000);
+}
+
+export async function submitReviewToSupabase(review: {
+  studentName: string;
+  studentAvatar?: string;
+  rating: number;
+  comment: string;
+  coachId?: string;
+}): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+
+  try {
+    let resolvedUserId: string | null = null;
+    const { data: { session } } = await client.auth.getSession();
+    if (session?.user?.id) resolvedUserId = session.user.id;
+
+    const payload = {
+      id: `rev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      user_id: resolvedUserId,
+      student_name: review.studentName,
+      student_avatar: review.studentAvatar || null,
+      rating: review.rating,
+      comment: review.comment,
+      coach_id: review.coachId || null,
+      verified_member: true,
+      created_at: new Date().toISOString(),
+    };
+
+    const { error } = await client.from("reviews").insert(payload);
+    if (!error) {
+      invalidateSupabaseCache("reviews_");
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// PEDIDOS & SACOLA FIT (ORDERS)
+// ============================================================================
+
+export interface GymOrder {
+  id: string;
+  customerName: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  items: any[];
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  status: "pending" | "preparing" | "out_for_delivery" | "delivered" | "cancelled";
+  paymentMethod: string;
+  createdAt: string;
+}
+
+export async function fetchOrdersFromSupabase(userId?: string): Promise<GymOrder[] | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  let targetId = userId;
+  if (!targetId) {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (session?.user?.id) targetId = session.user.id;
+    } catch {}
+  }
+  if (!targetId) return [];
+
+  const cacheKey = `orders_${targetId}`;
+
+  return deduplicatedFetch(cacheKey, async () => {
+    try {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+      let query = client.from("orders").select("*");
+      if (isUUID) {
+        query = query.or(`user_id.eq.${targetId},student_id.eq.${targetId}`);
+      } else {
+        query = query.eq("student_id", targetId);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
+      if (error || !data) return null;
+
+      return data.map((o: any): GymOrder => ({
+        id: o.id,
+        customerName: o.customer_name,
+        customerPhone: o.customer_phone || undefined,
+        deliveryAddress: o.delivery_address || undefined,
+        items: o.items || [],
+        subtotal: Number(o.subtotal),
+        deliveryFee: Number(o.delivery_fee || 0),
+        total: Number(o.total),
+        status: o.status,
+        paymentMethod: o.payment_method || "pix",
+        createdAt: o.created_at,
+      }));
+    } catch {
+      return null;
+    }
+  }, 15000);
+}
+
+export async function createOrderInSupabase(order: Omit<GymOrder, "id" | "createdAt"> & { id?: string }): Promise<GymOrder | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  try {
+    let resolvedUserId: string | null = null;
+    const { data: { session } } = await client.auth.getSession();
+    if (session?.user?.id) resolvedUserId = session.user.id;
+
+    const finalId = order.id || `order_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const nowIso = new Date().toISOString();
+
+    const payload = {
+      id: finalId,
+      user_id: resolvedUserId,
+      student_id: resolvedUserId || "student_me",
+      customer_name: order.customerName,
+      customer_phone: order.customerPhone || null,
+      delivery_address: order.deliveryAddress || null,
+      items: order.items,
+      subtotal: order.subtotal,
+      delivery_fee: order.deliveryFee,
+      total: order.total,
+      status: order.status || "preparing",
+      payment_method: order.paymentMethod || "pix",
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+
+    const { error } = await client.from("orders").insert(payload);
+    if (error) return null;
+
+    invalidateSupabaseCache("orders_");
+    return {
+      id: finalId,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      deliveryAddress: order.deliveryAddress,
+      items: order.items,
+      subtotal: order.subtotal,
+      deliveryFee: order.deliveryFee,
+      total: order.total,
+      status: order.status || "preparing",
+      paymentMethod: order.paymentMethod || "pix",
+      createdAt: nowIso,
+    };
+  } catch {
+    return null;
+  }
 }
 

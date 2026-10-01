@@ -6,6 +6,7 @@
 
 import { addNotification } from "./booking-store";
 import { triggerHaptic } from "./haptic";
+import { upsertAchievementToSupabase } from "./supabase-service";
 
 export type BadgeTier = "bronze" | "prata" | "ouro" | "diamante";
 export type BadgeRarity = "comum" | "raro" | "epico" | "lendario" | "mitico";
@@ -635,9 +636,10 @@ export function awardBadgeProgress(
   const prevLevel = currentProg.currentLevel;
   currentProg.currentLevel = Math.max(currentProg.currentLevel, calculatedLevel);
 
-  // Salva no storage
+  // Salva no storage local e sincroniza com o Supabase
   stored[badgeId] = currentProg;
   saveGamificationProgress(stored);
+  upsertAchievementToSupabase(badgeId, currentProg, undefined, baseBadge.role).catch(() => {});
 
   // Se subiu de nível ou desbloqueou agora, dispara Notificação + Modal de Celebração
   if ((levelUpNow || (!wasUnlockedBefore && isNowUnlocked)) && currentProg.currentLevel > (currentProg.lastNotifiedLevel || 0)) {
