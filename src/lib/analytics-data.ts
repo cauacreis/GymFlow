@@ -14,6 +14,7 @@ import { StudentProfile, CoachPlanOption, StudentWorkoutPackage } from "./workou
 import { BookingRequest, AppNotification } from "./booking-store";
 import { BodyMetricEntry } from "./body-metrics-store";
 import { UserProfile } from "./auth-store";
+import { calculateSmartWorkoutStreak } from "./streak-service";
 
 export interface ChartDataPoint {
   name: string;
@@ -453,11 +454,15 @@ export function calculateStudentAnalytics(
     }
   }
 
-  // 2. Ofensiva / Frequência
+  // 2. Ofensiva / Frequência Inteligente (Finais de Semana & Agenda Flexível)
   const studentBookings = bookings.filter(
     (b) => b.studentId === currentUser.id && b.attendanceStatus === "attended"
   );
-  const streakDays = studentBookings.length > 0 ? studentBookings.length : 0;
+  const streakInfo = calculateSmartWorkoutStreak({
+    weeklySchedule: (currentUser as any).weeklySchedule,
+    userId: currentUser.id,
+  });
+  const streakDays = streakInfo.currentStreak;
 
   // 3. Bioimpedância & % Gordura
   const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null;
@@ -481,7 +486,7 @@ export function calculateStudentAnalytics(
         ? `${completedSetsCount} séries concluídas`
         : "Nenhuma série concluída",
     streakDays,
-    streakLabel: streakDays > 0 ? "dias seguidos 🔥" : "inicie sua ofensiva",
+    streakLabel: streakInfo.statusLabel,
     prsCount: detectedPRs.length,
     prsChange:
       detectedPRs.length > 0 ? `${detectedPRs.length} recordes batidos` : "Sem recordes ainda",

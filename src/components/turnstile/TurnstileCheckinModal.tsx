@@ -7,6 +7,11 @@ import { ShieldCheck, CheckCircle, RefreshCw, Smartphone, Users, Zap, Lock, Aler
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser } from "@/lib/auth-store";
 import { canAccessFeature, getUserPlanTier, isSubscriptionExpired } from "@/lib/subscription-features";
+import {
+  calculateSmartWorkoutStreak,
+  recordWorkoutAttendanceDate,
+  StreakInfo,
+} from "@/lib/streak-service";
 
 interface TurnstileCheckinModalProps {
   isOpen: boolean;
@@ -25,8 +30,10 @@ export function TurnstileCheckinModal({
   const [secondsRemaining, setSecondsRemaining] = useState(30);
   const [isScanned, setIsScanned] = useState(false);
   const [tokenSeed, setTokenSeed] = useState(Date.now());
-
   const currentUser = getCurrentUser();
+  const [streakInfo, setStreakInfo] = useState<StreakInfo>(() =>
+    calculateSmartWorkoutStreak({ userId: currentUser?.id })
+  );
   const memberName = user?.name || currentUser.name || "Aluno GymFlow";
   const matricula = currentUser.matricula || "GF-84920";
   const planTier = getUserPlanTier(currentUser);
@@ -80,6 +87,10 @@ export function TurnstileCheckinModal({
   const handleSimulateScan = async () => {
     triggerHaptic("heavy");
     setIsScanned(true);
+
+    // Registra presença no motor de streak inteligente
+    const updated = recordWorkoutAttendanceDate(undefined, currentUser?.id, true);
+    setStreakInfo(updated);
 
     try {
       await fetch("/api/checkin/validate", {
@@ -150,7 +161,7 @@ export function TurnstileCheckinModal({
 
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-300 mt-2">
               <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Sequência ativa: <strong>16 dias consecutivos</strong></span>
+              <span>Sequência ativa: <strong className="text-white font-mono">{streakInfo.currentStreak} dias na rotina</strong></span>
             </div>
 
             <button

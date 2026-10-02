@@ -22,7 +22,12 @@ import {
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser } from "@/lib/auth-store";
-import { getAllGamificationBadges } from "@/lib/gamification-service";
+import {
+  getAllGamificationBadges,
+  calculateSmartWorkoutStreak,
+  EVENT_STREAK_UPDATED,
+  StreakInfo,
+} from "@/lib/gamification-service";
 
 export type BadgeTier = "bronze" | "prata" | "ouro" | "diamante";
 export type BadgeRarity = "comum" | "raro" | "epico" | "lendario" | "mitico";
@@ -577,6 +582,9 @@ export function GymBadgesStreak() {
     user.activeRole === "coach" ? "coach" : "student"
   );
   const [badges, setBadges] = useState<BadgeItem[]>(() => getAllGamificationBadges());
+  const [streakInfo, setStreakInfo] = useState<StreakInfo>(() =>
+    calculateSmartWorkoutStreak({ userId: user?.id })
+  );
   const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
   const [selectedTierLevel, setSelectedTierLevel] = useState<number>(1);
   const [filterTab, setFilterTab] = useState<"todas" | "desbloqueadas" | "progresso" | "secretas">("todas");
@@ -584,19 +592,22 @@ export function GymBadgesStreak() {
   useEffect(() => {
     const syncBadges = () => {
       setBadges(getAllGamificationBadges());
+      setStreakInfo(calculateSmartWorkoutStreak({ userId: user?.id }));
     };
 
     syncBadges();
     window.addEventListener("gymflow:badges-updated", syncBadges);
+    window.addEventListener("gymflow:streak-updated", syncBadges);
     window.addEventListener("storage", syncBadges);
     return () => {
       window.removeEventListener("gymflow:badges-updated", syncBadges);
+      window.removeEventListener("gymflow:streak-updated", syncBadges);
       window.removeEventListener("storage", syncBadges);
     };
-  }, []);
+  }, [user?.id]);
 
-  const streakCount = 16;
-  const nextMilestone = 20;
+  const streakCount = streakInfo.currentStreak;
+  const nextMilestone = streakInfo.nextMilestone;
 
   const handleSelectBadge = (badge: BadgeItem) => {
     triggerHaptic(badge.unlocked ? "success" : "light");
@@ -679,7 +690,7 @@ export function GymBadgesStreak() {
                 </motion.div>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5 font-medium">
-                Sua maior sequência na história da academia!
+                {streakInfo.statusDescription}
               </p>
             </div>
           </div>
@@ -689,16 +700,16 @@ export function GymBadgesStreak() {
         <div className="mt-4 pt-3.5 border-t border-white/[0.08] relative z-10">
           <div className="flex items-center justify-between text-xs font-medium mb-1.5">
             <span className="text-zinc-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Próxima Conquista: 20 Dias
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Próxima Conquista: {nextMilestone} Dias
             </span>
             <span className="text-amber-400 font-mono font-bold">
-              {streakCount} / {nextMilestone} dias ({Math.round((streakCount / nextMilestone) * 100)}%)
+              {streakCount} / {nextMilestone} dias ({streakInfo.progressPercentToNextMilestone}%)
             </span>
           </div>
           <div className="h-2.5 w-full bg-zinc-950/60 rounded-full overflow-hidden p-0.5 border border-white/[0.05]">
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${(streakCount / nextMilestone) * 100}%` }}
+              animate={{ width: `${streakInfo.progressPercentToNextMilestone}%` }}
               transition={{ duration: 1, ease: "easeOut" }}
               className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.5)]"
             />
@@ -1085,6 +1096,18 @@ export function GymBadgesStreak() {
                   </div>
                   <p className="text-[11px] text-purple-200/80 italic leading-snug">
                     &ldquo;{selectedBadge.secretClue}&rdquo;
+                  </p>
+                </div>
+              )}
+
+              {/* Informação Amigável de Constância (Finais de Semana & Rotina) */}
+              {(selectedBadge.category === "Constância" || selectedBadge.id === "streak-fire" || selectedBadge.id === "streak-30") && (
+                <div className="w-full mt-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-2.5 text-left">
+                  <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+                    <Zap className="w-3.5 h-3.5" />
+                  </div>
+                  <p className="text-[11px] text-amber-200/90 leading-snug">
+                    <strong className="text-white">Ofensiva Flexível:</strong> Finais de semana e descansos da sua agenda não quebram sua chama. Se treinar no sábado/domingo, ganha bônus!
                   </p>
                 </div>
               )}

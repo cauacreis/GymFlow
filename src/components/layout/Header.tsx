@@ -30,6 +30,7 @@ interface HeaderProps {
 
 export function Header({
   viewMode = "student",
+  streakDays,
   onToggleViewMode,
   onOpenProfile,
   onOpenPlans,
@@ -103,6 +104,17 @@ export function Header({
                 </span>
               )}
             </button>
+          )}
+
+          {/* Indicador de Fogo / Streak de Treino */}
+          {!isCoach && typeof streakDays === "number" && streakDays > 0 && (
+            <div
+              className="h-7 px-2 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center gap-1 text-[11px] font-black text-amber-400 font-mono shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+              title={`${streakDays} dias seguidos de ofensiva`}
+            >
+              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
+              <span>{streakDays}d</span>
+            </div>
           )}
 
           {/* Indicador e Botão de Planos com Contagem Regressiva do Trial */}

@@ -15,6 +15,7 @@ import {
 } from "./supabase-service";
 import { isSlotToday, getStoredCoaches } from "./booking-store";
 import { getCurrentUser, saveUserProfile } from "./auth-store";
+import { recordWorkoutAttendanceDate } from "./streak-service";
 
 export interface StudentProfile {
   id: string;
@@ -949,6 +950,11 @@ export function recordStudentAttendance(
   const updatedStudent = updated.find((st) => st.id === studentId);
   if (updatedStudent) {
     upsertStudentToSupabase(updatedStudent, targetCoachId).catch(() => {});
+  }
+
+  // Se presença ou atraso, atualiza a data de treino na ofensiva do aluno
+  if (type === "presence" || type === "delay") {
+    recordWorkoutAttendanceDate(undefined, studentId, false);
   }
 
   // 1. Sincroniza com o booking-store (gymflow_bookings_v3)

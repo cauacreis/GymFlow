@@ -7,6 +7,14 @@
 import { addNotification } from "./booking-store";
 import { triggerHaptic } from "./haptic";
 import { upsertAchievementToSupabase } from "./supabase-service";
+import {
+  calculateSmartWorkoutStreak,
+  recordWorkoutAttendanceDate,
+  StreakInfo,
+  EVENT_STREAK_UPDATED,
+} from "./streak-service";
+
+export * from "./streak-service";
 
 export type BadgeTier = "bronze" | "prata" | "ouro" | "diamante";
 export type BadgeRarity = "comum" | "raro" | "epico" | "lendario" | "mitico";
@@ -90,7 +98,7 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
     name: "Fogo Sagrado",
     role: "student",
     category: "Constância",
-    description: "Mantenha a chama acesa comparecendo à academia em dias consecutivos sem quebrar o ritmo.",
+    description: "Mantenha a chama acesa comparecendo à academia em dias consecutivos sem quebrar o ritmo. Finais de semana e descansos programados não quebram sua ofensiva!",
     image: "/badges/badge_fogo_sagrado.png",
     unlocked: true,
     unlockedAt: "Hoje",
@@ -101,10 +109,10 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
     unit: "dias",
     rarity: "raro",
     levels: [
-      { level: 1, tier: "bronze", title: "Chama Inicial", requirement: "7 dias seguidos de treino", targetValue: 7, xpReward: 100 },
-      { level: 2, tier: "prata", title: "Fogo Consagrado", requirement: "15 dias seguidos de treino", targetValue: 15, xpReward: 250 },
-      { level: 3, tier: "ouro", title: "Inferno Ardente", requirement: "30 dias seguidos de treino", targetValue: 30, xpReward: 600 },
-      { level: 4, tier: "diamante", title: "Chama Eterna", requirement: "60 dias seguidos de treino", targetValue: 60, xpReward: 1500 },
+      { level: 1, tier: "bronze", title: "Chama Inicial", requirement: "7 dias de treino na ofensiva", targetValue: 7, xpReward: 100 },
+      { level: 2, tier: "prata", title: "Fogo Consagrado", requirement: "15 dias de treino na ofensiva", targetValue: 15, xpReward: 250 },
+      { level: 3, tier: "ouro", title: "Inferno Ardente", requirement: "30 dias de treino na ofensiva", targetValue: 30, xpReward: 600 },
+      { level: 4, tier: "diamante", title: "Chama Eterna", requirement: "60 dias de treino na ofensiva", targetValue: 60, xpReward: 1500 },
     ],
   },
   {
@@ -264,7 +272,7 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
     name: "Titã da Disciplina",
     role: "student",
     category: "Constância",
-    description: "Atinja o ápice da regularidade inabalável completando 30 dias de treinos consecutivos sem desculpas.",
+    description: "Atinja o ápice da regularidade completando 30 dias de treinos na sua rotina sem quebrar o ritmo.",
     image: "/badges/badge_tita_disciplina.png",
     unlocked: false,
     currentLevel: 0,
@@ -274,10 +282,10 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
     unit: "dias",
     rarity: "lendario",
     levels: [
-      { level: 1, tier: "bronze", title: "Determinação de Ferro", requirement: "20 dias consecutivos", targetValue: 20, xpReward: 200 },
-      { level: 2, tier: "prata", title: "Titã Inquebrável", requirement: "30 dias consecutivos", targetValue: 30, xpReward: 500 },
-      { level: 3, tier: "ouro", title: "Mente Impenetrável", requirement: "45 dias consecutivos", targetValue: 45, xpReward: 1200 },
-      { level: 4, tier: "diamante", title: "Imortal da Frequência", requirement: "90 dias consecutivos", targetValue: 90, xpReward: 3500 },
+      { level: 1, tier: "bronze", title: "Determinação de Ferro", requirement: "20 dias de rotina mantida", targetValue: 20, xpReward: 200 },
+      { level: 2, tier: "prata", title: "Titã Inquebrável", requirement: "30 dias de rotina mantida", targetValue: 30, xpReward: 500 },
+      { level: 3, tier: "ouro", title: "Mente Impenetrável", requirement: "45 dias de rotina mantida", targetValue: 45, xpReward: 1200 },
+      { level: 4, tier: "diamante", title: "Imortal da Frequência", requirement: "90 dias de rotina mantida", targetValue: 90, xpReward: 3500 },
     ],
   },
   {
@@ -354,7 +362,7 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
     name: "Frequência Ciborgue",
     role: "student",
     category: "Secreta",
-    description: "Sem falhas, sem desculpas: 21 dias seguidos de registro com execução perfeita.",
+    description: "Sem falhas, sem desculpas: 21 dias de treinos na rotina com execução impecável.",
     image: "/badges/badge_frequencia_ciborgue.png",
     unlocked: false,
     currentLevel: 0,
@@ -363,13 +371,13 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
     targetProgress: 21,
     unit: "dias",
     isSecret: true,
-    secretClue: "Mantenha uma regularidade robótica por 21 dias seguidos sem nenhuma falta...",
+    secretClue: "Mantenha sua regularidade por 21 dias na rotina sem nenhuma falta...",
     rarity: "mitico",
     levels: [
-      { level: 1, tier: "bronze", title: "Circuito Ativado", requirement: "21 dias seguidos", targetValue: 21, xpReward: 500 },
-      { level: 2, tier: "prata", title: "Processador Quântico", requirement: "45 dias seguidos", targetValue: 45, xpReward: 1200 },
-      { level: 3, tier: "ouro", title: "Androide Biomecânico", requirement: "90 dias seguidos", targetValue: 90, xpReward: 3000 },
-      { level: 4, tier: "diamante", title: "Ciborgue Imortal", requirement: "180 dias seguidos", targetValue: 180, xpReward: 8000 },
+      { level: 1, tier: "bronze", title: "Circuito Ativado", requirement: "21 dias na rotina", targetValue: 21, xpReward: 500 },
+      { level: 2, tier: "prata", title: "Processador Quântico", requirement: "45 dias na rotina", targetValue: 45, xpReward: 1200 },
+      { level: 3, tier: "ouro", title: "Androide Biomecânico", requirement: "90 dias na rotina", targetValue: 90, xpReward: 3000 },
+      { level: 4, tier: "diamante", title: "Ciborgue Imortal", requirement: "180 dias na rotina", targetValue: 180, xpReward: 8000 },
     ],
   },
   {
@@ -703,6 +711,9 @@ export function recordWorkoutCompleted(stats: {
   totalVolumeKg: number;
   isBefore7Am?: boolean;
 }): void {
+  // 0. Atualiza a ofensiva inteligente e sincroniza Fogo Sagrado
+  recordWorkoutAttendanceDate(undefined, undefined, false);
+
   // 1. Centurião (Total de treinos)
   awardBadgeProgress("century-club", 1, {
     reason: "ao concluir seu treino de hoje com consistência",
@@ -739,6 +750,9 @@ export function recordCardioCompleted(stats: {
   caloriesBurned: number;
   durationMinutes: number;
 }): void {
+  // Atualiza a ofensiva inteligente
+  recordWorkoutAttendanceDate(undefined, undefined, false);
+
   if (stats.caloriesBurned > 0) {
     awardBadgeProgress("cardio-master", Math.round(stats.caloriesBurned), {
       reason: `ao queimar ${Math.round(stats.caloriesBurned)} kcal em treino cardiovascular`,
@@ -750,6 +764,9 @@ export function recordCardioCompleted(stats: {
  * Registra uma aula em vídeo ou coletiva concluída
  */
 export function recordClassCompleted(classTitle: string, calories: number): void {
+  // Atualiza a ofensiva inteligente
+  recordWorkoutAttendanceDate(undefined, undefined, false);
+
   // Incrementa queima no cárdio
   if (calories > 0) {
     awardBadgeProgress("cardio-master", calories, {

@@ -44,6 +44,7 @@ import {
   AppNotification,
 } from "@/lib/booking-store";
 import { triggerHaptic } from "@/lib/haptic";
+import { calculateSmartWorkoutStreak } from "@/lib/streak-service";
 import {
   Sparkles,
   Dumbbell,
@@ -100,6 +101,24 @@ export default function GymFlowApp() {
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [isGymBotOpen, setIsGymBotOpen] = useState(false);
   const [paymentToast, setPaymentToast] = useState<{ message: string; type: "success" | "info" | "warning" } | null>(null);
+  const [streakDays, setStreakDays] = useState<number>(() =>
+    calculateSmartWorkoutStreak({ userId: userProfile?.id }).currentStreak
+  );
+
+  useEffect(() => {
+    const syncStreak = () => {
+      setStreakDays(calculateSmartWorkoutStreak({ userId: userProfile?.id }).currentStreak);
+    };
+    syncStreak();
+    window.addEventListener("gymflow:streak-updated", syncStreak);
+    window.addEventListener("gymflow:badges-updated", syncStreak);
+    window.addEventListener("storage", syncStreak);
+    return () => {
+      window.removeEventListener("gymflow:streak-updated", syncStreak);
+      window.removeEventListener("gymflow:badges-updated", syncStreak);
+      window.removeEventListener("storage", syncStreak);
+    };
+  }, [userProfile?.id]);
 
   // Inicialização e Sincronização Contínua com Supabase Auth
   useEffect(() => {
@@ -353,6 +372,7 @@ export default function GymFlowApp() {
       <Header
         user={userProfile}
         viewMode={viewMode}
+        streakDays={streakDays}
         unreadNotificationsCount={unreadCount}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onToggleViewMode={canToggleRole ? handleToggleRole : undefined}
