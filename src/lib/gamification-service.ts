@@ -120,6 +120,27 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
   // 1. CONQUISTAS INICIAIS (PRIMEIROS PASSOS)
   // ==========================================
   {
+    id: "welcome-gymflow",
+    name: "Bem-vindo ao GymFlow",
+    role: "student",
+    cadence: "inicial",
+    difficulty: "iniciante",
+    category: "Iniciação",
+    description: "Você deu o pontapé inicial na sua jornada criando sua conta e entrando na comunidade GymFlow!",
+    image: "/badges/badge_fogo_sagrado.png",
+    unlocked: true,
+    unlockedAt: "Hoje",
+    currentLevel: 1,
+    maxLevel: 1,
+    currentProgress: 1,
+    targetProgress: 1,
+    unit: "conta",
+    rarity: "comum",
+    levels: [
+      { level: 1, tier: "bronze", title: "Entrada na Tribo", requirement: "Cadastrar e entrar no GymFlow", targetValue: 1, xpReward: 50 },
+    ],
+  },
+  {
     id: "first-workout",
     name: "Primeira Gota de Suor",
     role: "student",
@@ -842,6 +863,27 @@ export const INITIAL_ALL_BADGES: BadgeItem[] = [
   // ==========================================
   // 6. CONQUISTAS DO PROFESSOR (COACH)
   // ==========================================
+  {
+    id: "coach-welcome",
+    name: "Bem-vindo Treinador",
+    role: "coach",
+    cadence: "inicial",
+    difficulty: "iniciante",
+    category: "Iniciação",
+    description: "Seu perfil profissional no GymFlow está ativo para prescrever treinos e gerenciar alunos.",
+    image: "/badges/badge_coach_mentor.png",
+    unlocked: true,
+    unlockedAt: "Hoje",
+    currentLevel: 1,
+    maxLevel: 1,
+    currentProgress: 1,
+    targetProgress: 1,
+    unit: "conta",
+    rarity: "comum",
+    levels: [
+      { level: 1, tier: "bronze", title: "Treinador Oficial", requirement: "Ativar perfil profissional", targetValue: 1, xpReward: 50 },
+    ],
+  },
   {
     id: "coach-starter",
     name: "Primeiro Pupilo",
@@ -1626,3 +1668,15 @@ export function recordSecretAchievement(badgeId: string, reason: string): void {
     reason,
   });
 }
+
+/**
+ * Registra a conquista de Boas-Vindas ao GymFlow
+ */
+export function recordWelcomeAchievement(role: "student" | "coach" = "student"): void {
+  const badgeId = role === "coach" ? "coach-welcome" : "welcome-gymflow";
+  awardBadgeProgress(badgeId, 1, {
+    isAbsoluteValue: true,
+    reason: "ao entrar na comunidade GymFlow",
+  });
+}
+

@@ -59,6 +59,7 @@ import {
   syncCadencedWorkoutProgress,
   syncCadencedCardioProgress,
   syncCadencedHydrationProgress,
+  recordWelcomeAchievement,
 } from "../src/lib/gamification-service";
 
 import { addWaterIntake, getTodayHydration } from "../src/lib/hydration-store";
@@ -78,23 +79,28 @@ function assert(condition: boolean, testName: string, detail?: any) {
 
 console.log("\n=======================================================");
 console.log("🏆 AUDITORIA TOTAL DE TODAS AS CONQUISTAS DO GYMFLOW");
-console.log("   (Iniciais, Semanais, Mensais, Anuais, Carreira & Coach)");
+console.log("   (Boas-Vindas, Iniciais, Semanais, Mensais, Anuais, Carreira & Coach)");
 console.log("=======================================================\n");
 
 // Limpa storage para testes limpos
 mockStorage["gymflow_gamification_progress_v2"] = JSON.stringify({});
 
 // =======================================================
-// 1. CONQUISTAS INICIAIS (PRIMEIROS PASSOS)
+// 1. CONQUISTAS INICIAIS & BOAS-VINDAS (PRIMEIROS PASSOS)
 // =======================================================
-console.log("🔹 1. Testando Conquistas Iniciais (Primeiros Passos)...");
+console.log("🔹 1. Testando Conquistas de Boas-Vindas e Iniciais...");
+
+// 1.0 Boas-Vindas ao GymFlow (welcome-gymflow)
+recordWelcomeAchievement("student");
+let badge = getAllGamificationBadges().find((b) => b.id === "welcome-gymflow");
+assert(Boolean(badge?.unlocked && badge.currentLevel === 1), "Boas-Vindas: 'Bem-vindo ao GymFlow' desbloqueada automaticamente");
 
 // 1.1 Primeira Gota de Suor (first-workout)
 recordWorkoutCompleted({
   totalVolumeKg: 2500,
   totalExercises: 5,
 });
-let badge = getAllGamificationBadges().find((b) => b.id === "first-workout");
+badge = getAllGamificationBadges().find((b) => b.id === "first-workout");
 assert(Boolean(badge?.unlocked && badge.currentLevel === 1), "Inicial: 'Primeira Gota de Suor' desbloqueada no 1º treino");
 
 // 1.2 Passaporte de Aço (first-checkin)
@@ -316,6 +322,11 @@ assert(Boolean(badge?.unlocked && badge.currentLevel === 1), "Secreta: 'Falha na
 // 6. CONQUISTAS DE PROFESSOR & PERSONAL TRAINER (COACH)
 // =======================================================
 console.log("\n🔹 6. Testando Conquistas de Professor (Coach)...");
+
+// 6.0 Boas-Vindas Treinador (coach-welcome)
+recordWelcomeAchievement("coach");
+badge = getAllGamificationBadges("coach").find((b) => b.id === "coach-welcome");
+assert(Boolean(badge?.unlocked && badge.currentLevel === 1), "Treinador Boas-Vindas: 'Bem-vindo Treinador' desbloqueada automaticamente");
 
 // 6.1 Primeiro Pupilo (coach-starter - Inicial)
 syncCoachActiveStudents(1);

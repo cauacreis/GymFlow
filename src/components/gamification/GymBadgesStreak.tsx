@@ -12,6 +12,8 @@ import {
   Dumbbell,
   Sparkles,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Eye,
   HelpCircle,
   Shield,
@@ -91,6 +93,8 @@ const PR_RECORDS: PRRecord[] = [
   { id: "4", exercise: "Desenvolvimento Halteres", weight: 34, date: "05/Set" },
 ];
 
+const INITIAL_PREVIEW_LIMIT = 6;
+
 export function GymBadgesStreak() {
   const user = getCurrentUser();
   const [activeRole, setActiveRole] = useState<"student" | "coach">(() =>
@@ -104,6 +108,7 @@ export function GymBadgesStreak() {
   const [selectedTierLevel, setSelectedTierLevel] = useState<number>(1);
   const [cadenceFilter, setCadenceFilter] = useState<"todas" | BadgeCadence | "secretas">("todas");
   const [statusFilter, setStatusFilter] = useState<"todas" | "desbloqueadas" | "progresso">("todas");
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   useEffect(() => {
     const syncBadges = () => {
@@ -477,154 +482,195 @@ export function GymBadgesStreak() {
         </div>
 
         {/* Grade de Medalhas 3D */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
-          {filteredBadges.map((badge) => {
-            const isSecretLocked = badge.isSecret && !badge.unlocked;
-            const currentTier = badge.currentLevel > 0 ? badge.levels[badge.currentLevel - 1].tier : "bronze";
-            const tierStyle = TIER_META[currentTier];
-            const diffMeta = DIFFICULTY_LABELS[badge.difficulty] || DIFFICULTY_LABELS.iniciante;
-            const cadMeta = CADENCE_LABELS[badge.cadence] || CADENCE_LABELS.permanente;
+        {(() => {
+          const isLimited = cadenceFilter === "todas" && statusFilter === "todas" && !isExpanded;
+          const displayedBadges = isLimited
+            ? filteredBadges.slice(0, INITIAL_PREVIEW_LIMIT)
+            : filteredBadges;
 
-            return (
-              <motion.button
-                key={badge.id}
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleSelectBadge(badge)}
-                className={`group relative p-3 sm:p-3.5 rounded-2xl border transition-all text-left flex flex-col justify-between overflow-hidden ${
-                  badge.unlocked
-                    ? `bg-zinc-900/90 hover:bg-zinc-850 border-white/[0.1] hover:${tierStyle.border} ${tierStyle.glow}`
-                    : isSecretLocked
-                    ? "bg-purple-950/15 border-purple-500/20 hover:border-purple-500/40"
-                    : "bg-zinc-950/40 border-white/[0.04] opacity-75 hover:opacity-95"
-                }`}
-              >
-                {/* Chip de Nível / Status no Topo do Card */}
-                <div className="w-full flex items-center justify-between mb-1.5">
-                  {badge.unlocked ? (
-                    <span
-                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                        badge.currentLevel === 4
-                          ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
-                          : badge.currentLevel === 3
-                          ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                          : badge.currentLevel === 2
-                          ? "bg-slate-300/15 text-slate-300 border-slate-300/30"
-                          : "bg-amber-700/15 text-amber-500 border-amber-700/30"
+          return (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                {displayedBadges.map((badge) => {
+                  const isSecretLocked = badge.isSecret && !badge.unlocked;
+                  const currentTier = badge.currentLevel > 0 ? badge.levels[badge.currentLevel - 1].tier : "bronze";
+                  const tierStyle = TIER_META[currentTier];
+                  const diffMeta = DIFFICULTY_LABELS[badge.difficulty] || DIFFICULTY_LABELS.iniciante;
+                  const cadMeta = CADENCE_LABELS[badge.cadence] || CADENCE_LABELS.permanente;
+
+                  return (
+                    <motion.button
+                      key={badge.id}
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSelectBadge(badge)}
+                      className={`group relative p-3 sm:p-3.5 rounded-2xl border transition-all text-left flex flex-col justify-between overflow-hidden ${
+                        badge.unlocked
+                          ? `bg-zinc-900/90 hover:bg-zinc-850 border-white/[0.1] hover:${tierStyle.border} ${tierStyle.glow}`
+                          : isSecretLocked
+                          ? "bg-purple-950/15 border-purple-500/20 hover:border-purple-500/40"
+                          : "bg-zinc-950/40 border-white/[0.04] opacity-75 hover:opacity-95"
                       }`}
                     >
-                      <span>{tierStyle.icon}</span>
-                      <span>Nív. {badge.currentLevel}</span>
-                    </span>
-                  ) : isSecretLocked ? (
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-purple-400" />
-                      <span>Secreta</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-zinc-800/80 text-zinc-400 border border-zinc-700/50 flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-zinc-500" />
-                      <span>Bloqueada</span>
-                    </span>
+                      {/* Chip de Nível / Status no Topo do Card */}
+                      <div className="w-full flex items-center justify-between mb-1.5">
+                        {badge.unlocked ? (
+                          <span
+                            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                              badge.currentLevel === 4
+                                ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
+                                : badge.currentLevel === 3
+                                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                : badge.currentLevel === 2
+                                ? "bg-slate-300/15 text-slate-300 border-slate-300/30"
+                                : "bg-amber-700/15 text-amber-500 border-amber-700/30"
+                            }`}
+                          >
+                            <span>{tierStyle.icon}</span>
+                            <span>Nív. {badge.currentLevel}</span>
+                          </span>
+                        ) : isSecretLocked ? (
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-purple-400" />
+                            <span>Secreta</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-zinc-800/80 text-zinc-400 border border-zinc-700/50 flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-zinc-500" />
+                            <span>Bloqueada</span>
+                          </span>
+                        )}
+
+                        {/* Tag de Dificuldade */}
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border ${diffMeta.bg} ${diffMeta.color}`}>
+                          {diffMeta.label}
+                        </span>
+                      </div>
+
+                      {/* Tag de Cadência Temporal */}
+                      <div className="w-full flex items-center gap-1 text-[9px] text-zinc-400 font-mono mb-1">
+                        <span>{cadMeta.icon}</span>
+                        <span className="uppercase tracking-wider font-semibold">{cadMeta.label}</span>
+                      </div>
+
+                      {/* Imagem 3D Real com Fundo Transparente */}
+                      <div className="relative w-full aspect-square max-w-[110px] mx-auto my-1 flex items-center justify-center">
+                        {/* Brilho Atmosférico no Fundo */}
+                        {badge.unlocked && (
+                          <div
+                            className={`absolute inset-0 rounded-full blur-xl opacity-35 group-hover:opacity-60 transition-opacity ${
+                              badge.currentLevel === 4
+                                ? "bg-cyan-500"
+                                : badge.currentLevel === 3
+                                ? "bg-amber-500"
+                                : badge.currentLevel === 2
+                                ? "bg-slate-300"
+                                : "bg-amber-700"
+                            }`}
+                          />
+                        )}
+                        {isSecretLocked && (
+                          <div className="absolute inset-0 rounded-full blur-xl opacity-40 bg-purple-600 animate-pulse pointer-events-none" />
+                        )}
+
+                        <div className="relative w-full h-full">
+                          <Image
+                            src={isSecretLocked ? "/badges/badge_secret_mystery.png" : badge.image}
+                            alt={isSecretLocked ? "Medalha Secreta Misteriosa" : badge.name}
+                            fill
+                            sizes="(max-width: 640px) 100px, 110px"
+                            className={`object-contain transition-all duration-300 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] ${
+                              badge.unlocked
+                                ? "group-hover:scale-105 group-hover:-translate-y-1"
+                                : isSecretLocked
+                                ? "group-hover:scale-105"
+                                : "grayscale contrast-75 brightness-75 group-hover:grayscale-0 group-hover:brightness-90"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Título & Detalhes */}
+                      <div className="mt-1.5 w-full">
+                        <h4 className="text-xs sm:text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">
+                          {isSecretLocked ? "???" : badge.name}
+                        </h4>
+                        <p className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5 leading-snug">
+                          {isSecretLocked ? "Conquista Secreta Oculta" : badge.description}
+                        </p>
+
+                        {/* Micro Barra de Progresso do Próximo Nível */}
+                        <div className="mt-2 pt-1.5 border-t border-white/[0.05]">
+                          <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono mb-1">
+                            <span>
+                              {badge.unlocked
+                                ? badge.currentLevel === badge.maxLevel
+                                ? "NÍVEL MÁXIMO"
+                                : `Rumo ao Nív. ${badge.currentLevel + 1}`
+                                : "Progresso"}
+                            </span>
+                            <span className="font-semibold text-zinc-300">
+                              {isSecretLocked
+                                ? `${badge.currentProgress} de ${badge.targetProgress}`
+                                : `${badge.currentProgress.toLocaleString("pt-BR")} / ${badge.targetProgress.toLocaleString("pt-BR")} ${badge.unit}`}
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/[0.04]">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                badge.unlocked
+                                  ? "bg-gradient-to-r from-emerald-500 to-amber-400"
+                                  : isSecretLocked
+                                  ? "bg-purple-500"
+                                  : "bg-zinc-600"
+                              }`}
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  Math.round((badge.currentProgress / badge.targetProgress) * 100)
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              {/* Botão de Expandir / Recolher Conquistas */}
+              {filteredBadges.length > INITIAL_PREVIEW_LIMIT && cadenceFilter === "todas" && statusFilter === "todas" && (
+                <div className="mt-4 pt-3 border-t border-white/[0.06] flex flex-col items-center justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      triggerHaptic("light");
+                      setIsExpanded(!isExpanded);
+                    }}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] active:scale-98 border border-white/[0.08] hover:border-emerald-500/30 text-xs font-bold text-white transition-all flex items-center justify-center gap-2 shadow-lg group cursor-pointer"
+                  >
+                    {isExpanded ? (
+                      <>
+                        <span>Recolher Conquistas</span>
+                        <ChevronUp className="w-4 h-4 text-emerald-400 group-hover:-translate-y-0.5 transition-transform" />
+                      </>
+                    ) : (
+                      <>
+                        <span>Ver todas as {filteredBadges.length} conquistas</span>
+                        <ChevronDown className="w-4 h-4 text-emerald-400 group-hover:translate-y-0.5 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                  {!isExpanded && (
+                    <p className="text-[10px] text-zinc-500 font-mono text-center">
+                      Exibindo {INITIAL_PREVIEW_LIMIT} de {filteredBadges.length} • Selecione as abas acima para filtrar por meta
+                    </p>
                   )}
-
-                  {/* Tag de Dificuldade */}
-                  <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border ${diffMeta.bg} ${diffMeta.color}`}>
-                    {diffMeta.label}
-                  </span>
                 </div>
-
-                {/* Tag de Cadência Temporal */}
-                <div className="w-full flex items-center gap-1 text-[9px] text-zinc-400 font-mono mb-1">
-                  <span>{cadMeta.icon}</span>
-                  <span className="uppercase tracking-wider font-semibold">{cadMeta.label}</span>
-                </div>
-
-                {/* Imagem 3D Real com Fundo Transparente */}
-                <div className="relative w-full aspect-square max-w-[110px] mx-auto my-1 flex items-center justify-center">
-                  {/* Brilho Atmosférico no Fundo */}
-                  {badge.unlocked && (
-                    <div
-                      className={`absolute inset-0 rounded-full blur-xl opacity-35 group-hover:opacity-60 transition-opacity ${
-                        badge.currentLevel === 4
-                          ? "bg-cyan-500"
-                          : badge.currentLevel === 3
-                          ? "bg-amber-500"
-                          : badge.currentLevel === 2
-                          ? "bg-slate-300"
-                          : "bg-amber-700"
-                      }`}
-                    />
-                  )}
-                  {isSecretLocked && (
-                    <div className="absolute inset-0 rounded-full blur-xl opacity-40 bg-purple-600 animate-pulse pointer-events-none" />
-                  )}
-
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={isSecretLocked ? "/badges/badge_secret_mystery.png" : badge.image}
-                      alt={isSecretLocked ? "Medalha Secreta Misteriosa" : badge.name}
-                      fill
-                      sizes="(max-width: 640px) 100px, 110px"
-                      className={`object-contain transition-all duration-300 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] ${
-                        badge.unlocked
-                          ? "group-hover:scale-105 group-hover:-translate-y-1"
-                          : isSecretLocked
-                          ? "group-hover:scale-105"
-                          : "grayscale contrast-75 brightness-75 group-hover:grayscale-0 group-hover:brightness-90"
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {/* Título & Detalhes */}
-                <div className="mt-1.5 w-full">
-                  <h4 className="text-xs sm:text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">
-                    {isSecretLocked ? "???" : badge.name}
-                  </h4>
-                  <p className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5 leading-snug">
-                    {isSecretLocked ? "Conquista Secreta Oculta" : badge.description}
-                  </p>
-
-                  {/* Micro Barra de Progresso do Próximo Nível */}
-                  <div className="mt-2 pt-1.5 border-t border-white/[0.05]">
-                    <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono mb-1">
-                      <span>
-                        {badge.unlocked
-                          ? badge.currentLevel === badge.maxLevel
-                            ? "NÍVEL MÁXIMO"
-                            : `Rumo ao Nív. ${badge.currentLevel + 1}`
-                          : "Progresso"}
-                      </span>
-                      <span className="font-semibold text-zinc-300">
-                        {isSecretLocked
-                          ? `${badge.currentProgress} de ${badge.targetProgress}`
-                          : `${badge.currentProgress.toLocaleString("pt-BR")} / ${badge.targetProgress.toLocaleString("pt-BR")} ${badge.unit}`}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/[0.04]">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          badge.unlocked
-                            ? "bg-gradient-to-r from-emerald-500 to-amber-400"
-                            : isSecretLocked
-                            ? "bg-purple-500"
-                            : "bg-zinc-600"
-                        }`}
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            Math.round((badge.currentProgress / badge.targetProgress) * 100)
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Modal 3D Detalhado da Medalha com Inspetor de Leveis */}
