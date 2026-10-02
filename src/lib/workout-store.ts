@@ -16,6 +16,7 @@ import {
 import { isSlotToday, getStoredCoaches } from "./booking-store";
 import { getCurrentUser, saveUserProfile } from "./auth-store";
 import { recordWorkoutAttendanceDate } from "./streak-service";
+import { recordCoachPrescription, recordCoachPunctualSession } from "./gamification-service";
 
 export interface StudentProfile {
   id: string;
@@ -955,6 +956,9 @@ export function recordStudentAttendance(
   // Se presença ou atraso, atualiza a data de treino na ofensiva do aluno
   if (type === "presence" || type === "delay") {
     recordWorkoutAttendanceDate(undefined, studentId, false);
+    if (type === "presence") {
+      recordCoachPunctualSession();
+    }
   }
 
   // 1. Sincroniza com o booking-store (gymflow_bookings_v3)
@@ -1362,6 +1366,10 @@ export function assignWorkoutToStudent(
     } catch (notifErr) {
       console.error("Erro ao enviar notificação de treino:", notifErr);
     }
+
+    // Incrementa conquista do treinador (Fábrica de Monstros)
+    const prescribedStudent = updatedStudents.find((s) => s.id === studentId);
+    recordCoachPrescription(prescribedStudent?.name);
 
     // Dispara evento para reatividade instantânea
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { studentId } }));

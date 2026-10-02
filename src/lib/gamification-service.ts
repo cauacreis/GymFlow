@@ -633,16 +633,15 @@ export function awardBadgeProgress(
   }
 
   const isNowUnlocked = calculatedLevel > 0;
-  const levelUpNow = calculatedLevel > currentProg.currentLevel;
+  const levelUpNow = calculatedLevel > (currentProg.currentLevel || 0);
   const wasUnlockedBefore = currentProg.unlocked;
 
+  currentProg.unlocked = isNowUnlocked;
   if (isNowUnlocked && !wasUnlockedBefore) {
-    currentProg.unlocked = true;
     currentProg.unlockedAt = "Hoje";
   }
 
-  const prevLevel = currentProg.currentLevel;
-  currentProg.currentLevel = Math.max(currentProg.currentLevel, calculatedLevel);
+  currentProg.currentLevel = calculatedLevel;
 
   // Salva no storage local e sincroniza com o Supabase
   stored[badgeId] = currentProg;
@@ -790,6 +789,117 @@ export function recordPRBreaker(exerciseName: string, weightKg: number): void {
 }
 
 /**
+ * Registra sessão em Modo Berserk (30+ séries em um único treino)
+ */
+export function recordBerserkSession(totalSets: number): void {
+  if (totalSets >= 30) {
+    awardBadgeProgress("secret-berserk", totalSets, {
+      reason: `ao completar ${totalSets} séries intensas em uma única sessão destruidora`,
+    });
+  }
+}
+
+/**
+ * Avalia se o aluno concluiu a Semana Perfeita (6 treinos na mesma semana)
+ */
+export function evaluateWeeklyBeastMode(attendanceDates: string[]): void {
+  if (!attendanceDates || attendanceDates.length < 6) return;
+
+  // Agrupa treinos por semana do ano (ISO week)
+  const weeksCountMap: Record<string, Set<string>> = {};
+  for (const dateStr of attendanceDates) {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) continue;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    if (isNaN(year) || isNaN(month) || isNaN(day)) continue;
+
+    // Obtém número canônico da semana ISO (segunda a domingo)
+    const tempDate = new Date(Date.UTC(year, month, day));
+    const dayNum = tempDate.getUTCDay() || 7; // 1 (Seg) a 7 (Dom)
+    tempDate.setUTCDate(tempDate.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(tempDate.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil(((tempDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    const weekKey = `${tempDate.getUTCFullYear()}_W${weekNo}`;
+
+    if (!weeksCountMap[weekKey]) weeksCountMap[weekKey] = new Set();
+    weeksCountMap[weekKey].add(dateStr);
+  }
+
+  const perfectWeeks = Object.values(weeksCountMap).filter((set) => set.size >= 6).length;
+  if (perfectWeeks > 0) {
+    awardBadgeProgress("beast-mode", perfectWeeks, {
+      isAbsoluteValue: true,
+      reason: `ao completar ${perfectWeeks} ${perfectWeeks === 1 ? "semana impecável" : "semanas impecáveis"} com 6 treinos na semana`,
+    });
+  }
+}
+
+/**
+ * Registra prescrição de ficha de treino pelo treinador (Fábrica de Monstros)
+ */
+export function recordCoachPrescription(studentName?: string): void {
+  awardBadgeProgress("coach-monster-factory", 1, {
+    reason: `ao prescrever uma nova ficha completa de treino periodizado${studentName ? ` para ${studentName}` : ""}`,
+  });
+}
+
+/**
+ * Registra sessão pontual realizada e confirmada pelo treinador (Relógio Suíço)
+ */
+export function recordCoachPunctualSession(): void {
+  awardBadgeProgress("coach-punctual", 1, {
+    reason: "ao realizar e confirmar sessão agendada no horário com pontualidade suíça",
+  });
+}
+
+/**
+ * Registra protocolo avançado de treino salvo pelo treinador (Arquiteto Biomecânico)
+ */
+export function recordCoachRoutineCreated(routineTitle?: string): void {
+  awardBadgeProgress("coach-architect", 1, {
+    reason: `ao elaborar e salvar a rotina técnica "${routineTitle || "Personalizada"}" na biblioteca`,
+  });
+}
+
+/**
+ * Sincroniza o número de alunos ativos sob consultoria do treinador (Mentor de Elite)
+ */
+export function syncCoachActiveStudents(activeStudentsCount: number): void {
+  if (activeStudentsCount > 0) {
+    awardBadgeProgress("coach-mentor", activeStudentsCount, {
+      isAbsoluteValue: true,
+      reason: `ao gerenciar ${activeStudentsCount} alunos ativos sob sua consultoria`,
+    });
+  }
+}
+
+/**
+ * Sincroniza a nota média e total de avaliações do treinador (Sensei 5 Estrelas)
+ */
+export function syncCoachReviewsRating(avgRating: number, totalReviews: number): void {
+  if (totalReviews >= 1 && avgRating > 0) {
+    awardBadgeProgress("coach-five-stars", Math.min(5.0, Number(avgRating.toFixed(1))), {
+      isAbsoluteValue: true,
+      reason: `com média ${avgRating.toFixed(1)} estrelas baseada em ${totalReviews} avaliações`,
+    });
+  }
+}
+
+/**
+ * Sincroniza retenção de alunos fiéis com mais de 6 meses (Consultor Lendário)
+ */
+export function syncCoachStudentRetention(loyalStudentsCount: number): void {
+  if (loyalStudentsCount > 0) {
+    awardBadgeProgress("coach-legend", loyalStudentsCount, {
+      isAbsoluteValue: true,
+      reason: `ao manter ${loyalStudentsCount} alunos por mais de 6 meses consecutivos`,
+    });
+  }
+}
+
+/**
  * Registra desbloqueio de conquista secreta (ex: 404)
  */
 export function recordSecretAchievement(badgeId: string, reason: string): void {
@@ -798,3 +908,4 @@ export function recordSecretAchievement(badgeId: string, reason: string): void {
     reason,
   });
 }
+

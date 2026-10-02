@@ -9,6 +9,7 @@ import {
   saveBookingToSupabase,
 } from "./supabase-service";
 import type { CoachPlanOption } from "./workout-store";
+import { syncCoachActiveStudents } from "./gamification-service";
 
 export interface TrainerSlot {
   id: string;
@@ -1131,6 +1132,10 @@ export function acceptTrainerBooking(bookingId: string): BookingRequest | null {
 
     localStorage.setItem(coachKey, JSON.stringify(existingList));
     localStorage.setItem("gymflow_students_v3", JSON.stringify(existingList));
+
+    // Sincroniza conquista do treinador (Mentor de Elite)
+    const activeCount = existingList.filter((s) => s.status === "ativo").length;
+    syncCoachActiveStudents(activeCount);
 
     // Inicializa pacote de treino com isAwaitingCoachPrescription: true para prescrição imediata
     const rawWorkouts = localStorage.getItem("gymflow_student_workouts_v2");

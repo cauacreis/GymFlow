@@ -6,7 +6,11 @@
 
 import { getCurrentUser } from "./auth-store";
 import { CardioType, CARDIO_TYPES_METADATA } from "./exercisedb";
-import { awardBadgeProgress, getAllGamificationBadges } from "./gamification-service";
+import {
+  awardBadgeProgress,
+  getAllGamificationBadges,
+  recordWorkoutAttendanceDate,
+} from "./gamification-service";
 import {
   fetchCardioSessionsFromSupabase,
   upsertCardioSessionToSupabase,
@@ -180,11 +184,15 @@ export function saveCardioSession(
       upsertCardioSessionToSupabase(newLog, currentUserId).catch(() => {});
     } catch {}
 
-    // Sincroniza com a insígnia Mestre do Cárdio
+    // Sincroniza com a insígnia Mestre do Cárdio, Centurião e Ofensiva de Treino
     try {
       awardBadgeProgress("cardio-master", newLog.actualCalories, {
         reason: `ao completar ${newLog.durationMinutes} min de ${newLog.modalityLabel} (${newLog.actualCalories} kcal)`,
       });
+      awardBadgeProgress("century-club", 1, {
+        reason: `ao concluir sessão de ${newLog.modalityLabel}`,
+      });
+      recordWorkoutAttendanceDate(undefined, currentUserId, false);
     } catch {}
   }
 

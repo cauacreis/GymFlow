@@ -74,6 +74,9 @@ import {
   recordWorkoutCompleted,
   recordCardioCompleted,
   recordPRBreaker,
+  recordBerserkSession,
+  evaluateWeeklyBeastMode,
+  getStoredAttendanceDates,
   awardBadgeProgress,
 } from "@/lib/gamification-service";
 import { saveCardioSession } from "@/lib/cardio-store";
@@ -942,14 +945,41 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
     persistSplitsChange(updated);
 
     if (wasNewlyCompleted) {
+      const currentSplit = updated.find((s) => s.id === selectedSplitId);
+
       if (completedWeight > 0) {
+        // Volume bruto acumulado (Clube do Milhão)
         awardBadgeProgress("raw-tonnage", completedWeight * completedReps, {
           reason: `ao concluir série de ${completedWeight} kg × ${completedReps} reps`,
         });
+
+        // Detecção de PR (Recorde Pessoal de carga superada)
+        try {
+          const prStorageKey = "gymflow_personal_records_tracker_v1";
+          const rawPrs = localStorage.getItem(prStorageKey);
+          const prsMap: Record<string, number> = rawPrs ? JSON.parse(rawPrs) : {};
+          const matchedEx = currentSplit?.exercises.find((e) => e.id === exerciseId);
+          const exName = matchedEx?.name || "Exercício";
+          const prevMax = prsMap[exName] || 0;
+
+          if (completedWeight > prevMax && completedWeight >= 15) {
+            prsMap[exName] = completedWeight;
+            localStorage.setItem(prStorageKey, JSON.stringify(prsMap));
+            recordPRBreaker(exName, completedWeight);
+          }
+        } catch {}
       }
 
-      const currentSplit = updated.find((s) => s.id === selectedSplitId);
       if (currentSplit && currentSplit.exercises.length > 0) {
+        // Verifica Modo Berserk (30+ séries totais executadas na sessão)
+        const totalCompletedSetsInSplit = currentSplit.exercises.reduce(
+          (acc, ex) => acc + ex.sets.filter((s) => s.completed).length,
+          0
+        );
+        if (totalCompletedSetsInSplit >= 30) {
+          recordBerserkSession(totalCompletedSetsInSplit);
+        }
+
         const allDone = currentSplit.exercises.every((ex) =>
           ex.sets.length > 0 && ex.sets.every((s) => s.completed)
         );
@@ -968,6 +998,11 @@ export function WorkoutSheet({ studentId = "student_me", onOpenTimer, onOpenPlan
             totalVolumeKg: totalVol,
             isBefore7Am: new Date().getHours() < 7,
           });
+
+          // Avalia Semana Perfeita (6 treinos 100% concluídos na semana)
+          try {
+            evaluateWeeklyBeastMode(getStoredAttendanceDates());
+          } catch {}
         }
       }
     }

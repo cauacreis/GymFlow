@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Star, CheckCircle2, TrendingUp, Users, Plus, X, MessageSquareHeart } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { getCurrentUser } from "@/lib/auth-store";
+import { syncCoachReviewsRating } from "@/lib/gamification-service";
 
 export interface ReviewData {
   id: string;
@@ -92,7 +93,13 @@ export function SocialProof() {
       if (res.ok) {
         const data = await res.json();
         if (data.review) {
-          setReviews((prev) => [data.review, ...prev]);
+          const updatedList = [data.review, ...reviews];
+          setReviews(updatedList);
+
+          // Sincroniza conquista Sensei 5 Estrelas
+          const totalRev = updatedList.length;
+          const avgScore = updatedList.reduce((acc, r) => acc + r.rating, 0) / Math.max(1, totalRev);
+          syncCoachReviewsRating(avgScore, totalRev);
         }
         setIsModalOpen(false);
         setComment("");

@@ -149,6 +149,8 @@ export function getStoredWorkoutDates(userId?: string): string[] {
   }
 }
 
+export const getStoredAttendanceDates = getStoredWorkoutDates;
+
 /**
  * Salva a lista consolidada de datas de treino
  */

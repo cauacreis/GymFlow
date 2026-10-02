@@ -10,6 +10,7 @@ import {
   upsertCoachRoutineToSupabase,
   deleteCoachRoutineFromSupabase,
 } from "./supabase-service";
+import { recordCoachRoutineCreated } from "./gamification-service";
 
 export type CoachWorkoutRoutine = PreFormedWorkoutRoutine;
 
@@ -270,6 +271,9 @@ export function saveCoachRoutine(routine: CoachWorkoutRoutine, coachId?: string)
   if (savedItem) {
     upsertCoachRoutineToSupabase(savedItem, coachId).catch(() => {});
   }
+
+  // Incrementa conquista do treinador (Arquiteto Biomecânico)
+  recordCoachRoutineCreated(routine.name);
 
   return routine;
 }
