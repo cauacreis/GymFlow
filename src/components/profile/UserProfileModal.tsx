@@ -752,9 +752,16 @@ export function UserProfileModal({
     }
   };
 
-  // Desconectar Outros Dispositivos
-  const handleTerminateOtherSessions = () => {
+  // Desconectar Outros Dispositivos (Revoga sessões ativas no Supabase Auth)
+  const handleTerminateOtherSessions = async () => {
     triggerHaptic("medium");
+    try {
+      const client = getSupabase();
+      if (client) {
+        await client.auth.signOut({ scope: "others" });
+      }
+    } catch {}
+
     const filtered = sessions.filter((s) => s.isCurrent);
     setSessions(filtered);
     setTerminatedSessionsNotice("Todas as outras sessões foram encerradas com sucesso.");

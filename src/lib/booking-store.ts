@@ -730,12 +730,63 @@ export function getStoredNotifications(userId?: string, role?: "student" | "coac
 }
 
 // ----------------------------------------------------------------------
-// NOTIFICAÇÕES ENGINE
+// NOTIFICAÇÕES ENGINE & FILTROS DE PREFERÊNCIA DO USUÁRIO
 // ----------------------------------------------------------------------
+
+export function isNotificationTypePermitted(type: string): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const raw = localStorage.getItem("gymflow_notification_prefs_v2");
+    if (!raw) return true;
+    const prefs = JSON.parse(raw);
+    if (type === "achievement_unlocked" && prefs.pushAchievements === false) return false;
+    if (type === "coach" && prefs.pushCoachMessages === false) return false;
+    if (type === "payment" && prefs.whatsappPaymentAlerts === false) return false;
+    if (type === "booking" && prefs.whatsappClassAlerts === false) return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+export function isWithinQuietHours(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem("gymflow_notification_prefs_v2");
+    if (!raw) return false;
+    const prefs = JSON.parse(raw);
+    if (!prefs.quietHoursEnabled) return false;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [sH, sM] = (prefs.quietHoursStart || "22:00").split(":").map(Number);
+    const [eH, eM] = (prefs.quietHoursEnd || "07:00").split(":").map(Number);
+    const startMinutes = (sH ?? 22) * 60 + (sM ?? 0);
+    const endMinutes = (eH ?? 7) * 60 + (eM ?? 0);
+
+    if (startMinutes > endMinutes) {
+      // Cruzou a meia-noite (ex: 22:00 às 07:00)
+      return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+    } else {
+      return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    }
+  } catch {
+    return false;
+  }
+}
 
 export function addNotification(notif: Omit<AppNotification, "id" | "timestamp" | "read">): void {
   if (typeof window === "undefined") return;
+
+  // Verifica se o usuário desabilitou esta categoria de notificação
+  if (!isNotificationTypePermitted(notif.type)) {
+    return;
+  }
+
   const list = getAllRawNotifications();
+  const isQuiet = isWithinQuietHours();
+
   const newItem: AppNotification = {
     ...notif,
     id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,

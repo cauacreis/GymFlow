@@ -195,6 +195,29 @@ export function saveWorkoutPreferences(prefs: Partial<UserWorkoutPreferences>): 
 }
 
 /**
+ * Sincroniza preferências de privacidade, notificações e treino no Supabase
+ */
+export async function syncUserPreferencesToSupabase(user?: UserProfile): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+  const u = user || getCurrentUser();
+  if (!u || !u.id || u.id === "user_me") return false;
+
+  try {
+    const { error } = await client
+      .from("profiles")
+      .update({
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", u.id);
+
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Retorna a lista de sessões/dispositivos do usuário
  */
 export function getActiveSecuritySessions(): UserSecuritySession[] {

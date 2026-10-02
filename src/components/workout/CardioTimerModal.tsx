@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { CardioItem, CARDIO_TYPES_METADATA, CardioType } from "@/lib/exercisedb";
+import { getWorkoutPreferences } from "@/lib/privacy-service";
+import { requestScreenWakeLock, releaseScreenWakeLock } from "@/lib/wake-lock";
 
 interface CardioTimerModalProps {
   cardio: CardioItem | null;
@@ -44,7 +46,7 @@ export function CardioTimerModal({
   const [totalSeconds, setTotalSeconds] = useState(20 * 60);
   const [remainingSeconds, setRemainingSeconds] = useState(20 * 60);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(() => getWorkoutPreferences().soundEnabled);
   const [isFinished, setIsFinished] = useState(false);
 
   const hasPlayedHalfway = useRef(false);
@@ -61,6 +63,9 @@ export function CardioTimerModal({
       setIsFinished(false);
       hasPlayedHalfway.current = false;
       lastCountdownBeep.current = null;
+      setSoundEnabled(getWorkoutPreferences().soundEnabled);
+    } else {
+      releaseScreenWakeLock();
     }
   }, [isOpen, cardio?.id]);
 
@@ -101,6 +106,8 @@ export function CardioTimerModal({
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isRunning && !isFinished) {
+      requestScreenWakeLock();
+
       interval = setInterval(() => {
         setElapsedSeconds((prevElapsed) => {
           const nextElapsed = prevElapsed + 1;
@@ -125,6 +132,7 @@ export function CardioTimerModal({
               setIsFinished(true);
               triggerHaptic("success");
               playVictoryFanfare();
+              releaseScreenWakeLock();
               return 0;
             }
 
@@ -139,6 +147,8 @@ export function CardioTimerModal({
           });
         }
       }, 1000);
+    } else {
+      releaseScreenWakeLock();
     }
     return () => {
       if (interval) clearInterval(interval);

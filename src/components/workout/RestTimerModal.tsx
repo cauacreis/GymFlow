@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Drawer } from "@/components/ui/Drawer";
-import { Play, Pause, RotateCcw, Plus, Bell, Sparkles } from "lucide-react";
+import { Play, Pause, RotateCcw, Plus, Bell, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
+import { getWorkoutPreferences } from "@/lib/privacy-service";
+import { requestScreenWakeLock, releaseScreenWakeLock } from "@/lib/wake-lock";
 
 interface RestTimerModalProps {
   isOpen: boolean;
@@ -11,31 +13,83 @@ interface RestTimerModalProps {
   defaultSeconds?: number;
 }
 
-export function RestTimerModal({ isOpen, onClose, defaultSeconds = 60 }: RestTimerModalProps) {
-  const [totalTime, setTotalTime] = useState(defaultSeconds);
-  const [timeLeft, setTimeLeft] = useState(defaultSeconds);
+export function RestTimerModal({ isOpen, onClose, defaultSeconds }: RestTimerModalProps) {
+  const getInitialSeconds = () => {
+    if (defaultSeconds && defaultSeconds > 0) return defaultSeconds;
+    const prefs = getWorkoutPreferences();
+    return prefs.defaultRestTimerSeconds || 60;
+  };
+
+  const [totalTime, setTotalTime] = useState<number>(getInitialSeconds);
+  const [timeLeft, setTimeLeft] = useState<number>(getInitialSeconds);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const lastBeepRef = useRef<number | null>(null);
+
+  // Sintetizador Web Audio API para alertas sonoros sem necessidade de arquivos externos
+  const playBeep = (freq: number, duration: number, type: OscillatorType = "sine", gainVal: number = 0.2) => {
+    const prefs = getWorkoutPreferences();
+    if (!prefs.soundEnabled || typeof window === "undefined") return;
+
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+      gain.gain.setValueAtTime(gainVal, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch {}
+  };
+
+  const playFinishedChime = () => {
+    // Sequência de acordes melódicos para conclusão de descanso
+    playBeep(523.25, 0.15, "triangle", 0.25); // C5
+    setTimeout(() => playBeep(659.25, 0.15, "triangle", 0.25), 120); // E5
+    setTimeout(() => playBeep(783.99, 0.35, "triangle", 0.3), 240); // G5
+  };
 
   // Efeito do Cronômetro
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
     if (isRunning && timeLeft > 0) {
+      // Solicita Screen Wake Lock para manter a tela do celular ligada
+      requestScreenWakeLock();
+
       interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setIsRunning(false);
             setIsFinished(true);
             triggerHaptic("heavy");
+            playFinishedChime();
+            releaseScreenWakeLock();
             return 0;
           }
-          if (prev <= 4) {
+
+          // Alertas nos últimos 3 segundos
+          if (prev <= 4 && prev > 1 && lastBeepRef.current !== prev) {
+            lastBeepRef.current = prev;
             triggerHaptic("light");
+            playBeep(440, 0.08, "sine", 0.15); // A4
           }
+
           return prev - 1;
         });
       }, 1000);
+    } else {
+      releaseScreenWakeLock();
     }
 
     return () => {
@@ -46,13 +100,18 @@ export function RestTimerModal({ isOpen, onClose, defaultSeconds = 60 }: RestTim
   // Reset ao abrir modal
   useEffect(() => {
     if (isOpen) {
-      setTimeLeft(totalTime);
+      const initial = getInitialSeconds();
+      setTotalTime(initial);
+      setTimeLeft(initial);
       setIsRunning(true);
       setIsFinished(false);
+      lastBeepRef.current = null;
+      requestScreenWakeLock();
     } else {
       setIsRunning(false);
+      releaseScreenWakeLock();
     }
-  }, [isOpen, totalTime]);
+  }, [isOpen, defaultSeconds]);
 
   const toggleRun = () => {
     triggerHaptic("medium");
@@ -64,6 +123,8 @@ export function RestTimerModal({ isOpen, onClose, defaultSeconds = 60 }: RestTim
     setTimeLeft(totalTime);
     setIsRunning(false);
     setIsFinished(false);
+    lastBeepRef.current = null;
+    releaseScreenWakeLock();
   };
 
   const addSeconds = (secs: number) => {
@@ -78,6 +139,7 @@ export function RestTimerModal({ isOpen, onClose, defaultSeconds = 60 }: RestTim
     setTimeLeft(secs);
     setIsRunning(true);
     setIsFinished(false);
+    lastBeepRef.current = null;
   };
 
   // Formatação MM:SS
@@ -146,9 +208,9 @@ export function RestTimerModal({ isOpen, onClose, defaultSeconds = 60 }: RestTim
           </div>
         </div>
 
-        {/* Presets Rápidos de Tempo (30s, 45s, 60s, 90s, 120s) */}
-        <div className="flex items-center justify-center gap-1.5 w-full">
-          {[30, 45, 60, 90, 120].map((secs) => (
+        {/* Presets Rápidos de Tempo (30s, 45s, 60s, 90s, 120s, 180s) */}
+        <div className="flex items-center justify-center gap-1.5 w-full flex-wrap">
+          {[30, 45, 60, 90, 120, 180].map((secs) => (
             <button
               key={secs}
               onClick={() => setPreset(secs)}
