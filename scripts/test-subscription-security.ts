@@ -135,6 +135,20 @@ import {
   isValidUuid,
   _resetMemoryStores,
 } from "../src/lib/idempotency";
+import {
+  getPrivacyConsents,
+  savePrivacyConsents,
+  getNotificationPreferences,
+  saveNotificationPreferences,
+  getWorkoutPreferences,
+  saveWorkoutPreferences,
+  getActiveSecuritySessions,
+  compileUserDataExport,
+  executeAccountDeletion,
+  DEFAULT_CONSENTS,
+  DEFAULT_NOTIF_PREFS,
+  DEFAULT_WORKOUT_PREFS,
+} from "../src/lib/privacy-service";
 
 console.log("\n=======================================================");
 console.log("🛡️  GYMFLOW — SUÍTE DE AUDITORIA DE SEGURANÇA REAL");
@@ -2943,6 +2957,126 @@ async function runAllTests() {
   assert(
     BRAZIL_STATES.length === 27,
     "Geolocalização: Tabela canônica contém todos os 27 estados da federação brasileira (26 estados + DF)"
+  );
+
+  // ===========================================================================
+  // 28. CONFIGURAÇÕES, PRIVACIDADE & PROTEÇÃO DE DADOS (LGPD / GDPR)
+  // ===========================================================================
+  console.log("\n--- [TEST GROUP 28: Configurações, Privacidade & LGPD/GDPR] ---");
+
+  // 28.1 Gestão Granular de Consentimentos (Art. 8º da LGPD)
+  const initialConsents = getPrivacyConsents();
+  assert(
+    initialConsents.essentialCookies === true,
+    "LGPD Consentimento: Cookies essenciais permanecem ativos por padrão para viabilizar login"
+  );
+
+  const updatedConsents = savePrivacyConsents({
+    telemetryAndDiagnostics: false,
+    shareMetricsWithCoach: true,
+    publicProfileInRankings: false,
+  });
+  assert(
+    updatedConsents.telemetryAndDiagnostics === false &&
+    updatedConsents.shareMetricsWithCoach === true &&
+    updatedConsents.publicProfileInRankings === false &&
+    updatedConsents.essentialCookies === true,
+    "LGPD Consentimento: savePrivacyConsents atualiza preferências granulares e preserva cookies essenciais"
+  );
+
+  // 28.2 Preferências de Notificações & Horário Silencioso
+  const savedNotifs = saveNotificationPreferences({
+    pushTrainingReminders: true,
+    whatsappClassAlerts: true,
+    quietHoursEnabled: true,
+    quietHoursStart: "23:00",
+    quietHoursEnd: "06:30",
+  });
+  assert(
+    savedNotifs.whatsappClassAlerts === true &&
+    savedNotifs.quietHoursEnabled === true &&
+    savedNotifs.quietHoursStart === "23:00" &&
+    savedNotifs.quietHoursEnd === "06:30",
+    "Configurações Notificações: saveNotificationPreferences persiste alertas de WhatsApp e horário de descanso"
+  );
+
+  // 28.3 Preferências de Execução de Treino
+  const savedWorkoutPrefs = saveWorkoutPreferences({
+    defaultRestTimerSeconds: 90,
+    hapticFeedbackEnabled: true,
+    soundEnabled: false,
+    keepScreenAwakeDuringWorkout: true,
+    weightUnit: "kg",
+    distanceUnit: "km",
+  });
+  assert(
+    savedWorkoutPrefs.defaultRestTimerSeconds === 90 &&
+    savedWorkoutPrefs.hapticFeedbackEnabled === true &&
+    savedWorkoutPrefs.soundEnabled === false &&
+    savedWorkoutPrefs.keepScreenAwakeDuringWorkout === true,
+    "Configurações Treino: saveWorkoutPreferences persiste timer padrão de 90s e preferências táteis"
+  );
+
+  // 28.4 Dispositivos & Sessões Ativas
+  const securitySessions = getActiveSecuritySessions();
+  assert(
+    Array.isArray(securitySessions) && securitySessions.length >= 1,
+    "Segurança Sessões: getActiveSecuritySessions lista os dispositivos conectados do usuário"
+  );
+  assert(
+    securitySessions.some((s) => s.isCurrent === true && s.ipMasked.includes("***")),
+    "Segurança Sessões: Identifica a sessão atual e protege a privacidade com IP mascarado"
+  );
+
+  // 28.5 Portabilidade de Dados Pessoais (LGPD Art. 18, V)
+  const dummyUser: UserProfile = {
+    id: "student_export_test",
+    name: "Mariana Aluna Exportação",
+    email: "mariana.teste@gymflow.com.br",
+    phone: "11988887777",
+    activeRole: "student",
+    enabledRoles: ["student"],
+    goal: "Hipertrofia",
+    experienceLevel: "Intermediário",
+    height: 168,
+    weight: 62.5,
+    bodyFat: 18.2,
+    termsAccepted: true,
+    termsAcceptedAt: new Date().toISOString(),
+    subscriptionStatus: "active",
+    planTier: "pro",
+  };
+
+  const exportedData = compileUserDataExport(dummyUser);
+  assert(
+    exportedData.metadata.compliance.includes("LGPD") &&
+    exportedData.metadata.version === "2.4.0",
+    "LGPD Portabilidade: compileUserDataExport gera cabeçalho canônico com conformidade à Lei 13.709/2018"
+  );
+  assert(
+    exportedData.profile.name === "Mariana Aluna Exportação" &&
+    exportedData.profile.email === "mariana.teste@gymflow.com.br" &&
+    exportedData.profile.weightKg === 62.5,
+    "LGPD Portabilidade: Pacote de exportação contém perfil completo, dados de saúde e biometria"
+  );
+  assert(
+    exportedData.preferencesAndConsents.privacyConsents !== undefined &&
+    Array.isArray(exportedData.aerobicCardioHistory.sessions) &&
+    Array.isArray(exportedData.bodyCompositionHistory.evaluations),
+    "LGPD Portabilidade: Exportação agrega treinos, sessões de cárdio, bioimpedâncias e registros de consentimento"
+  );
+
+  // 28.6 Eliminação Definitiva de Dados / Esquecimento (LGPD Art. 18, VI)
+  const invalidDelete = await executeAccountDeletion("NÃO EXCLUIR", dummyUser);
+  assert(
+    invalidDelete.success === false && Boolean(invalidDelete.error),
+    "LGPD Eliminação: executeAccountDeletion bloqueia tentativa de exclusão sem a confirmação 'EXCLUIR'"
+  );
+
+  const validDelete = await executeAccountDeletion("EXCLUIR", dummyUser);
+  assert(
+    validDelete.success === true,
+    "LGPD Eliminação: executeAccountDeletion processa exclusão definitiva, revoga sessão e limpa dados do titular"
   );
 
   // ---------------------------------------------------------------------------
