@@ -6,6 +6,7 @@ import { Play, Pause, RotateCcw, Plus, Bell, Sparkles, Volume2, VolumeX } from "
 import { triggerHaptic } from "@/lib/haptic";
 import { getWorkoutPreferences } from "@/lib/privacy-service";
 import { requestScreenWakeLock, releaseScreenWakeLock } from "@/lib/wake-lock";
+import { awardBadgeProgress } from "@/lib/gamification-service";
 
 interface RestTimerModalProps {
   isOpen: boolean;
@@ -75,6 +76,12 @@ export function RestTimerModal({ isOpen, onClose, defaultSeconds }: RestTimerMod
             triggerHaptic("heavy");
             playFinishedChime();
             releaseScreenWakeLock();
+
+            // Premia a conquista Cronometrista de Aço (rest-master)
+            awardBadgeProgress("rest-master", 1, {
+              reason: "ao concluir seu tempo de descanso com disciplina",
+            });
+
             return 0;
           }
 

@@ -612,7 +612,13 @@ export function GymBadgesStreak() {
   const handleSelectBadge = (badge: BadgeItem) => {
     triggerHaptic(badge.unlocked ? "success" : "light");
     setSelectedBadge(badge);
-    setSelectedTierLevel(badge.currentLevel > 0 ? badge.currentLevel : 1);
+    if (badge.currentLevel > 0 && badge.currentLevel < badge.maxLevel) {
+      setSelectedTierLevel(badge.currentLevel + 1);
+    } else if (badge.currentLevel >= badge.maxLevel) {
+      setSelectedTierLevel(badge.maxLevel);
+    } else {
+      setSelectedTierLevel(1);
+    }
   };
 
   const currentRoleBadges = badges.filter((b) => b.role === activeRole);
@@ -1130,7 +1136,8 @@ export function GymBadgesStreak() {
                 <div className="grid grid-cols-4 gap-1.5 mb-3">
                   {selectedBadge.levels.map((lvl) => {
                     const isCurrentTier = selectedBadge.currentLevel === lvl.level;
-                    const isUnlockedTier = selectedBadge.currentLevel >= lvl.level;
+                    const isCompletedTier = selectedBadge.currentLevel >= lvl.level;
+                    const isNextTarget = selectedBadge.currentLevel + 1 === lvl.level;
                     const isSelected = selectedTierLevel === lvl.level;
                     const tierMeta = TIER_META[lvl.tier];
 
@@ -1143,7 +1150,7 @@ export function GymBadgesStreak() {
                         }}
                         className={`p-1.5 rounded-xl border flex flex-col items-center text-center transition-all ${
                           isSelected
-                            ? `bg-white/10 ${tierMeta.border} shadow-sm`
+                            ? `bg-white/10 ${tierMeta.border} shadow-sm ring-1 ring-white/20`
                             : "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.05]"
                         }`}
                       >
@@ -1153,12 +1160,14 @@ export function GymBadgesStreak() {
                           className={`text-[8px] font-mono uppercase font-semibold ${
                             isCurrentTier
                               ? "text-emerald-400"
-                              : isUnlockedTier
+                              : isCompletedTier
                               ? "text-zinc-400"
+                              : isNextTarget
+                              ? "text-amber-400"
                               : "text-zinc-600"
                           }`}
                         >
-                          {isCurrentTier ? "Atual" : isUnlockedTier ? "Feito" : "Trava"}
+                          {isCurrentTier ? "Atual" : isCompletedTier ? "Feito" : isNextTarget ? "Alvo" : "Trava"}
                         </span>
                       </button>
                     );
@@ -1167,12 +1176,14 @@ export function GymBadgesStreak() {
 
                 {/* Detalhe do Nível Selecionado */}
                 {(() => {
-                  const targetLvl = selectedBadge.levels[selectedTierLevel - 1];
+                  const targetLvl = selectedBadge.levels[selectedTierLevel - 1] || selectedBadge.levels[0];
                   const tierMeta = TIER_META[targetLvl.tier];
                   const isSecretLocked = selectedBadge.isSecret && !selectedBadge.unlocked;
+                  const isTierDone = selectedBadge.currentLevel >= targetLvl.level || selectedBadge.currentProgress >= targetLvl.targetValue;
+                  const percentTowardThisLevel = Math.min(100, Math.round((selectedBadge.currentProgress / targetLvl.targetValue) * 100));
 
                   return (
-                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex flex-col gap-1.5">
+                    <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex flex-col gap-2">
                       <div className="flex items-center justify-between">
                         <span className={`text-xs font-black ${tierMeta.text} flex items-center gap-1.5`}>
                           <span>{tierMeta.icon}</span>
@@ -1190,33 +1201,64 @@ export function GymBadgesStreak() {
                           ? "Critério secreto oculto. Desvende a pista e continue treinando para descobrir!"
                           : targetLvl.requirement}
                       </p>
+
+                      {/* Barra de Progresso Deste Nível Específico */}
+                      <div className="mt-1 pt-2 border-t border-white/[0.05]">
+                        <div className="flex items-center justify-between text-[10px] font-mono mb-1">
+                          <span className={isTierDone ? "text-emerald-400 font-bold" : "text-zinc-400"}>
+                            {isTierDone
+                              ? `✅ Nível Concluído (${targetLvl.targetValue} ${selectedBadge.unit})`
+                              : `Progresso: ${selectedBadge.currentProgress} / ${targetLvl.targetValue} ${selectedBadge.unit}`}
+                          </span>
+                          <span className={isTierDone ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                            {percentTowardThisLevel}%
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-black/60 rounded-full overflow-hidden border border-white/[0.05]">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isTierDone
+                                ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                                : "bg-gradient-to-r from-amber-500 to-emerald-400"
+                            }`}
+                            style={{ width: `${percentTowardThisLevel}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
               </div>
 
-              {/* Status de Conclusão / Progresso */}
+              {/* Status Global da Conquista */}
               <div className="w-full mt-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-between text-xs font-mono">
-                {selectedBadge.unlocked ? (
-                  <span className="text-emerald-400 font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> Desbloqueado {selectedBadge.unlockedAt}
-                  </span>
+                {selectedBadge.currentLevel === selectedBadge.maxLevel ? (
+                  <>
+                    <span className="text-emerald-400 font-bold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Nível Máximo Diamante Conquistado!
+                    </span>
+                    <span className="text-emerald-400 font-bold">100%</span>
+                  </>
+                ) : selectedBadge.currentLevel > 0 ? (
+                  <>
+                    <span className="text-emerald-400 font-bold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Nív. {selectedBadge.currentLevel} Desbloqueado {selectedBadge.unlockedAt ? `(${selectedBadge.unlockedAt})` : ""}
+                    </span>
+                    <span className="text-amber-400 font-bold">
+                      Rumo ao Nív. {selectedBadge.currentLevel + 1}: {Math.min(100, Math.round((selectedBadge.currentProgress / selectedBadge.targetProgress) * 100))}%
+                    </span>
+                  </>
                 ) : (
-                  <span className="text-zinc-400 flex items-center gap-2">
-                    <Lock className={`w-4 h-4 ${selectedBadge.isSecret ? "text-purple-400" : "text-zinc-500"}`} />
-                    Progresso:{" "}
-                    {selectedBadge.isSecret
-                      ? `${selectedBadge.currentProgress} de ${selectedBadge.targetProgress}`
-                      : `${selectedBadge.currentProgress} / ${selectedBadge.targetProgress} ${selectedBadge.unit}`}
-                  </span>
+                  <>
+                    <span className="text-zinc-400 flex items-center gap-2">
+                      <Lock className={`w-4 h-4 ${selectedBadge.isSecret ? "text-purple-400" : "text-zinc-500"}`} />
+                      Progresso: {selectedBadge.currentProgress} / {selectedBadge.targetProgress} {selectedBadge.unit}
+                    </span>
+                    <span className="text-amber-400 font-bold">
+                      {Math.min(100, Math.round((selectedBadge.currentProgress / selectedBadge.targetProgress) * 100))}%
+                    </span>
+                  </>
                 )}
-                <span className="text-amber-400 font-bold">
-                  {Math.min(
-                    100,
-                    Math.round((selectedBadge.currentProgress / selectedBadge.targetProgress) * 100)
-                  )}
-                  %
-                </span>
               </div>
 
               {/* Botão de Fechar */}

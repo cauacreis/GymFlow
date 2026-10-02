@@ -12,6 +12,7 @@ import {
   recordWorkoutAttendanceDate,
   StreakInfo,
 } from "@/lib/streak-service";
+import { awardBadgeProgress } from "@/lib/gamification-service";
 
 interface TurnstileCheckinModalProps {
   isOpen: boolean;
@@ -91,6 +92,27 @@ export function TurnstileCheckinModal({
     // Registra presença no motor de streak inteligente
     const updated = recordWorkoutAttendanceDate(undefined, currentUser?.id, true);
     setStreakInfo(updated);
+
+    // Conquista Centurião (+1 check-in de treino)
+    awardBadgeProgress("century-club", 1, {
+      reason: "ao comparecer à academia e registrar check-in",
+    });
+
+    // Conquista Clube das 06h (Madrugador antes das 07:00)
+    const currentHour = new Date().getHours();
+    if (currentHour < 7) {
+      awardBadgeProgress("early-bird", 1, {
+        reason: "ao chegar na academia antes das 07:00 da manhã",
+      });
+    }
+
+    // Conquista Coruja Noturna (após 22:30)
+    const currentMinutes = new Date().getMinutes();
+    if (currentHour > 22 || (currentHour === 22 && currentMinutes >= 30)) {
+      awardBadgeProgress("secret-night-owl", 1, {
+        reason: "ao treinar na academia após as 22:30",
+      });
+    }
 
     try {
       await fetch("/api/checkin/validate", {
