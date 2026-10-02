@@ -29,6 +29,8 @@ import {
   getStoredBookings,
   getCoachBookings,
   updateBookingStatus,
+  acceptTrainerBooking,
+  rejectTrainerBooking,
   updateAttendanceStatus,
   updateBookingNotes,
   requestReschedule,
@@ -397,6 +399,31 @@ export function CoachAgendaManager({
     (b) => b.rescheduleRequest?.requestedBy === "student" && b.rescheduleRequest.status === "pending"
   );
 
+  // Solicitações de Contratação / Novos Alunos Pendentes de Aceite
+  const pendingHiringRequests = bookings.filter(
+    (b) => b.status === "pending" && !b.rescheduleRequest
+  );
+
+  const handleAcceptHiring = (bookingId: string) => {
+    triggerHaptic("success");
+    const updated = acceptTrainerBooking(bookingId);
+    if (updated) {
+      showToast(`Aluno ${updated.studentName} aceito e matriculado com sucesso! Ficha pronta para prescrição.`);
+      // Sincroniza listas locais
+      setBookings(getCoachBookings(effectiveCoachId));
+      setStudents(getStoredStudents(effectiveCoachId));
+    }
+  };
+
+  const handleRejectHiring = (bookingId: string) => {
+    triggerHaptic("warning");
+    const updated = rejectTrainerBooking(bookingId);
+    if (updated) {
+      showToast(`Solicitação de ${updated.studentName} recusada.`);
+      setBookings(getCoachBookings(effectiveCoachId));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 text-left w-full animate-in fade-in duration-200">
       {/* Toast Notification */}
@@ -588,6 +615,114 @@ export function CoachAgendaManager({
           })}
         </div>
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 3.5. SEÇÃO: SOLICITAÇÕES DE CONTRATAÇÃO DE NOVOS ALUNOS */}
+      {/* ------------------------------------------------------------------ */}
+      {pendingHiringRequests.length > 0 && (
+        <div className="rounded-3xl p-4 bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-teal-950/40 border-2 border-emerald-500/50 flex flex-col gap-3 shadow-2xl animate-in slide-in-from-top-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-emerald-300">
+                  Novas Contratações Pendentes ({pendingHiringRequests.length})
+                </h4>
+                <p className="text-[10px] text-zinc-400">
+                  Alunos que contrataram seu plano e aguardam seu aceite para liberar os treinos
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono animate-pulse">
+              Ação Necessária
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            {pendingHiringRequests.map((b) => {
+              const planLabel =
+                b.planType === "vip"
+                  ? "Mensal VIP • 5x na semana (R$ 55/mês)"
+                  : b.planType === "basico"
+                  ? "Mensal Básico • 2x na semana (R$ 35/mês)"
+                  : "Mensal Pro • 3x na semana (R$ 45/mês)";
+
+              return (
+                <div
+                  key={b.id}
+                  className="p-3.5 rounded-2xl bg-zinc-950 border border-emerald-500/30 flex flex-col gap-2.5 shadow-md"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 font-black flex items-center justify-center shrink-0 text-base shadow-inner">
+                        {b.studentName.charAt(0)}
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-black text-white">{b.studentName}</h5>
+                        <p className="text-xs text-emerald-400 font-bold mt-0.5">
+                          {planLabel} • <span className="font-mono text-white">R$ {b.totalPrice.toFixed(2)} pago</span>
+                        </p>
+                        <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                          📅 Início solicitado: <strong>{b.slotDay} às {b.slotTime}</strong> (Duração: {b.durationMinutes || 60}min)
+                        </p>
+                      </div>
+                    </div>
+
+                    {b.studentPhone && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic("selection");
+                          setWhatsAppStudent({
+                            name: b.studentName,
+                            phone: b.studentPhone,
+                            plan: planLabel,
+                            scheduledTime: b.slotTime,
+                            scheduledDay: b.slotDay,
+                          });
+                          setIsWhatsAppModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all self-start sm:self-auto shrink-0"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {b.notes && (
+                    <p className="text-[11px] text-zinc-300 italic bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.05]">
+                      Mensagem do aluno: "{b.notes}"
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => handleRejectHiring(b.id)}
+                      className="py-2 px-3 rounded-xl bg-white/[0.06] hover:bg-rose-500/20 text-zinc-300 hover:text-rose-300 text-xs font-bold transition-all flex items-center justify-center gap-1"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Recusar</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAcceptHiring(b.id)}
+                      className="py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/30 active:scale-95"
+                    >
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Aceitar e Matricular Aluno</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* 4. SEÇÃO: ALERTAS DE REMANEJAMENTO SOLICITADOS POR ALUNOS */}

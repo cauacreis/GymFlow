@@ -51,9 +51,14 @@ import {
   CoachTrainer,
   getStoredNotifications,
   getStoredBookings,
+  getAllRawBookings,
   getCoachBookings,
   getStudentBookings,
   requestTrainerBooking,
+  acceptTrainerBooking,
+  rejectTrainerBooking,
+  requestReschedule,
+  respondToReschedule,
   addNotification,
   calculateSlotEndTime,
   formatSlotTimeSpan,
@@ -61,6 +66,12 @@ import {
   getStoredCoaches,
   updateCoachPublicProfile,
 } from "../src/lib/booking-store";
+import {
+  calculateDistanceKm,
+  formatDistance,
+  isValidCoordinate,
+  BRAZIL_STATES,
+} from "../src/lib/geo";
 import {
   getCoachStudentsStorageKey,
   getCoachPlansStorageKey,
@@ -2250,9 +2261,9 @@ async function runAllTests() {
     "Sincronização Coach: getCoachBookings lista os mesmos agendamentos na grade do treinador"
   );
 
-  // Teste 20.6: requestTrainerBooking com plano semanal (3x na semana, 1h) auto-popula a grade
+  // Teste 20.6: requestTrainerBooking + acceptTrainerBooking com plano semanal (3x na semana, 1h) auto-popula a grade
   const newStudentAutoId = "student_auto_hired_3x";
-  requestTrainerBooking({
+  const hiredReq = requestTrainerBooking({
     studentId: newStudentAutoId,
     studentName: "Lucas Hired",
     studentPhone: "11977776666",
@@ -2264,12 +2275,13 @@ async function runAllTests() {
     durationMinutes: 60,
     workoutTitle: "Treino com Prof. Vinícius Personal",
   });
+  acceptTrainerBooking(hiredReq.id);
 
   const studentHiredBookings = getStudentBookings(newStudentAutoId);
   assert(
     studentHiredBookings.length >= 3 &&
       studentHiredBookings.some((b) => b.slotTime === "10:00" && b.durationMinutes === 60),
-    "requestTrainerBooking: Contratação 3x na semana auto-popula as 3 sessões de 1h na agenda do aluno"
+    "acceptTrainerBooking: Contratação 3x na semana auto-popula as 3 sessões de 1h na agenda do aluno"
   );
 
   // ---------------------------------------------------------------------------
@@ -2748,6 +2760,189 @@ async function runAllTests() {
   assert(
     typeof reviewResult === "boolean",
     "Backend Reviews: submitReviewToSupabase grava avaliações no banco com moderação"
+  );
+
+  // ===========================================================================
+  // 27. CONTRATAÇÃO DE PERSONAL, NOTIFICAÇÕES, MATRÍCULA AUTOMÁTICA & REMANEJAMENTO
+  // ===========================================================================
+  console.log("\n--- [TEST GROUP 27: Contratação, Notificações, Matrícula & Remanejamento] ---");
+
+  // 27.1 Solicitação de Contratação de Personal pelo Aluno
+  const testStudentId = `student_hire_${Date.now()}`;
+  const testBooking = requestTrainerBooking({
+    studentId: testStudentId,
+    studentName: "Gabriel Ferreira Aluno",
+    studentPhone: "11987654321",
+    coachId: "coach_rodrigo",
+    slotDay: "Segunda-feira, 05/10/2026",
+    slotTime: "08:00",
+    planType: "pro",
+    extraOfferedAmount: 10,
+    notes: "Tenho preferência por focar em hipertrofia de superiores.",
+  });
+
+  assert(
+    testBooking.status === "pending",
+    "Contratação: status inicial do agendamento deve ser 'pending' aguardando aceite do treinador"
+  );
+  assert(
+    testBooking.paymentStatus === "paid",
+    "Contratação: paymentStatus deve constar como 'paid' após o pagamento do plano pelo aluno"
+  );
+  assert(
+    testBooking.totalPrice === 55,
+    "Contratação: valor total deve ser o preço do plano Pro (45) + gorjeta extra (10) = 55"
+  );
+
+  // 27.2 Notificação Gerada para o Treinador
+  const coachNotifs = getStoredNotifications("coach_rodrigo", "coach");
+  const hasHireNotif = coachNotifs.some(
+    (n) => n.coachId === "coach_rodrigo" && n.title.includes("Solicitação de Contratação")
+  );
+  assert(
+    hasHireNotif,
+    "Notificações: Treinador recebe alerta em tempo real de nova solicitação de contratação pendente"
+  );
+
+  // 27.3 Aceite da Contratação pelo Personal Trainer (Matrícula Automática & Ficha Pronta)
+  const acceptedBooking = acceptTrainerBooking(testBooking.id);
+  assert(
+    acceptedBooking !== null && acceptedBooking.status === "accepted",
+    "Aceite de Contratação: acceptTrainerBooking atualiza status do agendamento para 'accepted'"
+  );
+
+  // 27.4 Verificação da Matrícula Automática no Store de Alunos do Treinador
+  const coachStudentsList = getStoredStudents("coach_rodrigo");
+  const enrolledStudent = coachStudentsList.find((s) => s.id === testStudentId || s.phone === "11987654321");
+  assert(
+    !!enrolledStudent,
+    "Matrícula Automática: Aluno é automaticamente adicionado ao roster de alunos do treinador"
+  );
+  assert(
+    enrolledStudent?.status === "ativo",
+    "Matrícula Automática: Status do aluno matriculado é 'ativo'"
+  );
+  assert(
+    Boolean(enrolledStudent?.plan?.includes("Pro") || enrolledStudent?.plan?.includes("3x")),
+    "Matrícula Automática: Plano do aluno é configurado com base no plano pago ('Mensal Pro / 3x na semana')"
+  );
+
+  // 27.5 Verificação da Ficha de Treino Inicial (Aguardando Prescrição Técnica)
+  const studentWorkoutPkg = getStudentWorkout(testStudentId);
+  assert(
+    studentWorkoutPkg.hasPersonalTrainer === true,
+    "Ficha Técnica: Pacote de treino registra que o aluno possui Personal Trainer ativo"
+  );
+  assert(
+    studentWorkoutPkg.isAwaitingCoachPrescription === true,
+    "Ficha Técnica: isAwaitingCoachPrescription é true para permitir que o treinador prescreva imediatamente"
+  );
+
+  // 27.6 Notificação de Confirmação Enviada ao Aluno
+  const studentNotifs = getStoredNotifications(testStudentId, "student");
+  const hasAcceptNotif = studentNotifs.some(
+    (n) => n.studentId === testStudentId && n.title.includes("Contratação Confirmada")
+  );
+  assert(
+    hasAcceptNotif,
+    "Notificações: Aluno recebe notificação de confirmação assim que o personal aceita a contratação"
+  );
+
+  // 27.7 Fluxo de Recusa de Solicitação de Treino
+  const rejectTestBooking = requestTrainerBooking({
+    studentId: `student_reject_${Date.now()}`,
+    studentName: "Marcos Aluno Rejeitado",
+    studentPhone: "11977776666",
+    coachId: "coach_felipe",
+    slotDay: "Terça-feira, 06/10/2026",
+    slotTime: "18:00",
+    planType: "basico",
+    extraOfferedAmount: 0,
+  });
+  const rejectedBooking = rejectTrainerBooking(rejectTestBooking.id, "Horário já ocupado no salão");
+  assert(
+    rejectedBooking !== null && rejectedBooking.status === "rejected",
+    "Recusa de Contratação: rejectTrainerBooking atualiza status para 'rejected'"
+  );
+
+  // 27.8 Fluxo de Remanejamento de Horário Solicitado pelo Aluno
+  requestReschedule({
+    bookingId: testBooking.id,
+    requestedBy: "student",
+    proposedDay: "Quarta-feira, 07/10/2026",
+    proposedTime: "10:00",
+    reason: "Imprevisto no trabalho no horário matutino das 08h",
+  });
+
+  const allBookingsAfterReschedReq = getAllRawBookings();
+  const reschedBookingMatch = allBookingsAfterReschedReq.find((b) => b.id === testBooking.id);
+  assert(
+    reschedBookingMatch?.rescheduleRequest?.status === "pending" &&
+    reschedBookingMatch?.rescheduleRequest?.proposedTime === "10:00",
+    "Remanejamento: Solicitação de troca de horário registrada como 'pending' com novo dia/horário sugerido"
+  );
+
+  // 27.9 Personal Aprova o Remanejamento do Aluno
+  respondToReschedule(testBooking.id, true);
+  const allBookingsAfterReschedApproved = getAllRawBookings();
+  const approvedReschedBooking = allBookingsAfterReschedApproved.find((b) => b.id === testBooking.id);
+  assert(
+    approvedReschedBooking?.slotTime === "10:00" &&
+    approvedReschedBooking?.rescheduleRequest?.status === "accepted",
+    "Remanejamento Aprovado: Horário da aula é atualizado para o novo horário aprovado pelo professor"
+  );
+
+  // 27.10 Personal Propõe Novo Horário e Aluno Recusa Manter
+  requestReschedule({
+    bookingId: testBooking.id,
+    requestedBy: "coach",
+    proposedDay: "Sexta-feira, 09/10/2026",
+    proposedTime: "19:00",
+    reason: "Manutenção do maquinário no período da manhã",
+  });
+  respondToReschedule(testBooking.id, false);
+  const allBookingsAfterReschedRejected = getAllRawBookings();
+  const rejectedReschedBooking = allBookingsAfterReschedRejected.find((b) => b.id === testBooking.id);
+  assert(
+    rejectedReschedBooking?.rescheduleRequest?.status === "rejected" &&
+    rejectedReschedBooking?.slotTime === "10:00",
+    "Remanejamento Recusado: Horário original é mantido com integridade quando a proposta é recusada"
+  );
+
+  // 27.11 Sistema Global e Proximidade Geográfica (Fórmula de Haversine & Validações)
+  const distSpToRj = calculateDistanceKm(-23.5617, -46.656, -22.9711, -43.1822);
+  assert(
+    distSpToRj !== null && distSpToRj >= 340 && distSpToRj <= 380,
+    "Geolocalização: calculateDistanceKm calcula distância real SP-RJ (~360km) com precisão Haversine"
+  );
+
+  const zeroDist = calculateDistanceKm(-23.5617, -46.656, -23.5617, -46.656);
+  assert(
+    zeroDist === 0,
+    "Geolocalização: Coordenadas idênticas retornam 0 km de distância"
+  );
+
+  assert(
+    isValidCoordinate(-23.5617, -46.656) === true,
+    "Geolocalização: Coordenadas válidas de São Paulo passam na validação de limites"
+  );
+  assert(
+    isValidCoordinate(100, -46.656) === false && isValidCoordinate(-23.5617, 200) === false,
+    "Geolocalização: Coordenadas fora dos limites (-90..90, -180..180) são rejeitadas defensivamente"
+  );
+  assert(
+    isValidCoordinate(NaN, Infinity) === false,
+    "Geolocalização: NaN e Infinity são devidamente bloqueados"
+  );
+
+  assert(
+    formatDistance(0.4) === "400m" && formatDistance(3.5) === "3,5 km",
+    "Geolocalização: formatDistance formata metros (<1km) e quilômetros (>=1km) corretamente"
+  );
+
+  assert(
+    BRAZIL_STATES.length === 27,
+    "Geolocalização: Tabela canônica contém todos os 27 estados da federação brasileira (26 estados + DF)"
   );
 
   // ---------------------------------------------------------------------------

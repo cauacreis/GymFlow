@@ -942,9 +942,9 @@ export function requestTrainerBooking(params: {
     basePrice,
     extraOfferedAmount: params.extraOfferedAmount,
     totalPrice,
-    status: "accepted",
-    paymentStatus: "paid",
-    attendanceStatus: "scheduled",
+    status: "pending", // Status inicial PENDENTE para aprovação do treinador
+    paymentStatus: "paid", // Plano pago pelo aluno
+    attendanceStatus: "pending",
     notes: params.notes,
     createdAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
   };
@@ -955,39 +955,29 @@ export function requestTrainerBooking(params: {
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updatedBookings));
 
-    // Se contratou plano semanal/3x na semana ou mensal/5x na semana, já gera a grade completa da semana!
-    const is3xWeek = params.planType === "semanal" || params.planType === "pro" || (params.notes && params.notes.includes("3x"));
-    const is5xWeek = params.planType === "mensal" || params.planType === "vip" || (params.notes && params.notes.includes("5x"));
-
-    if (is3xWeek || is5xWeek) {
-      const days = is5xWeek
-        ? ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
-        : ["Segunda", "Quarta", "Sexta"];
-
-      setupRecurringStudentSchedule({
-        studentId: params.studentId,
-        studentName: params.studentName,
-        studentPhone: params.studentPhone,
-        coachId: resolvedCoachId,
-        coachName: resolvedCoachName,
-        coachPhone: resolvedCoachPhone,
-        daysOfWeek: days,
-        startTime: params.slotTime,
-        durationMinutes: duration,
-        planType: params.planType,
-      });
-    }
-
-    // Notifica o treinador sobre a nova contratação/agendamento
+    // Notifica o treinador sobre a nova solicitação de contratação pendente
     addNotification({
       targetRole: "coach",
       coachId: resolvedCoachId,
+      studentId: params.studentId,
       type: "training_reminder",
-      title: "Novo Aluno Agendado! 📅",
-      message: `${params.studentName} contratou treino para ${params.slotDay} às ${params.slotTime} (Duração: ${duration}min).`,
+      title: "Nova Solicitação de Contratação! 🔔",
+      message: `${params.studentName} contratou seu plano (${params.planType.toUpperCase()}) para ${params.slotDay} às ${params.slotTime}. Toque para aceitar e matricular o aluno.`,
+      actionUrl: "/coach/agenda",
+    });
+
+    // Notifica o aluno confirmando que o pedido foi enviado com sucesso
+    addNotification({
+      targetRole: "student",
+      studentId: params.studentId,
+      coachId: resolvedCoachId,
+      type: "training_reminder",
+      title: "Solicitação Enviada! ⏳",
+      message: `Sua contratação foi enviada para ${resolvedCoachName}. Você receberá uma notificação assim que o personal confirmar.`,
     });
 
     window.dispatchEvent(new Event(EVENT_BOOKING));
+    window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
   }
 
   // Sincroniza nova reserva com Supabase
@@ -996,36 +986,218 @@ export function requestTrainerBooking(params: {
   return newBooking;
 }
 
+/**
+ * Treinador aceita a solicitação de contratação do aluno:
+ * 1. Atualiza status do agendamento para 'accepted'
+ * 2. Matricula automaticamente o aluno no roster do treinador no workout-store com o plano pago
+ * 3. Prepara a ficha com status 'Aguardando Prescrição' para que o treinador possa prescrever imediatamente
+ * 4. Gera a grade de horários recorrentes caso o plano seja semanal/mensal
+ * 5. Notifica o aluno sobre a confirmação
+ */
+export function acceptTrainerBooking(bookingId: string): BookingRequest | null {
+  if (typeof window === "undefined") return null;
+  const bookings = getAllRawBookings();
+  const bookingIndex = bookings.findIndex((b) => b.id === bookingId);
+  if (bookingIndex < 0) return null;
+
+  const targetBooking = bookings[bookingIndex];
+  const updatedBooking: BookingRequest = {
+    ...targetBooking,
+    status: "accepted",
+    paymentStatus: "paid",
+    attendanceStatus: "scheduled",
+  };
+
+  const updatedBookings = bookings.map((b, idx) => (idx === bookingIndex ? updatedBooking : b));
+  localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updatedBookings));
+
+  // 1. Resolve os dados e frequência do plano
+  const planType = updatedBooking.planType;
+  let planLabel = "Mensal Pro (R$ 45/mês)";
+  let daysOfWeek = ["Segunda", "Quarta", "Sexta"];
+  const duration = updatedBooking.durationMinutes || 60;
+
+  if (planType === "vip" || planType === "mensal") {
+    planLabel = "Mensal VIP (R$ 55/mês)";
+    daysOfWeek = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
+  } else if (planType === "basico" || planType === "diario") {
+    planLabel = "Mensal Básico (R$ 35/mês)";
+    daysOfWeek = ["Segunda", "Quarta"];
+  }
+
+  // 2. Matricula o aluno no roster do treinador
+  try {
+    const coachKey = updatedBooking.coachId && updatedBooking.coachId !== "user_me"
+      ? `gymflow_students_${updatedBooking.coachId}`
+      : "gymflow_students_v3";
+
+    const existingStudentsRaw = localStorage.getItem(coachKey) || localStorage.getItem("gymflow_students_v3");
+    const existingList: any[] = existingStudentsRaw ? JSON.parse(existingStudentsRaw) : [];
+
+    const existingIdx = existingList.findIndex(
+      (s) =>
+        s.id === updatedBooking.studentId ||
+        (updatedBooking.studentPhone && s.phone === updatedBooking.studentPhone) ||
+        (updatedBooking.studentName && s.name?.toLowerCase() === updatedBooking.studentName.toLowerCase())
+    );
+
+    const scheduleStrings = daysOfWeek.map((d) => `${d} · ${updatedBooking.slotTime}`);
+
+    const studentRecord: any = {
+      id: updatedBooking.studentId || `student_${Date.now()}`,
+      coachId: updatedBooking.coachId,
+      name: updatedBooking.studentName,
+      phone: updatedBooking.studentPhone || "",
+      matricula: `GF-${Math.floor(10000 + Math.random() * 90000)}`,
+      goal: "Hipertrofia",
+      plan: planLabel,
+      status: "ativo",
+      paymentStatus: "pago",
+      paymentDueDate: "Dia 10",
+      monthlyPresence: 0,
+      monthlyAbsences: 0,
+      totalClasses: 0,
+      hasWorkoutSheet: true,
+      isOfflineStudent: false,
+      age: 26,
+      currentRoutineTitle: "Treino Personalizado",
+      prescribedBy: updatedBooking.coachName,
+      prescribedAt: "Hoje",
+      scheduledTimeToday: updatedBooking.slotTime,
+      weeklySchedule: scheduleStrings,
+      notes: updatedBooking.notes || `Aluno admitido via contratação do plano ${planLabel}.`,
+    };
+
+    if (existingIdx >= 0) {
+      existingList[existingIdx] = {
+        ...existingList[existingIdx],
+        ...studentRecord,
+        id: existingList[existingIdx].id || studentRecord.id,
+      };
+    } else {
+      existingList.unshift(studentRecord);
+    }
+
+    localStorage.setItem(coachKey, JSON.stringify(existingList));
+    localStorage.setItem("gymflow_students_v3", JSON.stringify(existingList));
+
+    // Inicializa pacote de treino com isAwaitingCoachPrescription: true para prescrição imediata
+    const rawWorkouts = localStorage.getItem("gymflow_student_workouts_v2");
+    const workoutsMap = rawWorkouts ? JSON.parse(rawWorkouts) : {};
+    if (!workoutsMap[studentRecord.id] || !workoutsMap[studentRecord.id].splits || workoutsMap[studentRecord.id].splits.length === 0) {
+      workoutsMap[studentRecord.id] = {
+        studentId: studentRecord.id,
+        routineTitle: `Treino com ${updatedBooking.coachName}`,
+        prescribedBy: updatedBooking.coachName,
+        prescribedAt: "Hoje",
+        isAwaitingCoachPrescription: true,
+        hasPersonalTrainer: true,
+        coachName: updatedBooking.coachName,
+        coachPhone: updatedBooking.coachPhone,
+        splits: [],
+      };
+      localStorage.setItem("gymflow_student_workouts_v2", JSON.stringify(workoutsMap));
+    }
+  } catch (err) {
+    console.error("Erro ao matricular aluno no store do treinador:", err);
+  }
+
+  // 3. Se plano é recorrente, gera as sessões na grade
+  setupRecurringStudentSchedule({
+    studentId: updatedBooking.studentId,
+    studentName: updatedBooking.studentName,
+    studentPhone: updatedBooking.studentPhone,
+    coachId: updatedBooking.coachId,
+    coachName: updatedBooking.coachName,
+    coachPhone: updatedBooking.coachPhone,
+    daysOfWeek,
+    startTime: updatedBooking.slotTime,
+    durationMinutes: duration,
+    planType: updatedBooking.planType,
+  });
+
+  // 4. Notifica o aluno
+  addNotification({
+    targetRole: "student",
+    studentId: updatedBooking.studentId,
+    coachId: updatedBooking.coachId,
+    type: "booking_accepted",
+    title: "Contratação Confirmada pelo Personal! 🏋️‍♂️",
+    message: `${updatedBooking.coachName} aceitou sua solicitação! Seu treino para ${updatedBooking.slotDay} às ${updatedBooking.slotTime} está confirmado e o professor já pode prescrever sua ficha.`,
+  });
+
+  // 5. Salva no Supabase
+  saveBookingToSupabase(updatedBooking).catch(() => {});
+
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+  window.dispatchEvent(new Event("gymflow:workout-updated"));
+  window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
+
+  return updatedBooking;
+}
+
+/**
+ * Treinador recusa a solicitação de contratação ou horário do aluno:
+ * 1. Atualiza status para 'rejected'
+ * 2. Notifica o aluno sobre a recusa com o motivo
+ * 3. Salva no Supabase
+ */
+export function rejectTrainerBooking(bookingId: string, reason?: string): BookingRequest | null {
+  if (typeof window === "undefined") return null;
+  const bookings = getAllRawBookings();
+  const bookingIndex = bookings.findIndex((b) => b.id === bookingId);
+  if (bookingIndex < 0) return null;
+
+  const targetBooking = bookings[bookingIndex];
+  const updatedBooking: BookingRequest = {
+    ...targetBooking,
+    status: "rejected",
+    attendanceStatus: "missed",
+    notes: reason ? `Recusado pelo professor: ${reason}` : targetBooking.notes,
+  };
+
+  const updatedBookings = bookings.map((b, idx) => (idx === bookingIndex ? updatedBooking : b));
+  localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updatedBookings));
+
+  // Notifica o aluno
+  addNotification({
+    targetRole: "student",
+    studentId: targetBooking.studentId,
+    coachId: targetBooking.coachId,
+    type: "rescheduled",
+    title: "Solicitação Não Aceita ❌",
+    message: `${targetBooking.coachName} não pôde aceitar o agendamento no horário solicitado (${targetBooking.slotDay} às ${targetBooking.slotTime})${
+      reason ? ` (Motivo: "${reason}")` : ""
+    }. Por favor, selecione outro horário disponível ou outro treinador.`,
+  });
+
+  saveBookingToSupabase(updatedBooking).catch(() => {});
+
+  window.dispatchEvent(new Event(EVENT_BOOKING));
+  window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
+
+  return updatedBooking;
+}
+
 export function updateBookingStatus(
   bookingId: string,
   newStatus: "accepted" | "rejected" | "completed"
 ): void {
   if (typeof window === "undefined") return;
+  if (newStatus === "accepted") {
+    acceptTrainerBooking(bookingId);
+    return;
+  }
+  if (newStatus === "rejected") {
+    rejectTrainerBooking(bookingId);
+    return;
+  }
   const bookings = getStoredBookings();
   const booking = bookings.find((b) => b.id === bookingId);
   if (!booking) return;
 
   const updated = bookings.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b));
   localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
-
-  // Notifica o aluno
-  if (newStatus === "accepted") {
-    addNotification({
-      targetRole: "student",
-      studentId: booking.studentId,
-      type: "booking_accepted",
-      title: "Treino Aceito pelo Personal! 🏋️‍♂️",
-      message: `${booking.coachName} confirmou seu treino para ${booking.slotDay} às ${booking.slotTime}. Toque para falar no WhatsApp!`,
-    });
-  } else if (newStatus === "rejected") {
-    addNotification({
-      targetRole: "student",
-      studentId: booking.studentId,
-      type: "rescheduled",
-      title: "Horário Indisponível ⚠️",
-      message: `${booking.coachName} não poderá atender no horário de ${booking.slotTime}. Por favor, selecione outro horário disponível.`,
-    });
-  }
 
   const updatedBooking = updated.find((b) => b.id === bookingId);
   if (updatedBooking) {
@@ -1325,12 +1497,13 @@ export function requestReschedule(params: {
   proposedDay: string;
   proposedTime: string;
   reason?: string;
-}): void {
-  if (typeof window === "undefined") return;
-  const bookings = getStoredBookings();
-  const booking = bookings.find((b) => b.id === params.bookingId);
-  if (!booking) return;
+}): RescheduleProposal | null {
+  if (typeof window === "undefined") return null;
+  const bookings = getAllRawBookings();
+  const bookingIndex = bookings.findIndex((b) => b.id === params.bookingId);
+  if (bookingIndex < 0) return null;
 
+  const booking = bookings[bookingIndex];
   const proposal: RescheduleProposal = {
     id: `resched_${Date.now()}`,
     requestedBy: params.requestedBy,
@@ -1341,14 +1514,12 @@ export function requestReschedule(params: {
     createdAt: `Hoje às ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
   };
 
-  const updated = bookings.map((b) =>
-    b.id === params.bookingId
-      ? {
-          ...b,
-          rescheduleRequest: proposal,
-        }
-      : b
-  );
+  const updatedBooking: BookingRequest = {
+    ...booking,
+    rescheduleRequest: proposal,
+  };
+
+  const updated = bookings.map((b, idx) => (idx === bookingIndex ? updatedBooking : b));
   localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
 
   // Notificação para a outra parte
@@ -1356,6 +1527,7 @@ export function requestReschedule(params: {
     addNotification({
       targetRole: "coach",
       coachId: booking.coachId,
+      studentId: booking.studentId,
       type: "rescheduled",
       title: "Solicitação de Remanejamento de Horário 🔄",
       message: `${booking.studentName} solicitou mudar o treino de ${booking.slotDay} (${booking.slotTime}) para ${params.proposedDay} às ${params.proposedTime}${params.reason ? ` (Motivo: "${params.reason}")` : ""}.`,
@@ -1364,37 +1536,46 @@ export function requestReschedule(params: {
     addNotification({
       targetRole: "student",
       studentId: booking.studentId,
+      coachId: booking.coachId,
       type: "rescheduled",
       title: "Proposta de Novo Horário do Treinador 🔄",
       message: `${booking.coachName} sugeriu alterar seu treino para ${params.proposedDay} às ${params.proposedTime}. Verifique na sua agenda para aceitar.`,
     });
   }
 
+  saveBookingToSupabase(updatedBooking).catch(() => {});
+
   window.dispatchEvent(new Event(EVENT_BOOKING));
+  window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
+
+  return proposal;
 }
 
-export function respondToReschedule(bookingId: string, accept: boolean): void {
-  if (typeof window === "undefined") return;
-  const bookings = getStoredBookings();
-  const booking = bookings.find((b) => b.id === bookingId);
-  if (!booking || !booking.rescheduleRequest) return;
+export function respondToReschedule(bookingId: string, accept: boolean): BookingRequest | null {
+  if (typeof window === "undefined") return null;
+  const bookings = getAllRawBookings();
+  const bookingIndex = bookings.findIndex((b) => b.id === bookingId);
+  if (bookingIndex < 0) return null;
+
+  const booking = bookings[bookingIndex];
+  if (!booking.rescheduleRequest) return null;
 
   const req = booking.rescheduleRequest;
+  let updatedBooking: BookingRequest;
+
   if (accept) {
-    const updated = bookings.map((b) =>
-      b.id === bookingId
-        ? {
-            ...b,
-            slotDay: req.proposedDay,
-            slotTime: req.proposedTime,
-            attendanceStatus: "rescheduled" as const,
-            rescheduleRequest: {
-              ...req,
-              status: "accepted" as const,
-            },
-          }
-        : b
-    );
+    updatedBooking = {
+      ...booking,
+      slotDay: req.proposedDay,
+      slotTime: req.proposedTime,
+      attendanceStatus: "rescheduled" as const,
+      rescheduleRequest: {
+        ...req,
+        status: "accepted" as const,
+      },
+    };
+
+    const updated = bookings.map((b, idx) => (idx === bookingIndex ? updatedBooking : b));
     localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
 
     // Notifica quem solicitou que foi aceito
@@ -1402,6 +1583,7 @@ export function respondToReschedule(bookingId: string, accept: boolean): void {
       addNotification({
         targetRole: "student",
         studentId: booking.studentId,
+        coachId: booking.coachId,
         type: "booking_accepted",
         title: "Remanejamento Aceito! ✅",
         message: `${booking.coachName} aprovou sua mudança de horário para ${req.proposedDay} às ${req.proposedTime}.`,
@@ -1410,45 +1592,53 @@ export function respondToReschedule(bookingId: string, accept: boolean): void {
       addNotification({
         targetRole: "coach",
         coachId: booking.coachId,
+        studentId: booking.studentId,
         type: "booking_accepted",
         title: "Aluno Concordou com o Novo Horário! ✅",
         message: `${booking.studentName} aceitou o treino remanejado para ${req.proposedDay} às ${req.proposedTime}.`,
       });
     }
+
+    saveBookingToSupabase(updatedBooking).catch(() => {});
   } else {
-    const updated = bookings.map((b) =>
-      b.id === bookingId
-        ? {
-            ...b,
-            rescheduleRequest: {
-              ...req,
-              status: "rejected" as const,
-            },
-          }
-        : b
-    );
+    updatedBooking = {
+      ...booking,
+      rescheduleRequest: {
+        ...req,
+        status: "rejected" as const,
+      },
+    };
+
+    const updated = bookings.map((b, idx) => (idx === bookingIndex ? updatedBooking : b));
     localStorage.setItem(STORAGE_BOOKINGS, JSON.stringify(updated));
 
     if (req.requestedBy === "student") {
       addNotification({
         targetRole: "student",
         studentId: booking.studentId,
+        coachId: booking.coachId,
         type: "rescheduled",
         title: "Remanejamento Recusado ❌",
-        message: `${booking.coachName} não pode atender no horário sugerido. O horário original (${booking.slotDay} às ${booking.slotTime}) foi mantido.`,
+        message: `${booking.coachName} não pôde atender no horário sugerido. O horário original (${booking.slotDay} às ${booking.slotTime}) foi mantido.`,
       });
     } else {
       addNotification({
         targetRole: "coach",
         coachId: booking.coachId,
+        studentId: booking.studentId,
         type: "rescheduled",
         title: "Aluno Manteve o Horário Original ❌",
         message: `${booking.studentName} não pôde aceitar a nova data sugerida. Horário mantido.`,
       });
     }
+
+    saveBookingToSupabase(updatedBooking).catch(() => {});
   }
 
   window.dispatchEvent(new Event(EVENT_BOOKING));
+  window.dispatchEvent(new Event(EVENT_NOTIFICATIONS));
+
+  return updatedBooking;
 }
 
 export function updateBookingNotes(bookingId: string, notes: string): void {

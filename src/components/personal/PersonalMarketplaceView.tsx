@@ -1567,26 +1567,46 @@ export function PersonalMarketplaceView({
 
       {/* Modal de Confirmação de Sucesso */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-sm bg-zinc-900 border border-emerald-500/30 rounded-3xl p-6 text-center shadow-2xl space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md bg-zinc-900 border border-emerald-500/40 rounded-3xl p-6 text-center shadow-2xl space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
             </div>
 
             <div>
-              <h3 className="text-base font-black text-white">Solicitação Enviada!</h3>
-              <p className="text-xs text-zinc-400 mt-1">
-                Seu agendamento foi registrado com sucesso. O treinador foi notificado e você já pode confirmar via WhatsApp.
+              <h3 className="text-base sm:text-lg font-black text-white">Solicitação de Contratação Enviada! 🚀</h3>
+              <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
+                Seu pedido para o plano <strong>{selectedPlanObj?.title || "Personal"}</strong> foi enviado para{" "}
+                <strong>{currentCoach?.name || "seu treinador"}</strong>.
+              </p>
+              <p className="text-[11px] text-zinc-400 mt-1">
+                O personal recebeu uma notificação no app para aceitar e matricular você. Assim que aceito, sua grade estará ativa e sua ficha de treino liberada!
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowSuccessModal(false)}
-              className="w-full py-3 rounded-2xl bg-emerald-500 text-zinc-950 font-black text-xs shadow-lg active:scale-95 transition-all"
-            >
-              Entendido
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+              {currentCoach?.phone && (
+                <a
+                  href={`https://wa.me/${currentCoach.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                    `Olá, ${currentCoach.name}! Sou o ${effectiveStudentName}. Acabei de contratar o plano ${selectedPlanObj?.title || "Personal"} pelo GymFlow para ${selectedDateLabel} às ${selectedTimeSlot || "horário combinado"}. Aguardo sua confirmação!`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-3 rounded-xl bg-[#25D366]/20 hover:bg-[#25D366]/30 border border-[#25D366]/40 text-[#25D366] font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Avisar no WhatsApp</span>
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs shadow-lg active:scale-95 transition-all sm:col-span-1"
+              >
+                Concluir
+              </button>
+            </div>
           </div>
         </div>
       )}
