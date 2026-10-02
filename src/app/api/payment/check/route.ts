@@ -70,7 +70,7 @@ export async function GET(req: Request) {
     const parsedRef = parseExternalReference(extRef);
     const planId = parsedRef.planId || "pro";
     const official = getOfficialPlan(planId);
-    const targetUserId = validated.userId || parsedRef.userId;
+    const targetUserId = parsedRef.userId || validated.userId;
 
     // Se o pagamento estiver aprovado, sincroniza com o banco de dados
     if (payment.status === "approved") {

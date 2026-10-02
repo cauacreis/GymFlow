@@ -78,10 +78,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Override opcional via variável de ambiente no servidor
+    // 2. Override opcional via variável de ambiente no servidor com comparação timing-safe
     const envMasterKey = process.env.ADMIN_MASTER_KEY;
-    if (!isMatch && envMasterKey && envMasterKey.trim() === inputKey) {
-      isMatch = true;
+    if (!isMatch && envMasterKey) {
+      const expectedEnvHash = crypto
+        .createHmac("sha256", VAULT_SALT)
+        .update(envMasterKey.trim())
+        .digest("hex");
+
+      if (inputHash.length === expectedEnvHash.length) {
+        isMatch = crypto.timingSafeEqual(
+          Buffer.from(inputHash, "hex"),
+          Buffer.from(expectedEnvHash, "hex")
+        );
+      }
     }
 
     if (!isMatch) {

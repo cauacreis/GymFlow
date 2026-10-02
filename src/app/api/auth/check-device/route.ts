@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
+import { checkRateLimit } from "@/lib/security";
 
 const checkDeviceSchema = z.object({
   deviceId: z.string().min(5).max(100),
@@ -9,6 +10,15 @@ const checkDeviceSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    const rl = checkRateLimit(`check_device_${ip}`, 15, 60);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { allowed: false, reason: "Muitas tentativas de validação. Aguarde alguns instantes." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { deviceId, email } = checkDeviceSchema.parse(body);
 

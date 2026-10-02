@@ -26,7 +26,10 @@ export async function GET(req: NextRequest) {
     .update(payload)
     .digest("hex");
 
-  if (signature !== expectedSignature) {
+  if (
+    signature.length !== expectedSignature.length ||
+    !crypto.timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expectedSignature, "hex"))
+  ) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 

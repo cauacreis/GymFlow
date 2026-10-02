@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getSupabase, getSupabaseAdmin } from "@/lib/supabase";
 
 const deleteAccountSchema = z.object({
   confirmation: z.literal("EXCLUIR"),
@@ -22,6 +23,27 @@ export async function POST(request: Request) {
       );
     }
 
+    const userId = parsed.data.userId;
+    const isUUID = userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+
+    // Executa limpeza nos registros do banco se houver cliente Supabase configurado
+    if (isUUID) {
+      const supabase = getSupabaseAdmin() || getSupabase();
+      if (supabase) {
+        try {
+          await supabase.from("profiles").delete().eq("id", userId);
+          await supabase.from("students").delete().eq("user_id", userId);
+          await supabase.from("body_metrics").delete().eq("user_id", userId);
+          await supabase.from("cardio_sessions").delete().eq("user_id", userId);
+          await supabase.from("user_achievements").delete().eq("user_id", userId);
+          await supabase.from("user_class_history").delete().eq("user_id", userId);
+          await supabase.from("access_logs").delete().eq("user_id", userId);
+        } catch (dbErr) {
+          console.warn("⚠️ [LGPD Delete] Aviso durante deleção em cascata:", dbErr);
+        }
+      }
+    }
+
     const response = NextResponse.json({
       success: true,
       message: "Conta e dados associados foram eliminados permanentemente em conformidade com a LGPD.",
@@ -32,6 +54,7 @@ export async function POST(request: Request) {
     response.cookies.delete("gymflow_session");
     response.cookies.delete("sb-access-token");
     response.cookies.delete("sb-refresh-token");
+    response.cookies.delete("gymflow_vault_auth");
 
     return response;
   } catch (err) {
