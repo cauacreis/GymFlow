@@ -45,16 +45,17 @@ export function FeatureGateModal({
   const planPerks =
     requiredPlan === "vip"
       ? [
-          "Módulo de Avaliação Física e Bioimpedância detalhada",
-          "Comparativo de medidas corporais e fotos de evolução",
-          "Protocolos avançados de alta performance",
+          "Bioimpedância InBody e Avaliação Física completa",
+          "Acompanhamento comparativo de medidas e fotos",
+          "Alunos ilimitados no seu roster de consultoria",
+          "Máximo destaque no topo do Marketplace regional",
           "Suporte VIP prioritário e recomendações exclusivas",
         ]
       : [
-          "Fichas completas com guia de biomecânica 3D em tempo real",
-          "GymBot IA 24/7 com suporte nutricional e biomecânico",
-          "Histórico detalhado de evolução de cargas e recordes (PRs)",
-          "Calculadora inteligente de descanso e substituição de exercícios",
+          "Biomecânica 3D postural & animações em tempo real",
+          "GymBot IA 24/7 de treino, periodização e macros",
+          "Histórico de evolução de cargas e recordes (PRs)",
+          "Gestão e prescrição de até 35 alunos particulares",
         ];
 
   return (

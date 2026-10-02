@@ -1380,21 +1380,18 @@ async function runAllTests() {
 
   // Teste 16.2: Validação de preços e propriedades de planos de personal
   assert(
-    OFFICIAL_PLANS.coach_starter.role === "coach" &&
     OFFICIAL_PLANS.coach_starter.maxStudents === 10 &&
-    OFFICIAL_PLANS.coach_starter.price === 49.0,
-    "Personal Starter: Configurado com limite de 10 alunos e valor tabelado em R$ 49,00"
+    OFFICIAL_PLANS.coach_starter.price === 35.0,
+    "Personal Starter: Configurado com limite de 10 alunos e valor tabelado unificado em R$ 35,00"
   );
   assert(
-    OFFICIAL_PLANS.coach_pro.role === "coach" &&
     OFFICIAL_PLANS.coach_pro.maxStudents === 35 &&
-    OFFICIAL_PLANS.coach_pro.price === 79.0,
-    "Personal Pro: Configurado com limite de 35 alunos e valor tabelado em R$ 79,00"
+    OFFICIAL_PLANS.coach_pro.price === 45.0,
+    "Personal Pro: Configurado com limite de 35 alunos e valor tabelado unificado em R$ 45,00"
   );
   assert(
-    OFFICIAL_PLANS.coach_vip.role === "coach" &&
-    OFFICIAL_PLANS.coach_vip.price === 119.0,
-    "Personal VIP: Configurado para escala de alunos ilimitada e valor tabelado em R$ 119,00"
+    OFFICIAL_PLANS.coach_vip.price === 55.0,
+    "Personal VIP: Configurado para escala de alunos ilimitada e valor tabelado unificado em R$ 55,00"
   );
 
   // Teste 16.3: Ativação de plano pago para Personal Trainer
@@ -1450,8 +1447,8 @@ async function runAllTests() {
     "getOfficialPlan: Resolve plano oficial coach_pro diretamente"
   );
   assert(
-    getOfficialPlan("coach_unknown_test").id === "coach_pro",
-    "getOfficialPlan: Fallback inteligente de planos de coach desconhecidos para coach_pro"
+    getOfficialPlan("coach_unknown_test").id === "pro",
+    "getOfficialPlan: Fallback inteligente de planos desconhecidos para plano unificado 'pro'"
   );
 
   // Teste 16.6: Perguntas do FAQ específicas de Aluno vs Professor

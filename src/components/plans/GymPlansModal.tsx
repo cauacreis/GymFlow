@@ -16,6 +16,8 @@ import {
   Flame,
   X,
   RotateCcw,
+  Dumbbell,
+  GraduationCap,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import { activatePaidPlanForUser, getCurrentUser, UserProfile } from "@/lib/auth-store";
@@ -30,98 +32,76 @@ export interface PlanOption {
   price: string;
   billingPeriod: string;
   popular?: boolean;
-  features: string[];
+  studentFeatures: string[];
+  coachFeatures: string[];
+  features?: string[];
 }
 
-export const STUDENT_PLANS: PlanOption[] = [
+export const UNIFIED_PLANS: PlanOption[] = [
   {
-    id: "student_basico",
-    name: "Aluno Básico",
+    id: "basico",
+    name: "GymFlow Básico",
     price: "35,00",
     billingPeriod: "/mês",
-    features: [
-      "Acesso à musculação e aeróbico",
-      "Fichas de treino essenciais",
-      "Registro e evolução de cargas em tempo real",
-      "Histórico de presenças e frequência",
+    studentFeatures: [
+      "Acesso à musculação, aeróbico e catraca digital",
+      "Fichas de treino essenciais e registro de cargas",
+      "Histórico de frequência e evolução",
       "Marketplace para contratar Personal",
+    ],
+    coachFeatures: [
+      "Gestão de até 10 alunos particulares",
+      "Prescrição de fichas digitais de musculação",
+      "Agenda de atendimentos e horários",
+      "Recebimento de pagamentos via PIX",
     ],
   },
   {
-    id: "student_pro",
-    name: "Aluno Pro",
+    id: "pro",
+    name: "GymFlow Pro",
     popular: true,
     price: "45,00",
     billingPeriod: "/mês",
-    features: [
+    studentFeatures: [
       "Tudo do Plano Básico incluso",
       "Biomecânica 3D postural & GIFs de 233+ exercícios",
-      "Calculadora de descanso e substituição de exercícios",
-      "GymBot IA 24/7 para dúvidas de treino e dieta",
-      "Gráficos de evolução de força e PRs",
+      "GymBot IA 24/7 (Dúvidas de treino e dieta)",
+      "Histórico ilimitado de PRs e cargas",
+      "Aulas coletivas e rotinas funcionais",
+    ],
+    coachFeatures: [
+      "Gestão de até 35 alunos particulares",
+      "Prescrição 3D com análise biomecânica para alunos",
+      "Catálogo ilimitado de rotinas salvas",
+      "Perfil com Selo Verificado no Marketplace",
+      "GymBot IA Copilot para prescrição rápida",
     ],
   },
   {
-    id: "student_vip",
-    name: "Aluno VIP Black",
+    id: "vip",
+    name: "GymFlow VIP Black",
     price: "55,00",
     billingPeriod: "/mês",
-    features: [
+    studentFeatures: [
       "Tudo do Plano Pro incluso",
       "Bioimpedância InBody mensal inclusa",
-      "Módulo de Avaliação Física & Bioimpedância",
+      "Módulo de Avaliação Física & Composição Corporal",
       "Acompanhamento comparativo de medidas e fotos",
       "Suporte VIP prioritário e recomendações exclusivas",
     ],
-  },
-];
-
-export const COACH_PLANS: PlanOption[] = [
-  {
-    id: "coach_starter",
-    name: "Personal Starter",
-    price: "49,00",
-    billingPeriod: "/mês",
-    features: [
-      "Gestão de até 10 alunos ativos simultâneos",
-      "Prescrição de fichas digitais de musculação",
-      "Agenda de aulas e agendamentos de sessões",
-      "Perfil ativo no Marketplace GymFlow da região",
-      "Envio de treinos direto no app do aluno",
-    ],
-  },
-  {
-    id: "coach_pro",
-    name: "Personal Pro",
-    popular: true,
-    price: "79,00",
-    billingPeriod: "/mês",
-    features: [
-      "Gestão de até 35 alunos ativos simultâneos",
-      "Prescrição completa com Biomecânica 3D para alunos",
-      "Perfil com Selo Verificado e destaque nas buscas",
-      "Controle financeiro de mensalidades e recebimento via PIX",
-      "GymBot IA Copilot (Periodização e fichas ágeis)",
-      "Gráficos de evolução de força de cada aluno",
-    ],
-  },
-  {
-    id: "coach_vip",
-    name: "Personal Elite VIP",
-    price: "119,00",
-    billingPeriod: "/mês",
-    features: [
-      "Alunos ilimitados (escala total da consultoria)",
+    coachFeatures: [
+      "Alunos ilimitados no seu roster",
       "Máximo destaque no topo do Marketplace regional",
-      "Módulo de Avaliação Física & Bioimpedância para alunos",
+      "Relatórios de bioimpedância para seus alunos",
       "Link exclusivo de contratação de consultorias",
-      "Lembretes e cobrança automática no WhatsApp",
-      "Suporte prioritário individual no WhatsApp",
+      "Suporte VIP prioritário individual",
     ],
   },
 ];
 
-export const PLANS = STUDENT_PLANS;
+export const STUDENT_PLANS = UNIFIED_PLANS;
+export const COACH_PLANS = UNIFIED_PLANS;
+export const PLANS = UNIFIED_PLANS;
 
 interface GymPlansModalProps {
   isOpen: boolean;
@@ -130,71 +110,76 @@ interface GymPlansModalProps {
 
 export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => getCurrentUser());
-  const initialRole = currentUser.activeRole === "coach" ? "coach" : "student";
-  const [selectedRole, setSelectedRole] = useState<"student" | "coach">(initialRole);
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(
-    initialRole === "coach" ? "coach_pro" : "student_pro"
-  );
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("pro");
   const [checkoutStep, setCheckoutStep] = useState<"plans" | "payment" | "success">("plans");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [copiedPix, setCopiedPix] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pixData, setPixData] = useState<{ id?: string; qrCode: string; qrCodeBase64?: string } | null>(null);
   const [pixStatusMessage, setPixStatusMessage] = useState<string | null>(null);
-  const [isMpConfigured, setIsMpConfigured] = useState<boolean>(false);
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
-  const currentPlans = selectedRole === "coach" ? COACH_PLANS : STUDENT_PLANS;
-  const currentPlan =
-    currentPlans.find((p) => p.id === selectedPlanId) ||
-    currentPlans[1] ||
-    currentPlans[0];
+  // Dados do PIX dinâmico
+  const [pixData, setPixData] = useState<{
+    id?: string;
+    qrCode?: string;
+    qrCodeBase64?: string;
+  } | null>(null);
 
-  const handleSwitchRole = (role: "student" | "coach") => {
-    triggerHaptic("selection");
-    setSelectedRole(role);
-    setSelectedPlanId(role === "coach" ? "coach_pro" : "student_pro");
-  };
+  const [isMpConfigured, setIsMpConfigured] = useState<boolean>(true);
 
   useEffect(() => {
     if (isOpen) {
       const freshUser = getCurrentUser();
       setCurrentUser(freshUser);
-      const role = freshUser.activeRole === "coach" ? "coach" : "student";
-      setSelectedRole(role);
-      setSelectedPlanId(role === "coach" ? "coach_pro" : "student_pro");
       setCheckoutStep("plans");
-      fetch("/api/payment/status")
+      setCopiedPix(false);
+      setPixData(null);
+      setPixStatusMessage(null);
+      setIsProcessing(false);
+
+      if (freshUser.planTier === "vip" || freshUser.subscriptionPlan?.includes("vip")) {
+        setSelectedPlanId("vip");
+      } else if (freshUser.planTier === "basico" || freshUser.subscriptionPlan?.includes("basico")) {
+        setSelectedPlanId("basico");
+      } else {
+        setSelectedPlanId("pro");
+      }
+
+      fetch("/api/payment/check")
         .then((res) => res.json())
         .then((data) => {
-          if (data?.mercadopago?.configured) {
-            setIsMpConfigured(true);
+          if (data && data.configured !== undefined) {
+            setIsMpConfigured(Boolean(data.configured));
           }
         })
         .catch(() => {});
     }
   }, [isOpen]);
 
-  // Polling automático da compensação do PIX a cada 4 segundos
+  const currentPlan =
+    UNIFIED_PLANS.find((p) => p.id === selectedPlanId) ||
+    UNIFIED_PLANS[1] ||
+    UNIFIED_PLANS[0];
+
+  // Polling automático para confirmação imediata do PIX
   useEffect(() => {
-    if (!isOpen || checkoutStep !== "payment" || paymentMethod !== "pix" || !pixData?.id) {
-      return;
-    }
+    if (!isOpen || checkoutStep !== "payment" || paymentMethod !== "pix" || !pixData?.id) return;
 
     const interval = setInterval(async () => {
       try {
         const user = getCurrentUser();
         const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${user.id}`);
         const data = await res.json();
+
         if (data.success && data.status === "approved") {
           const determinedTier = currentPlan.id.includes("vip")
             ? "vip"
             : currentPlan.id.includes("basico") || currentPlan.id.includes("starter")
             ? "basico"
             : "pro";
-          activatePaidPlanForUser(selectedPlanId, false, determinedTier);
-          setCheckoutStep("success");
+          activatePaidPlanForUser(currentPlan.id, false, determinedTier);
           triggerHaptic("success");
+          setCheckoutStep("success");
         }
       } catch {}
     }, 4000);
@@ -215,7 +200,6 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
     triggerHaptic("medium");
     setPixStatusMessage(null);
 
-    // Gera cobrança PIX no backend do Mercado Pago
     try {
       const user = getCurrentUser();
       const idempotencyKey =
@@ -233,7 +217,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
           planId: currentPlan.id,
           description: `GymFlow — ${currentPlan.name}`,
           payerEmail: user.email || "usuario@gymflow.com",
-          payerName: user.name || (selectedRole === "coach" ? "Personal GymFlow" : "Aluno GymFlow"),
+          payerName: user.name || "Membro GymFlow",
           userId: user.id,
           idempotencyKey,
         }),
@@ -280,7 +264,6 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
     try {
       const user = getCurrentUser();
 
-      // Fluxo Cartão de Crédito: Checkout Pro oficial do Mercado Pago
       if (paymentMethod === "card") {
         const cardIdempotencyKey =
           typeof crypto !== "undefined" && crypto.randomUUID
@@ -297,26 +280,23 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
             planId: currentPlan.id,
             title: `GymFlow — ${currentPlan.name}`,
             payerEmail: user.email || "usuario@gymflow.com",
-            payerName: user.name || (selectedRole === "coach" ? "Personal GymFlow" : "Aluno GymFlow"),
+            payerName: user.name || "Membro GymFlow",
             userId: user.id,
             idempotencyKey: cardIdempotencyKey,
           }),
         });
         const data = await res.json();
         if (data.initPoint && !data.isSimulated) {
-          // Redireciona para o checkout oficial do Mercado Pago
           window.location.href = data.initPoint;
           return;
         }
 
-        // Em modo simulado (sem credenciais), ativa diretamente
         activatePaidPlanForUser(currentPlan.id, true, determinedTier);
         setCheckoutStep("success");
         triggerHaptic("success");
         return;
       }
 
-      // Fluxo PIX: Consulta se já foi compensado no Mercado Pago
       if (pixData?.id) {
         const res = await fetch(`/api/payment/check?id=${pixData.id}&userId=${user.id}`);
         const data = await res.json();
@@ -337,7 +317,6 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         }
       }
 
-      // Fallback para modo simulação quando não há credenciais no .env
       if (!isMpConfigured) {
         activatePaidPlanForUser(currentPlan.id, false, determinedTier);
         setCheckoutStep("success");
@@ -355,7 +334,7 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-zinc-950 border border-white/[0.1] sm:rounded-3xl rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+      <div className="w-full max-w-lg bg-zinc-950 border border-white/[0.1] sm:rounded-3xl rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header do Modal */}
         <div className="p-4 border-b border-white/[0.06] flex items-center justify-between bg-zinc-900/50">
           <div className="flex items-center gap-2">
@@ -363,8 +342,8 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
               <Sparkles className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-sm font-black text-white uppercase tracking-wider">Planos de Acesso</h2>
-              <p className="text-[10px] text-zinc-400">Checkout Mercado Pago Oficial</p>
+              <h2 className="text-sm font-black text-white uppercase tracking-wider">Planos GymFlow Unificados</h2>
+              <p className="text-[10px] text-zinc-400">Um plano único para treinar e prescrever</p>
             </div>
           </div>
           <button
@@ -379,10 +358,23 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
         </div>
 
         {/* Conteúdo Conforme o Passo */}
-        <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-4">
+        <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-4 no-scrollbar">
           {checkoutStep === "plans" && (
             <>
-              {/* Status Atual da Assinatura / Trial / Cancelamento */}
+              {/* Banner Explicativo de Plano Unificado */}
+              <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-zinc-900/70 to-amber-950/30 border border-white/[0.08] flex items-center gap-3 shadow-md">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-white">Assinatura Total em Dobro</p>
+                  <p className="text-[11px] text-zinc-400 leading-snug">
+                    Sua assinatura GymFlow libera simultaneamente o <strong>Lado Aluno</strong> (para o seu treino) e o <strong>Lado Professor</strong> (para atender e prescrever).
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Atual da Assinatura / Trial */}
               {(() => {
                 const isTrial =
                   currentUser.subscriptionStatus === "trial" &&
@@ -482,42 +474,9 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                 );
               })()}
 
-              {/* Seletor de Perfil: Planos para Alunos vs Treinadores */}
-              <div className="space-y-1.5">
-                <div className="flex items-center p-1 rounded-2xl bg-zinc-950 border border-white/[0.08] shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchRole("student")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      selectedRole === "student"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
-                        : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    <span>🏋️‍♂️ Planos para Alunos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchRole("coach")}
-                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      selectedRole === "coach"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
-                        : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    <span>👨‍🏫 Planos para Treinadores</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-zinc-400 px-1 text-center">
-                  {selectedRole === "student"
-                    ? "Planos para treinar, ver fichas 3D, periodização e GymBot IA."
-                    : "Planos profissionais para prescrever treinos 3D, gerenciar alunos e captar clientes."}
-                </p>
-              </div>
-
+              {/* Cards de Planos Unificados */}
               <div className="flex flex-col gap-3">
-                {currentPlans.map((plan) => {
+                {UNIFIED_PLANS.map((plan) => {
                   const isSelected = plan.id === selectedPlanId;
                   return (
                     <div
@@ -531,7 +490,14 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="text-sm font-black text-white">{plan.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-black text-white">{plan.name}</h3>
+                            {plan.popular && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                Mais Escolhido
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-baseline gap-1 mt-1">
                             <span className="text-xs text-zinc-400 font-medium">R$</span>
                             <span className="text-2xl font-black text-white font-mono">{plan.price}</span>
@@ -550,13 +516,37 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                         </div>
                       </div>
 
-                      <div className="mt-3.5 pt-3 border-t border-white/[0.06] flex flex-col gap-1.5">
-                        {plan.features.map((feat, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-xs text-zinc-300">
-                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                            <span className="leading-snug">{feat}</span>
+                      {/* Bloco Duplo: Para Aluno e Para Professor */}
+                      <div className="mt-3.5 pt-3 border-t border-white/[0.06] space-y-2.5">
+                        {/* Lado Aluno */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                            <Dumbbell className="w-3 h-3" /> Para Seu Treino Pessoal
+                          </span>
+                          <div className="space-y-1">
+                            {plan.studentFeatures.map((feat, idx) => (
+                              <div key={idx} className="flex items-start gap-1.5 text-xs text-zinc-300">
+                                <Check className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
+                                <span className="leading-snug">{feat}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
+
+                        {/* Lado Professor */}
+                        <div className="space-y-1 pt-1 border-t border-white/[0.04]">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                            <GraduationCap className="w-3 h-3" /> Para Atender e Prescrever
+                          </span>
+                          <div className="space-y-1">
+                            {plan.coachFeatures.map((feat, idx) => (
+                              <div key={idx} className="flex items-start gap-1.5 text-xs text-zinc-300">
+                                <Check className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                                <span className="leading-snug">{feat}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -620,151 +610,102 @@ export function GymPlansModal({ isOpen, onClose }: GymPlansModalProps) {
                 </button>
               </div>
 
-              {/* Bloco PIX */}
+              {/* Bloco do PIX */}
               {paymentMethod === "pix" && (
-                <div className="p-4 rounded-2xl bg-zinc-900 border border-white/[0.08] flex flex-col items-center text-center gap-3">
-                  <div className="p-3 bg-white rounded-xl shadow-lg">
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.06] flex flex-col items-center gap-3">
+                  <div className="w-44 h-44 rounded-xl bg-white p-2 flex items-center justify-center">
                     {pixData?.qrCodeBase64 ? (
                       <img
                         src={`data:image/png;base64,${pixData.qrCodeBase64}`}
-                        alt="PIX QR Code"
-                        className="w-36 h-36 object-contain"
+                        alt="QR Code PIX"
+                        className="w-full h-full object-contain"
                       />
                     ) : (
-                      <div className="w-36 h-36 border-2 border-dashed border-zinc-300 flex flex-col items-center justify-center p-2">
-                        <QrCode className="w-24 h-24 text-zinc-900" />
-                        <span className="text-[9px] font-mono font-bold text-zinc-700 mt-1">PIX MERCADO PAGO</span>
+                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-900 text-center p-2">
+                        <QrCode className="w-12 h-12 text-zinc-800 mb-1" />
+                        <span className="text-[10px] font-bold">QR Code Oficial PIX</span>
                       </div>
                     )}
                   </div>
 
-                  <p className="text-[11px] text-zinc-400">
-                    Abra o app do seu banco, escolha <b>Pagar com PIX</b> e aponte a câmera ou use o código Copia e Cola.
-                  </p>
+                  <button
+                    onClick={handleCopyPix}
+                    className="w-full py-2.5 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs flex items-center justify-center gap-2 border border-white/10 transition-colors"
+                  >
+                    {copiedPix ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span className="text-emerald-400">Código PIX Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Copiar Código PIX Copia e Cola</span>
+                      </>
+                    )}
+                  </button>
 
                   {pixStatusMessage && (
-                    <div className="w-full p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] text-left">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold text-center animate-in fade-in">
                       {pixStatusMessage}
                     </div>
                   )}
 
                   <button
-                    onClick={handleCopyPix}
-                    className="w-full py-2.5 px-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] active:scale-98 border border-white/[0.08] text-xs font-bold text-white flex items-center justify-center gap-2 transition-all"
+                    onClick={handleVerifyPayment}
+                    disabled={isProcessing}
+                    className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-black text-xs uppercase tracking-wider transition-all active:scale-98 shadow-md shadow-emerald-500/20"
                   >
-                    {copiedPix ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span className="text-emerald-400">Código PIX Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4 text-zinc-400" />
-                        <span>Copiar Código PIX Copia e Cola</span>
-                      </>
-                    )}
+                    {isProcessing ? "Verificando com o Banco..." : "Já Fiz o Pagamento"}
                   </button>
                 </div>
               )}
 
-              {/* Bloco Cartão */}
+              {/* Bloco do Cartão */}
               {paymentMethod === "card" && (
-                <div className="p-4 rounded-2xl bg-zinc-900 border border-white/[0.08] flex flex-col gap-3 text-left">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">Checkout Seguro Mercado Pago</h4>
-                      <p className="text-[10px] text-zinc-400">Cartão de Crédito em até 12x ou Débito</p>
-                    </div>
+                <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/[0.06] space-y-3">
+                  <div className="flex items-center gap-2.5 text-zinc-300 text-xs">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Transação segura processada diretamente pelo Mercado Pago.</span>
                   </div>
 
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Você será redirecionado para a tela segura do Mercado Pago para concluir o pagamento.
-                  </p>
-
-                  <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-zinc-400 flex items-center justify-between">
-                    <span>Plano selecionado:</span>
-                    <span className="font-bold text-white">{currentPlan.name} — R$ {currentPlan.price}{currentPlan.billingPeriod}</span>
-                  </div>
+                  <button
+                    onClick={handleVerifyPayment}
+                    disabled={isProcessing}
+                    className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider transition-all active:scale-98 shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2"
+                  >
+                    <span>Prosseguir para Pagamento com Cartão</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
 
-              {/* Status de Ambiente */}
-              {!isMpConfigured && (
-                <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[10px] text-zinc-400 text-center">
-                  ⚙️ Ambiente de Simulação Local (Chaves MP não configuradas no .env.local)
-                </div>
-              )}
-
-              {/* Botão de confirmação */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCheckoutStep("plans")}
-                  className="w-1/3 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] text-xs font-bold text-zinc-300"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={handleVerifyPayment}
-                  disabled={isProcessing}
-                  className="w-2/3 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs tracking-wide shadow-lg shadow-emerald-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
-                >
-                  {isProcessing ? (
-                    <Clock className="w-4 h-4 animate-spin" />
-                  ) : paymentMethod === "card" ? (
-                    <>
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Ir para Checkout Seguro</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>{isMpConfigured ? "Verificar PIX Pago" : "Confirmar Pagamento"}</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={() => setCheckoutStep("plans")}
+                className="text-xs text-zinc-400 hover:text-white transition-colors text-center"
+              >
+                Voltar e escolher outro plano
+              </button>
             </div>
           )}
 
           {checkoutStep === "success" && (
-            <div className="p-6 flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 className="w-10 h-10" />
+            <div className="p-6 rounded-2xl bg-zinc-900/70 border border-emerald-500/30 flex flex-col items-center text-center gap-3 animate-in zoom-in-95">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                <CheckCircle2 className="w-7 h-7" />
               </div>
-
-              <div>
-                <h3 className="text-lg font-black text-white">Plano Ativado com Sucesso!</h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Seu acesso ao <b>{currentPlan.name}</b> foi liberado no app com sucesso.
-                </p>
-              </div>
-
-              <div className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs text-left font-mono">
-                <div className="flex justify-between py-1 text-zinc-400">
-                  <span>Status:</span>
-                  <span className="text-emerald-400 font-bold">ATIVO</span>
-                </div>
-                <div className="flex justify-between py-1 text-zinc-400">
-                  <span>Plano:</span>
-                  <span className="text-white">{currentPlan.name}</span>
-                </div>
-                <div className="flex justify-between py-1 text-zinc-400">
-                  <span>Gateway:</span>
-                  <span className="text-white">Mercado Pago</span>
-                </div>
-              </div>
-
+              <h3 className="text-base font-black text-white">Plano Ativado com Sucesso!</h3>
+              <p className="text-xs text-zinc-300 leading-relaxed max-w-xs">
+                Seu <strong>{currentPlan.name}</strong> está 100% ativo. Você pode treinar como aluno e atender como professor quando desejar.
+              </p>
               <button
                 onClick={() => {
-                  triggerHaptic("light");
+                  triggerHaptic("selection");
                   onClose();
                 }}
-                className="w-full py-3 rounded-xl bg-emerald-500 text-zinc-950 font-black text-xs uppercase tracking-wider active:scale-95 transition-all"
+                className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider mt-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
               >
-                Ir para o Treino
+                Começar a Usar
               </button>
             </div>
           )}

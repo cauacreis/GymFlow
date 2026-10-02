@@ -29,175 +29,166 @@ export interface OfficialPlan {
  * Suporta separação completa de planos para Alunos e Professores (Personais).
  */
 export const OFFICIAL_PLANS: Record<string, OfficialPlan> = {
-  // --- PLANOS DE ALUNOS ---
+  // --- PLANOS UNIFICADOS GYMFLOW (ABRANGEM TREINO DE ALUNO + ATENDIMENTO DE PROFESSOR) ---
   basico: {
     id: "basico",
-    name: "Plano Aluno Básico",
-    role: "student",
+    name: "GymFlow Básico",
     tier: "basico",
     price: 35.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Musculação, aeróbico, catraca digital e fichas essenciais",
-  },
-  student_basico: {
-    id: "student_basico",
-    name: "Plano Aluno Básico",
-    role: "student",
-    tier: "basico",
-    price: 35.0,
-    billingPeriod: "/mês",
-    isRecurring: true,
-    description: "Musculação, acompanhamento de cargas e fichas essenciais",
+    maxStudents: 10,
+    description: "Musculação, aeróbico, fichas essenciais e cargas + Gestão de até 10 alunos particulares e recebimento PIX",
   },
   pro: {
     id: "pro",
-    name: "Plano Aluno Pro",
-    role: "student",
+    name: "GymFlow Pro",
     tier: "pro",
     price: 45.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Fichas completas com animações 3D, histórico de PRs e GymBot IA",
-  },
-  student_pro: {
-    id: "student_pro",
-    name: "Plano Aluno Pro",
-    role: "student",
-    tier: "pro",
-    price: 45.0,
-    billingPeriod: "/mês",
-    isRecurring: true,
-    description: "Fichas completas com animações 3D, histórico de PRs e GymBot IA",
+    maxStudents: 35,
+    description: "Biomecânica 3D, GymBot IA, histórico de PRs + Gestão de até 35 alunos, catálogo de fichas e selo no marketplace",
   },
   vip: {
     id: "vip",
-    name: "Plano Aluno VIP Black",
-    role: "student",
+    name: "GymFlow VIP Black",
     tier: "vip",
     price: 55.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Acesso VIP total, bioimpedância detalhada e suporte prioritário",
-  },
-  student_vip: {
-    id: "student_vip",
-    name: "Plano Aluno VIP Black",
-    role: "student",
-    tier: "vip",
-    price: 55.0,
-    billingPeriod: "/mês",
-    isRecurring: true,
-    description: "Acesso VIP total, bioimpedância detalhada e suporte prioritário",
+    description: "Bioimpedância InBody, análise metabólica, suporte VIP + Alunos ilimitados e topo no Marketplace de Personais",
   },
   monthly_recurring: {
     id: "monthly_recurring",
-    name: "GymFlow Aluno Pro Recorrente",
-    role: "student",
+    name: "GymFlow Pro Recorrente",
     tier: "pro",
     price: 39.9,
     billingPeriod: "/mês",
     isRecurring: true,
+    maxStudents: 35,
     description: "Assinatura mensal recorrente com débito automático no cartão via Mercado Pago",
   },
   monthly_pix: {
     id: "monthly_pix",
-    name: "GymFlow Aluno Mensal Sem Recorrência (PIX)",
-    role: "student",
+    name: "GymFlow Pro Mensal Sem Recorrência (PIX)",
     tier: "pro",
     price: 45.0,
     billingPeriod: "avulso",
     isRecurring: false,
-    description: "30 dias de acesso Pro avulso liberado instantaneamente via PIX",
+    maxStudents: 35,
+    description: "30 dias de acesso Pro unificado liberado instantaneamente via PIX",
   },
   trial_7d: {
     id: "trial_7d",
-    name: "GymFlow Aluno Pro 7 Dias Grátis",
-    role: "student",
+    name: "GymFlow Pro 7 Dias Grátis",
     tier: "pro",
     price: 39.9,
     billingPeriod: "/mês",
     isRecurring: true,
     freeTrialDays: 7,
+    maxStudents: 35,
     description: "7 dias gratuitos com cobrança automática recorrente a partir do 8º dia",
   },
 
-  // --- PLANOS DE PROFESSORES (PERSONAL TRAINERS) ---
+  // --- ALIASES DEFENSIVOS PARA COMPATIBILIDADE RETROATIVA ---
+  student_basico: {
+    id: "student_basico",
+    name: "GymFlow Básico",
+    tier: "basico",
+    price: 35.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    maxStudents: 10,
+    description: "Musculação, aeróbico, fichas essenciais e cargas + Gestão de até 10 alunos particulares",
+  },
+  student_pro: {
+    id: "student_pro",
+    name: "GymFlow Pro",
+    tier: "pro",
+    price: 45.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    maxStudents: 35,
+    description: "Biomecânica 3D, GymBot IA, histórico de PRs + Gestão de até 35 alunos",
+  },
+  student_vip: {
+    id: "student_vip",
+    name: "GymFlow VIP Black",
+    tier: "vip",
+    price: 55.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    description: "Bioimpedância InBody, análise metabólica + Alunos ilimitados no roster",
+  },
   coach_starter: {
     id: "coach_starter",
-    name: "Plano Personal Starter (PIX Avulso)",
-    role: "coach",
+    name: "GymFlow Básico (Personal Starter)",
     tier: "basico",
-    price: 49.0,
-    billingPeriod: "avulso",
-    isRecurring: false,
+    price: 35.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
     maxStudents: 10,
-    description: "Gestão profissional de até 10 alunos, fichas digitais, agenda e perfil no marketplace",
+    description: "Gestão de até 10 alunos particulares + Treino completo de musculação",
   },
   coach_starter_rec: {
     id: "coach_starter_rec",
-    name: "Plano Personal Starter Recorrente",
-    role: "coach",
+    name: "GymFlow Básico Recorrente",
     tier: "basico",
-    price: 39.9,
+    price: 35.0,
     billingPeriod: "/mês",
     isRecurring: true,
     maxStudents: 10,
-    description: "Gestão de até 10 alunos com desconto recorrente no cartão via Mercado Pago",
+    description: "Gestão de até 10 alunos + Treino completo de musculação",
   },
   coach_pro: {
     id: "coach_pro",
-    name: "Plano Personal Pro (PIX Avulso)",
-    role: "coach",
+    name: "GymFlow Pro (Personal Pro)",
     tier: "pro",
-    price: 79.0,
-    billingPeriod: "avulso",
-    isRecurring: false,
+    price: 45.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
     maxStudents: 35,
-    description: "Gestão de até 35 alunos, Biomecânica 3D postural, Selo Verificado e GymBot IA Copilot",
+    description: "Gestão de até 35 alunos, Selo Verificado + Biomecânica 3D e GymBot IA",
   },
   coach_pro_rec: {
     id: "coach_pro_rec",
-    name: "Plano Personal Pro Recorrente",
-    role: "coach",
+    name: "GymFlow Pro Recorrente",
     tier: "pro",
-    price: 69.9,
+    price: 45.0,
     billingPeriod: "/mês",
     isRecurring: true,
     maxStudents: 35,
-    description: "Gestão de até 35 alunos com desconto recorrente no cartão via Mercado Pago",
+    description: "Gestão de até 35 alunos, Selo Verificado + Biomecânica 3D e GymBot IA",
   },
   coach_vip: {
     id: "coach_vip",
-    name: "Plano Personal Elite VIP (PIX Avulso)",
-    role: "coach",
+    name: "GymFlow VIP Black (Personal Elite)",
     tier: "vip",
-    price: 119.0,
-    billingPeriod: "avulso",
-    isRecurring: false,
-    description: "Alunos ilimitados, Topo no marketplace, Avaliação física & bioimpedância e suporte VIP WhatsApp",
+    price: 55.0,
+    billingPeriod: "/mês",
+    isRecurring: true,
+    description: "Alunos ilimitados, Topo no Marketplace + Bioimpedância InBody e suporte VIP",
   },
   coach_vip_rec: {
     id: "coach_vip_rec",
-    name: "Plano Personal Elite VIP Recorrente",
-    role: "coach",
+    name: "GymFlow VIP Black Recorrente",
     tier: "vip",
-    price: 99.9,
+    price: 55.0,
     billingPeriod: "/mês",
     isRecurring: true,
-    description: "Alunos ilimitados com desconto recorrente no cartão via Mercado Pago",
+    description: "Alunos ilimitados, Topo no Marketplace + Bioimpedância InBody e suporte VIP",
   },
   trial_coach_7d: {
     id: "trial_coach_7d",
-    name: "GymFlow Personal Pro 7 Dias Grátis",
-    role: "coach",
+    name: "GymFlow Pro 7 Dias Grátis",
     tier: "pro",
-    price: 69.9,
+    price: 39.9,
     billingPeriod: "/mês",
     isRecurring: true,
     freeTrialDays: 7,
     maxStudents: 35,
-    description: "7 dias grátis de Personal Pro com todas as ferramentas profissionais liberadas",
+    description: "7 dias grátis de GymFlow Pro unificado para treinar e atender alunos",
   },
 };
 
@@ -205,14 +196,18 @@ export function getOfficialPlan(planId?: string): OfficialPlan {
   if (planId && OFFICIAL_PLANS[planId]) {
     return OFFICIAL_PLANS[planId];
   }
-  if (planId?.startsWith("coach_")) {
-    return OFFICIAL_PLANS.coach_pro;
-  }
   return OFFICIAL_PLANS.pro;
 }
 
-export function getOfficialPlansByRole(role: "student" | "coach"): OfficialPlan[] {
-  return Object.values(OFFICIAL_PLANS).filter((p) => p.role === role);
+/**
+ * Retorna os planos unificados que abrangem tanto o lado Aluno quanto o lado Professor
+ */
+export function getOfficialPlansByRole(_role?: "student" | "coach"): OfficialPlan[] {
+  return [OFFICIAL_PLANS.basico, OFFICIAL_PLANS.pro, OFFICIAL_PLANS.vip];
+}
+
+export function getOfficialUnifiedPlans(): OfficialPlan[] {
+  return [OFFICIAL_PLANS.basico, OFFICIAL_PLANS.pro, OFFICIAL_PLANS.vip];
 }
 
 /**

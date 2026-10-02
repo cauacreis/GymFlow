@@ -26,6 +26,7 @@ import {
   ChevronUp,
   Users,
   RotateCcw,
+  Layers,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -51,12 +52,10 @@ interface SubscriptionOnboardingModalProps {
   user?: UserProfile;
 }
 
-type RoleType = "student" | "coach";
 type BillingType = "recurring" | "pix";
 
 export interface PlanConfig {
   id: string;
-  role: RoleType;
   tier: "basico" | "pro" | "vip";
   badge?: string;
   badgeColor?: string;
@@ -65,180 +64,117 @@ export interface PlanConfig {
   recurringPrice: number;
   pixPrice: number;
   featured?: boolean;
-  includedUsability: string[];
+  studentFeatures: string[];
+  coachFeatures: string[];
   lockedUsability?: string[];
 }
 
-export const STUDENT_PLANS: PlanConfig[] = [
+export const UNIFIED_PLANS: PlanConfig[] = [
   {
     id: "trial",
-    role: "student",
     tier: "pro",
-    name: "7 Dias Grátis Aluno Pro",
-    tagline: "Desbloqueia Biomecânica 3D, GymBot IA e periodização sem pagar nada hoje.",
+    name: "7 Dias Grátis Pro",
+    tagline: "Acesso completo unificado para treinar e prescrever sem pagar nada hoje.",
     recurringPrice: 0,
     pixPrice: 0,
-    includedUsability: [
-      "Acesso completo ao Plano Pro de Aluno por 7 dias",
+    studentFeatures: [
       "Biomecânica 3D & GIFs de 233+ exercícios",
       "GymBot IA 24/7 (Substituições & Dieta)",
       "Histórico completo de evolução e PRs",
-      "Sem cobrança imediata (Cancele quando quiser)",
+    ],
+    coachFeatures: [
+      "Gestão de até 35 alunos particulares",
+      "Prescrição 3D interativa de treinos",
+      "Perfil ativo no Marketplace regional",
     ],
   },
   {
     id: "basico",
-    role: "student",
     tier: "basico",
-    name: "Aluno Básico",
-    tagline: "A base sólida para registrar treinos e acompanhar sua evolução.",
-    recurringPrice: 29.9,
+    name: "GymFlow Básico",
+    tagline: "A base sólida para treinar com foco e gerenciar seus primeiros alunos.",
+    recurringPrice: 35.0,
     pixPrice: 35.0,
-    includedUsability: [
+    studentFeatures: [
+      "Acesso à musculação, aeróbico e catraca digital",
       "Fichas de musculação (séries, reps e cargas)",
-      "Registro e evolução de cargas em tempo real",
-      "Agenda de treinos, presenças e metas",
-      "Marketplace para contratar Personais",
+      "Histórico de frequência e evolução",
+      "Marketplace para contratar Personal",
+    ],
+    coachFeatures: [
+      "Gestão de até 10 alunos particulares",
+      "Prescrição de fichas digitais de musculação",
+      "Agenda de atendimentos e presenças",
+      "Recebimento de mensalidades via PIX",
     ],
     lockedUsability: [
       "Sem animações de biomecânica postural 3D",
       "Sem assistente GymBot IA de treino e dieta",
-      "Sem gráficos avançados de progressão de carga",
+      "Sem catálogo ilimitado de rotinas salvas",
     ],
   },
   {
     id: "pro",
-    role: "student",
     tier: "pro",
-    name: "Aluno Pro",
-    tagline: "A experiência completa de treino inteligente e alta performance.",
-    recurringPrice: 39.9,
+    name: "GymFlow Pro",
+    tagline: "A experiência completa de alta performance para o seu treino e consultoria.",
+    recurringPrice: 45.0,
     pixPrice: 45.0,
     featured: true,
-    includedUsability: [
+    studentFeatures: [
       "Tudo do Plano Básico incluso",
       "Biomecânica 3D postural & GIFs de 233+ exercícios",
       "GymBot IA 24/7 para ajustes de séries e macros",
       "Gráficos detalhados de evolução de cargas e PRs",
-      "Calculadora de descanso e substituição de exercícios",
+    ],
+    coachFeatures: [
+      "Gestão de até 35 alunos particulares",
+      "Prescrição 3D com guia postural para alunos",
+      "Catálogo ilimitado de rotinas salvas",
+      "Selo Verificado no Marketplace regional",
+      "GymBot IA Copilot para montagem de fichas",
     ],
   },
   {
     id: "vip",
-    role: "student",
     tier: "vip",
-    name: "Aluno VIP Black",
-    tagline: "Acompanhamento de elite, bioimpedância e exclusividade total.",
-    recurringPrice: 49.9,
+    name: "GymFlow VIP Black",
+    tagline: "Acompanhamento de elite, bioimpedância e escala ilimitada para consultoria.",
+    recurringPrice: 55.0,
     pixPrice: 55.0,
-    includedUsability: [
+    studentFeatures: [
       "Tudo do Plano Pro incluso",
-      "Módulo de Avaliação Física & Bioimpedância",
+      "Bioimpedância InBody mensal inclusa",
+      "Módulo de Avaliação Física & Composição Corporal",
       "Acompanhamento comparativo de medidas e fotos",
-      "Protocolos avançados de alta performance",
-      "Suporte VIP prioritário e recomendações exclusivas",
+      "Suporte VIP prioritário individual",
     ],
-  },
-];
-
-export const COACH_PLANS: PlanConfig[] = [
-  {
-    id: "trial",
-    role: "coach",
-    tier: "pro",
-    name: "7 Dias Grátis Personal Pro",
-    tagline: "Atenda até 35 alunos, monte treinos 3D e teste sem nenhum custo hoje.",
-    recurringPrice: 0,
-    pixPrice: 0,
-    includedUsability: [
-      "Até 35 alunos ativos simultâneos durante 7 dias",
-      "Prescrição completa com Biomecânica 3D para alunos",
-      "Envio de fichas digitais direto no app dos alunos",
-      "Agenda de atendimentos e perfil no marketplace",
-      "GymBot IA Copilot para montagem rápida de treinos",
-    ],
-  },
-  {
-    id: "coach_starter",
-    role: "coach",
-    tier: "basico",
-    name: "Personal Starter",
-    tagline: "Ideal para começar a gerenciar seus primeiros alunos com profissionalismo.",
-    recurringPrice: 39.9,
-    pixPrice: 49.0,
-    includedUsability: [
-      "Gestão de até 10 alunos ativos simultâneos",
-      "Prescrição de fichas de treino digitais completas",
-      "Agenda de aulas e agendamentos com alunos",
-      "Perfil ativo no Marketplace GymFlow da região",
-      "Envio de treinos direto no celular do aluno",
-    ],
-    lockedUsability: [
-      "Limite de 10 alunos (upgrade para expandir)",
-      "Sem animações 3D interativas nos treinos dos alunos",
-      "Sem GymBot IA Copilot de montagem de fichas",
-    ],
-  },
-  {
-    id: "coach_pro",
-    role: "coach",
-    tier: "pro",
-    name: "Personal Pro",
-    tagline: "A ferramenta definitiva para o Personal Trainer moderno de alta renda.",
-    recurringPrice: 69.9,
-    pixPrice: 79.0,
-    featured: true,
-    includedUsability: [
-      "Gestão de até 35 alunos ativos simultâneos",
-      "Prescrição completa com Biomecânica 3D postural para alunos",
-      "Selo Verificado e destaque nas buscas do Marketplace",
-      "Controle financeiro de mensalidades e recebimento PIX",
-      "GymBot IA Copilot para montagem ágil de periodização",
-      "Gráficos comparativos de evolução de força de cada aluno",
-    ],
-  },
-  {
-    id: "coach_vip",
-    role: "coach",
-    tier: "vip",
-    name: "Personal Elite VIP",
-    tagline: "Consultoria sem limites com máximo destaque regional e suporte VIP.",
-    recurringPrice: 99.9,
-    pixPrice: 119.0,
-    includedUsability: [
-      "Alunos ilimitados (escala total da sua consultoria)",
-      "Destaque no topo do ranking do Marketplace na sua região",
-      "Módulo de Avaliação Física & Bioimpedância para alunos",
+    coachFeatures: [
+      "Alunos ilimitados no seu roster",
+      "Destaque máximo no topo do Marketplace regional",
+      "Relatórios de bioimpedância para seus alunos",
       "Link exclusivo de contratação de consultorias",
-      "Lembretes e cobrança automática de alunos via WhatsApp",
-      "Suporte individual prioritário via WhatsApp",
+      "Suporte VIP prioritário individual",
     ],
   },
 ];
 
-const STUDENT_COMPARISON_ROWS = [
-  { feature: "Musculação, Séries e Cargas", basico: true, pro: true, vip: true },
-  { feature: "Agenda de Treinos e Histórico", basico: true, pro: true, vip: true },
-  { feature: "Marketplace de Personais", basico: true, pro: true, vip: true },
-  { feature: "Biomecânica 3D & GIFs Posturais", basico: false, pro: true, vip: true },
-  { feature: "GymBot IA 24/7 (Treino & Macros)", basico: false, pro: true, vip: true },
-  { feature: "Gráficos de Cargas e Recordes (PRs)", basico: false, pro: true, vip: true },
-  { feature: "Módulo Avaliação Física & InBody", basico: false, pro: false, vip: true },
-  { feature: "Suporte VIP Prioritário", basico: false, pro: false, vip: true },
-];
+export const STUDENT_PLANS = UNIFIED_PLANS;
+export const COACH_PLANS = UNIFIED_PLANS;
 
-const COACH_COMPARISON_ROWS = [
-  { feature: "Capacidade de Alunos Ativos", starter: "10 alunos", pro: "35 alunos", vip: "Ilimitados" },
-  { feature: "Prescrição de Fichas Digitais", starter: true, pro: true, vip: true },
-  { feature: "Agenda & Agendamentos", starter: true, pro: true, vip: true },
-  { feature: "Marketplace da Cidade", starter: "Básico", pro: "Selo Verificado", vip: "Topo do Ranking" },
-  { feature: "Biomecânica 3D para Alunos", starter: false, pro: true, vip: true },
-  { feature: "Gestão Financeira & PIX", starter: false, pro: true, vip: true },
-  { feature: "GymBot IA Copilot de Fichas", starter: false, pro: true, vip: true },
-  { feature: "Módulo Avaliação & InBody", starter: false, pro: false, vip: true },
-  { feature: "Link Direto de Contratação", starter: false, pro: false, vip: true },
-  { feature: "WhatsApp Automático para Alunos", starter: false, pro: false, vip: true },
-  { feature: "Suporte Prioritário Individual", starter: false, pro: false, vip: true },
+const UNIFIED_COMPARISON_ROWS = [
+  { feature: "Musculação, Séries e Cargas (Aluno)", basico: true, pro: true, vip: true },
+  { feature: "Agenda de Treinos e Histórico (Aluno)", basico: true, pro: true, vip: true },
+  { feature: "Marketplace de Personais (Aluno)", basico: true, pro: true, vip: true },
+  { feature: "Biomecânica 3D & GIFs Posturais (Aluno)", basico: false, pro: true, vip: true },
+  { feature: "GymBot IA 24/7 Treino & Macros (Aluno)", basico: false, pro: true, vip: true },
+  { feature: "Módulo Avaliação Física & InBody (Aluno)", basico: false, pro: false, vip: true },
+  { feature: "Capacidade de Alunos no Roster (Professor)", basico: "10 alunos", pro: "35 alunos", vip: "Ilimitados" },
+  { feature: "Prescrição de Fichas Digitais (Professor)", basico: true, pro: true, vip: true },
+  { feature: "Marketplace Regional (Professor)", basico: "Básico", pro: "Selo Verificado", vip: "Topo do Ranking" },
+  { feature: "Prescrição 3D para Alunos (Professor)", basico: false, pro: true, vip: true },
+  { feature: "GymBot IA Copilot de Fichas (Professor)", basico: false, pro: true, vip: true },
+  { feature: "Suporte VIP Prioritário Individual", basico: false, pro: false, vip: true },
 ];
 
 export function SubscriptionOnboardingModal({
@@ -247,30 +183,16 @@ export function SubscriptionOnboardingModal({
   user,
 }: SubscriptionOnboardingModalProps) {
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => user || getCurrentUser());
-  const initialRole: RoleType = (user?.activeRole || currentUser?.activeRole) === "coach" ? "coach" : "student";
-  const [selectedRole, setSelectedRole] = useState<RoleType>(initialRole);
   const [isTrialAvailable, setIsTrialAvailable] = useState<boolean>(true);
-  const [selectedPlan, setSelectedPlan] = useState<string>(() =>
-    initialRole === "coach" ? "coach_pro" : "pro"
-  );
+  const [selectedPlan, setSelectedPlan] = useState<string>("pro");
   const [billingMethod, setBillingMethod] = useState<BillingType>("recurring");
   const [showComparison, setShowComparison] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
 
-  const activePlans = selectedRole === "coach" ? COACH_PLANS : STUDENT_PLANS;
-  const currentPlanConfig = activePlans.find((p) => p.id === selectedPlan) || activePlans[1] || activePlans[0];
-
-  const handleSwitchRole = (role: RoleType) => {
-    triggerHaptic("selection");
-    setSelectedRole(role);
-    if (role === "coach") {
-      setSelectedPlan("coach_pro");
-    } else {
-      setSelectedPlan("pro");
-    }
-  };
+  const activePlans = UNIFIED_PLANS;
+  const currentPlanConfig = activePlans.find((p) => p.id === selectedPlan) || activePlans[2] || activePlans[1];
 
   // PIX direto gerado pelo Mercado Pago
   const [pixData, setPixData] = useState<{
@@ -341,7 +263,7 @@ export function SubscriptionOnboardingModal({
   if (!isOpen) return null;
 
   // --------------------------------------------------------------------------
-  // 1. ATIVAR TESTE DE 7 DIAS GRÁTIS
+  // 1. ATIVAR TESTE DE 7 DIAS GRÁTIS (PRO UNIFICADO)
   // --------------------------------------------------------------------------
   const handleStartFreeTrial = async () => {
     if (isLoading) return;
@@ -359,12 +281,9 @@ export function SubscriptionOnboardingModal({
         }
       }
 
-      const trialPlanId = selectedRole === "coach" ? "trial_coach_7d" : "trial_7d";
-      const trialReason =
-        selectedRole === "coach"
-          ? "GymFlow Personal Pro — 7 Dias Grátis com Cobrança Posterior"
-          : "GymFlow Aluno Pro — 7 Dias Grátis com Cobrança Posterior";
-      const trialPrice = selectedRole === "coach" ? 69.9 : 39.9;
+      const trialPlanId = "trial_7d";
+      const trialReason = "GymFlow Pro — 7 Dias Grátis com Cobrança Posterior (Aluno & Professor)";
+      const trialPrice = 45.0;
 
       // Tenta acionar o checkout de assinatura recorrente com free trial no Mercado Pago
       try {
@@ -432,14 +351,7 @@ export function SubscriptionOnboardingModal({
           ? crypto.randomUUID()
           : `sub_${plan.id}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
-      const targetPlanId =
-        plan.id === "trial"
-          ? selectedRole === "coach"
-            ? "trial_coach_7d"
-            : "trial_7d"
-          : selectedRole === "coach" && !plan.id.endsWith("_rec")
-          ? `${plan.id}_rec`
-          : plan.id;
+      const targetPlanId = plan.id === "trial" ? "trial_7d" : plan.id;
 
       const res = await fetch("/api/payment/mercadopago/subscription", {
         method: "POST",
@@ -448,7 +360,7 @@ export function SubscriptionOnboardingModal({
           "X-Idempotency-Key": idempotencyKey,
         },
         body: JSON.stringify({
-          reason: `GymFlow ${plan.name} — Assinatura Recorrente`,
+          reason: `GymFlow ${plan.name} — Assinatura Recorrente Unificada`,
           price: plan.recurringPrice,
           payerEmail: currentUser.email || "usuario@gymflow.com",
           freeTrialDays: 0,
@@ -502,9 +414,9 @@ export function SubscriptionOnboardingModal({
         },
         body: JSON.stringify({
           amount: plan.pixPrice,
-          description: `GymFlow ${plan.name} (30 Dias de Acesso)`,
+          description: `GymFlow ${plan.name} (30 Dias de Acesso Unificado)`,
           payerEmail: currentUser.email || "usuario@gymflow.com",
-          payerName: currentUser.name || (selectedRole === "coach" ? "Personal GymFlow" : "Aluno GymFlow"),
+          payerName: currentUser.name || "Assinante GymFlow",
           userId: currentUser.id,
           planId: plan.id,
           idempotencyKey,
@@ -592,11 +504,15 @@ export function SubscriptionOnboardingModal({
 
         {/* Header Elegante */}
         <div className="p-5 sm:p-7 border-b border-white/[0.07] bg-gradient-to-b from-white/[0.03] to-transparent text-center relative z-10 shrink-0">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-bold mb-2.5">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Planos Unificados • Treino Pessoal + Prescrição de Alunos</span>
+          </div>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Escolha como deseja começar no GymFlow
+            Escolha seu plano GymFlow
           </h2>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1.5 max-w-lg mx-auto leading-relaxed">
-            Selecione o plano ideal para a sua rotina de treinos. Desbloqueie recursos de acordo com o seu objetivo físico.
+            Todas as assinaturas cobrem tanto o seu treino pessoal quanto a prescrição e atendimento de alunos caso você queira orientar ou prescrever.
           </p>
         </div>
 
@@ -707,42 +623,6 @@ export function SubscriptionOnboardingModal({
             /* SELETOR DE MÉTODO DE PAGAMENTO & LISTA DE PLANOS */
             /* ============================================================= */
             <div className="space-y-4">
-              {/* Seletor de Perfil: Aluno vs Professor */}
-              <div className="space-y-1.5">
-                <div className="flex items-center p-1 rounded-2xl bg-zinc-950 border border-white/[0.08] shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchRole("student")}
-                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      selectedRole === "student"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
-                        : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    <Dumbbell className="w-3.5 h-3.5" />
-                    <span>Planos para Alunos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSwitchRole("coach")}
-                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                      selectedRole === "coach"
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-zinc-950 font-black shadow-md"
-                        : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>Planos para Professores & Personais</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-zinc-400 px-1 text-center">
-                  {selectedRole === "student"
-                    ? "Treinos inteligentes, Biomecânica 3D, periodização e GymBot IA."
-                    : "Gestão completa de alunos, prescrição digital com 3D, marketplace regional e controle de mensalidades."}
-                </p>
-              </div>
-
               {/* Seletor de Tipo de Pagamento: Cartão Recorrente vs PIX */}
               <div className="flex items-center p-1 rounded-2xl bg-zinc-900 border border-white/[0.06]">
                 <button
@@ -767,7 +647,7 @@ export function SubscriptionOnboardingModal({
                     triggerHaptic("selection");
                     setBillingMethod("pix");
                     if (selectedPlan === "trial") {
-                      setSelectedPlan(selectedRole === "coach" ? "coach_pro" : "pro");
+                      setSelectedPlan("pro");
                     }
                   }}
                   className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
@@ -880,20 +760,45 @@ export function SubscriptionOnboardingModal({
                       </div>
 
                       {/* Lista de Recursos e Usabilidade no App */}
-                      <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-1.5 text-xs">
-                        {plan.includedUsability.map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-zinc-300">
-                            <CheckCircle2
-                              className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                                plan.id === "vip" ? "text-amber-400" : "text-emerald-400"
-                              }`}
-                            />
-                            <span className="leading-tight">{item}</span>
-                          </div>
-                        ))}
+                      <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-2.5 text-xs">
+                        {/* Frente Aluno */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/90 flex items-center gap-1">
+                            <Dumbbell className="w-3 h-3" />
+                            <span>Para Seu Treino Pessoal:</span>
+                          </span>
+                          {plan.studentFeatures.map((item, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-zinc-300 text-[11px]">
+                              <CheckCircle2
+                                className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                                  plan.id === "vip" ? "text-amber-400" : "text-emerald-400"
+                                }`}
+                              />
+                              <span className="leading-tight">{item}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Frente Professor */}
+                        <div className="space-y-1 pt-1.5 border-t border-white/[0.04]">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400/90 flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            <span>Para Atender & Prescrever:</span>
+                          </span>
+                          {plan.coachFeatures.map((item, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-zinc-300 text-[11px]">
+                              <CheckCircle2
+                                className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                                  plan.id === "vip" ? "text-amber-400" : "text-teal-400"
+                                }`}
+                              />
+                              <span className="leading-tight">{item}</span>
+                            </div>
+                          ))}
+                        </div>
 
                         {plan.lockedUsability?.map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-zinc-500">
+                          <div key={idx} className="flex items-start gap-2 text-zinc-500 text-[11px] pt-1">
                             <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-zinc-600" />
                             <span className="leading-tight line-through opacity-80">{item}</span>
                           </div>
@@ -937,7 +842,7 @@ export function SubscriptionOnboardingModal({
                 >
                   <span className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-emerald-400" />
-                    <span>Ver tabela comparativa de recursos dentro do app</span>
+                    <span>Ver tabela comparativa completa dos planos</span>
                   </span>
                   {showComparison ? (
                     <ChevronUp className="w-4 h-4 text-zinc-400" />
@@ -952,23 +857,19 @@ export function SubscriptionOnboardingModal({
                       <thead>
                         <tr className="border-b border-white/[0.08] text-zinc-400">
                           <th className="py-2 pr-2 font-bold">
-                            {selectedRole === "coach" ? "Recurso de Consultoria & Gestão" : "Recurso no GymFlow"}
+                            Recurso Unificado GymFlow
                           </th>
                           <th className="py-2 px-2 text-center font-bold">
-                            {selectedRole === "coach" ? "Starter" : "Básico"}
+                            Básico
                           </th>
                           <th className="py-2 px-2 text-center font-bold text-emerald-400">Pro</th>
                           <th className="py-2 pl-2 text-center font-bold text-amber-400">
-                            {selectedRole === "coach" ? "Elite VIP" : "VIP"}
+                            VIP Black
                           </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.04]">
-                        {(selectedRole === "coach" ? COACH_COMPARISON_ROWS : STUDENT_COMPARISON_ROWS).map((row: any, idx: number) => {
-                          const valBasico = selectedRole === "coach" ? row.starter : row.basico;
-                          const valPro = row.pro;
-                          const valVip = row.vip;
-
+                        {UNIFIED_COMPARISON_ROWS.map((row: any, idx: number) => {
                           const renderCell = (val: any, isVip = false) => {
                             if (typeof val === "boolean") {
                               return val ? (
@@ -983,9 +884,9 @@ export function SubscriptionOnboardingModal({
                           return (
                             <tr key={idx} className="hover:bg-white/[0.02]">
                               <td className="py-2 pr-2 text-zinc-300 font-medium">{row.feature}</td>
-                              <td className="py-2 px-2 text-center">{renderCell(valBasico)}</td>
-                              <td className="py-2 px-2 text-center">{renderCell(valPro)}</td>
-                              <td className="py-2 pl-2 text-center">{renderCell(valVip, true)}</td>
+                              <td className="py-2 px-2 text-center">{renderCell(row.basico)}</td>
+                              <td className="py-2 px-2 text-center">{renderCell(row.pro)}</td>
+                              <td className="py-2 pl-2 text-center">{renderCell(row.vip, true)}</td>
                             </tr>
                           );
                         })}
