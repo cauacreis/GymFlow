@@ -28,51 +28,15 @@ import {
   EVENT_STREAK_UPDATED,
   StreakInfo,
   INITIAL_ALL_BADGES,
+  BadgeItem,
+  BadgeTier,
+  BadgeRarity,
+  BadgeCadence,
+  BadgeDifficulty,
+  BadgeLevelInfo,
+  CADENCE_LABELS,
+  DIFFICULTY_LABELS,
 } from "@/lib/gamification-service";
-
-export type BadgeTier = "bronze" | "prata" | "ouro" | "diamante";
-export type BadgeRarity = "comum" | "raro" | "epico" | "lendario" | "mitico";
-
-export interface BadgeLevelInfo {
-  level: number;
-  tier: BadgeTier;
-  title: string;
-  requirement: string;
-  targetValue: number;
-  xpReward: number;
-}
-
-export interface BadgeItem {
-  id: string;
-  name: string;
-  role: "student" | "coach";
-  category:
-    | "Constância"
-    | "Disciplina"
-    | "Dedicação"
-    | "Força"
-    | "Frequência"
-    | "Resistência"
-    | "Volume"
-    | "Saúde"
-    | "Consultoria"
-    | "Prescrição"
-    | "Excelência"
-    | "Secreta";
-  description: string;
-  image: string;
-  unlocked: boolean;
-  unlockedAt?: string;
-  currentLevel: number;
-  maxLevel: number;
-  currentProgress: number;
-  targetProgress: number;
-  unit: string;
-  isSecret?: boolean;
-  secretClue?: string;
-  rarity: BadgeRarity;
-  levels: BadgeLevelInfo[];
-}
 
 export interface PRRecord {
   id: string;
@@ -138,7 +102,8 @@ export function GymBadgesStreak() {
   );
   const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
   const [selectedTierLevel, setSelectedTierLevel] = useState<number>(1);
-  const [filterTab, setFilterTab] = useState<"todas" | "desbloqueadas" | "progresso" | "secretas">("todas");
+  const [cadenceFilter, setCadenceFilter] = useState<"todas" | BadgeCadence | "secretas">("todas");
+  const [statusFilter, setStatusFilter] = useState<"todas" | "desbloqueadas" | "progresso">("todas");
 
   useEffect(() => {
     const syncBadges = () => {
@@ -175,14 +140,26 @@ export function GymBadgesStreak() {
   const currentRoleBadges = badges.filter((b) => b.role === activeRole);
 
   const filteredBadges = currentRoleBadges.filter((badge) => {
-    if (filterTab === "desbloqueadas") return badge.unlocked;
-    if (filterTab === "progresso") return !badge.unlocked && !badge.isSecret;
-    if (filterTab === "secretas") return badge.isSecret;
+    // 1. Filtro de Cadência Temporal / Segredos
+    if (cadenceFilter === "secretas") {
+      if (!badge.isSecret) return false;
+    } else if (cadenceFilter !== "todas") {
+      if (badge.cadence !== cadenceFilter) return false;
+    }
+
+    // 2. Filtro de Status de Desbloqueio
+    if (statusFilter === "desbloqueadas") return badge.unlocked;
+    if (statusFilter === "progresso") return !badge.unlocked && !badge.isSecret;
+
     return true;
   });
 
   const unlockedCount = currentRoleBadges.filter((b) => b.unlocked).length;
   const totalCount = currentRoleBadges.length;
+
+  const countByCadence = (cadence: BadgeCadence) =>
+    currentRoleBadges.filter((b) => b.cadence === cadence).length;
+  const secretBadgesCount = currentRoleBadges.filter((b) => b.isSecret).length;
 
   return (
     <div className="flex flex-col gap-4 text-left w-full">
@@ -322,7 +299,7 @@ export function GymBadgesStreak() {
                 Medalhas & Insígnias 3D
               </h3>
               <p className="text-[11px] text-zinc-400">
-                Conquistas de {activeRole === "student" ? "Alunos" : "Professores & Personais"} com leveis progressivos
+                Conquistas de {activeRole === "student" ? "Alunos" : "Professores & Personais"} em múltiplos horizontes
               </p>
             </div>
           </div>
@@ -340,7 +317,7 @@ export function GymBadgesStreak() {
             onClick={() => {
               triggerHaptic("light");
               setActiveRole("student");
-              setFilterTab("todas");
+              setCadenceFilter("todas");
             }}
             className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
               activeRole === "student"
@@ -356,7 +333,7 @@ export function GymBadgesStreak() {
             onClick={() => {
               triggerHaptic("light");
               setActiveRole("coach");
-              setFilterTab("todas");
+              setCadenceFilter("todas");
             }}
             className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
               activeRole === "coach"
@@ -369,51 +346,134 @@ export function GymBadgesStreak() {
           </button>
         </div>
 
-        {/* Abas de Filtragem Rápida */}
-        <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-2xl border border-white/[0.05] mb-4 overflow-x-auto scrollbar-none">
+        {/* Abas de Cadência Temporal (Iniciais, Semanais, Mensais, Anuais, Carreira, Secretas) */}
+        <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-2xl border border-white/[0.05] mb-2.5 overflow-x-auto scrollbar-none">
           <button
-            onClick={() => setFilterTab("todas")}
+            onClick={() => {
+              triggerHaptic("light");
+              setCadenceFilter("todas");
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-              filterTab === "todas"
-                ? "bg-white/10 text-white shadow-sm border border-white/10"
+              cadenceFilter === "todas"
+                ? "bg-white/15 text-white shadow-sm border border-white/10"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
             Todas ({totalCount})
           </button>
+
           <button
-            onClick={() => setFilterTab("desbloqueadas")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-              filterTab === "desbloqueadas"
+            onClick={() => {
+              triggerHaptic("light");
+              setCadenceFilter("inicial");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              cadenceFilter === "inicial"
                 ? "bg-emerald-500/20 text-emerald-300 shadow-sm border border-emerald-500/30"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Desbloqueadas ({unlockedCount})
+            <span>🎯 Iniciais</span>
+            <span className="text-[10px] opacity-75 font-mono">({countByCadence("inicial")})</span>
           </button>
+
           <button
-            onClick={() => setFilterTab("progresso")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-              filterTab === "progresso"
+            onClick={() => {
+              triggerHaptic("light");
+              setCadenceFilter("semanal");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              cadenceFilter === "semanal"
                 ? "bg-amber-500/20 text-amber-300 shadow-sm border border-amber-500/30"
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Em Progresso ({totalCount - unlockedCount - (activeRole === "student" ? 2 : 0)})
+            <span>⚡ Semanais</span>
+            <span className="text-[10px] opacity-75 font-mono">({countByCadence("semanal")})</span>
           </button>
-          {activeRole === "student" && (
+
+          <button
+            onClick={() => {
+              triggerHaptic("light");
+              setCadenceFilter("mensal");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              cadenceFilter === "mensal"
+                ? "bg-blue-500/20 text-blue-300 shadow-sm border border-blue-500/30"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <span>📅 Mensais</span>
+            <span className="text-[10px] opacity-75 font-mono">({countByCadence("mensal")})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic("light");
+              setCadenceFilter("anual");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              cadenceFilter === "anual"
+                ? "bg-purple-500/20 text-purple-300 shadow-sm border border-purple-500/30"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <span>👑 Anuais</span>
+            <span className="text-[10px] opacity-75 font-mono">({countByCadence("anual")})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              triggerHaptic("light");
+              setCadenceFilter("permanente");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              cadenceFilter === "permanente"
+                ? "bg-cyan-500/20 text-cyan-300 shadow-sm border border-cyan-500/30"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <span>🏆 Carreira</span>
+            <span className="text-[10px] opacity-75 font-mono">({countByCadence("permanente")})</span>
+          </button>
+
+          {secretBadgesCount > 0 && (
             <button
-              onClick={() => setFilterTab("secretas")}
+              onClick={() => {
+                triggerHaptic("light");
+                setCadenceFilter("secretas");
+              }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
-                filterTab === "secretas"
-                  ? "bg-purple-500/20 text-purple-300 shadow-sm border border-purple-500/30"
+                cadenceFilter === "secretas"
+                  ? "bg-rose-500/20 text-rose-300 shadow-sm border border-rose-500/30"
                   : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              <Lock className="w-3 h-3 text-purple-400" />
-              Secretas (4)
+              <Lock className="w-3 h-3 text-rose-400" />
+              <span>Secretas ({secretBadgesCount})</span>
             </button>
           )}
+        </div>
+
+        {/* Sub-filtro de Status (Todas / Desbloqueadas / Em Progresso) */}
+        <div className="flex items-center gap-1.5 mb-4">
+          <span className="text-[10px] uppercase font-mono text-zinc-500 font-semibold mr-1">Status:</span>
+          {(["todas", "desbloqueadas", "progresso"] as const).map((st) => (
+            <button
+              key={st}
+              onClick={() => {
+                triggerHaptic("light");
+                setStatusFilter(st);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                statusFilter === st
+                  ? "bg-zinc-800 text-white border border-zinc-700 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {st === "todas" ? "Todas" : st === "desbloqueadas" ? "Desbloqueadas" : "Em Progresso"}
+            </button>
+          ))}
         </div>
 
         {/* Grade de Medalhas 3D */}
@@ -422,6 +482,8 @@ export function GymBadgesStreak() {
             const isSecretLocked = badge.isSecret && !badge.unlocked;
             const currentTier = badge.currentLevel > 0 ? badge.levels[badge.currentLevel - 1].tier : "bronze";
             const tierStyle = TIER_META[currentTier];
+            const diffMeta = DIFFICULTY_LABELS[badge.difficulty] || DIFFICULTY_LABELS.iniciante;
+            const cadMeta = CADENCE_LABELS[badge.cadence] || CADENCE_LABELS.permanente;
 
             return (
               <motion.button
@@ -434,11 +496,11 @@ export function GymBadgesStreak() {
                     ? `bg-zinc-900/90 hover:bg-zinc-850 border-white/[0.1] hover:${tierStyle.border} ${tierStyle.glow}`
                     : isSecretLocked
                     ? "bg-purple-950/15 border-purple-500/20 hover:border-purple-500/40"
-                    : "bg-zinc-950/40 border-white/[0.04] opacity-65 hover:opacity-85"
+                    : "bg-zinc-950/40 border-white/[0.04] opacity-75 hover:opacity-95"
                 }`}
               >
                 {/* Chip de Nível / Status no Topo do Card */}
-                <div className="w-full flex items-center justify-between mb-2">
+                <div className="w-full flex items-center justify-between mb-1.5">
                   {badge.unlocked ? (
                     <span
                       className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
@@ -466,13 +528,20 @@ export function GymBadgesStreak() {
                     </span>
                   )}
 
-                  <span className="text-[9px] font-medium text-zinc-500 uppercase tracking-wider">
-                    {badge.isSecret ? "Easter Egg" : badge.category}
+                  {/* Tag de Dificuldade */}
+                  <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border ${diffMeta.bg} ${diffMeta.color}`}>
+                    {diffMeta.label}
                   </span>
                 </div>
 
+                {/* Tag de Cadência Temporal */}
+                <div className="w-full flex items-center gap-1 text-[9px] text-zinc-400 font-mono mb-1">
+                  <span>{cadMeta.icon}</span>
+                  <span className="uppercase tracking-wider font-semibold">{cadMeta.label}</span>
+                </div>
+
                 {/* Imagem 3D Real com Fundo Transparente */}
-                <div className="relative w-full aspect-square max-w-[120px] mx-auto my-1 flex items-center justify-center">
+                <div className="relative w-full aspect-square max-w-[110px] mx-auto my-1 flex items-center justify-center">
                   {/* Brilho Atmosférico no Fundo */}
                   {badge.unlocked && (
                     <div
@@ -496,7 +565,7 @@ export function GymBadgesStreak() {
                       src={isSecretLocked ? "/badges/badge_secret_mystery.png" : badge.image}
                       alt={isSecretLocked ? "Medalha Secreta Misteriosa" : badge.name}
                       fill
-                      sizes="(max-width: 640px) 100px, 120px"
+                      sizes="(max-width: 640px) 100px, 110px"
                       className={`object-contain transition-all duration-300 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)] ${
                         badge.unlocked
                           ? "group-hover:scale-105 group-hover:-translate-y-1"
@@ -509,7 +578,7 @@ export function GymBadgesStreak() {
                 </div>
 
                 {/* Título & Detalhes */}
-                <div className="mt-2 w-full">
+                <div className="mt-1.5 w-full">
                   <h4 className="text-xs sm:text-sm font-bold text-white line-clamp-1 group-hover:text-emerald-400 transition-colors">
                     {isSecretLocked ? "???" : badge.name}
                   </h4>
@@ -530,7 +599,7 @@ export function GymBadgesStreak() {
                       <span className="font-semibold text-zinc-300">
                         {isSecretLocked
                           ? `${badge.currentProgress} de ${badge.targetProgress}`
-                          : `${badge.currentProgress} / ${badge.targetProgress} ${badge.unit}`}
+                          : `${badge.currentProgress.toLocaleString("pt-BR")} / ${badge.targetProgress.toLocaleString("pt-BR")} ${badge.unit}`}
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/[0.04]">
@@ -585,17 +654,25 @@ export function GymBadgesStreak() {
                 <X className="w-4 h-4" />
               </button>
 
-              {/* Rarity & Categoria Chip */}
-              <div className="flex items-center gap-2 mb-2">
+              {/* Rarity, Cadência & Dificuldade Chips */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 mb-2">
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.1] text-zinc-300 flex items-center gap-1">
+                  <span>{CADENCE_LABELS[selectedBadge.cadence]?.icon}</span>
+                  <span>{CADENCE_LABELS[selectedBadge.cadence]?.label}</span>
+                </span>
                 <span
-                  className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border ${
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                    DIFFICULTY_LABELS[selectedBadge.difficulty]?.bg
+                  } ${DIFFICULTY_LABELS[selectedBadge.difficulty]?.color}`}
+                >
+                  {DIFFICULTY_LABELS[selectedBadge.difficulty]?.label}
+                </span>
+                <span
+                  className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
                     RARITY_META[selectedBadge.rarity].color
                   }`}
                 >
                   {RARITY_META[selectedBadge.rarity].label}
-                </span>
-                <span className="text-[10px] uppercase font-mono font-semibold px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-zinc-400">
-                  {selectedBadge.category}
                 </span>
               </div>
 
